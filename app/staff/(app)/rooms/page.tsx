@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireOperational } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { scopeTo } from '@/lib/scope'
 import { baseUrl } from '@/lib/qr'
@@ -8,7 +8,7 @@ import Rooms, { type RoomRow } from './Rooms'
 export const dynamic = 'force-dynamic'
 
 export default async function RoomsPage({ searchParams }: PageProps<'/staff/rooms'>) {
-  const staff = await requireStaff()
+  const staff = await requireOperational()
   const { property } = await searchParams
   const selected = typeof property === 'string' ? property : ''
 

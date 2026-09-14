@@ -5,6 +5,7 @@ import { sql } from '@/lib/db'
 import { audit } from '@/lib/audit'
 import {
   attemptLogin,
+  homeFor,
   endSession,
   getStaff,
   hashPassword,
@@ -27,7 +28,7 @@ export async function login(_prev: FormState, form: FormData): Promise<FormState
   await audit({ staffId: result.staff.id, actor: username, action: 'staff.login' })
 
   // redirect throws by design — it must be outside any try/catch.
-  redirect(result.staff.must_change_password ? '/staff/password' : '/staff/board')
+  redirect(result.staff.must_change_password ? '/staff/password' : homeFor(result.staff))
 }
 
 export async function logout(): Promise<void> {
@@ -68,5 +69,5 @@ export async function changePassword(_prev: FormState, form: FormData): Promise<
     action: 'staff.password_changed',
   })
 
-  redirect('/staff/board')
+  redirect(homeFor(staff))
 }

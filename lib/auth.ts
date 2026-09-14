@@ -146,6 +146,26 @@ export async function requireAdmin(): Promise<Staff> {
   return staff
 }
 
+/**
+ * Where a role lands after signing in.
+ *
+ * HConcierge runs the product, not anybody's front desk — it has no shift, no
+ * board and no reason to be reading a hotel's live guest traffic.
+ */
+export function homeFor(staff: Pick<Staff, 'role'>): string {
+  return staff.role === 'platform' ? '/staff/admin/organisations' : '/staff/board'
+}
+
+/**
+ * The day-to-day screens: board, rooms, history. Platform accounts are sent to
+ * the panel instead — a customer's live requests are their business.
+ */
+export async function requireOperational(): Promise<Staff> {
+  const staff = await requireStaff()
+  if (staff.role === 'platform') redirect('/staff/admin/organisations')
+  return staff
+}
+
 /** HConcierge itself. Above every organisation, and held by nobody else. */
 export async function requirePlatform(): Promise<Staff> {
   const staff = await requireStaff()
@@ -200,7 +220,7 @@ export function canTouchProperty(
 // --------------------------------------------------------------- login limits
 
 export type LoginResult =
-  | { ok: true; staff: { id: string; must_change_password: boolean } }
+  | { ok: true; staff: { id: string; role: Role; must_change_password: boolean } }
   | { ok: false; error: string }
 
 /**
@@ -210,8 +230,8 @@ export type LoginResult =
  */
 export async function attemptLogin(username: string, password: string): Promise<LoginResult> {
   const rows = await sql<
-    { id: string; password_hash: string; active: boolean; locked_until: Date | null; must_change_password: boolean }[]
-  >`select id, password_hash, active, locked_until, must_change_password
+    { id: string; role: Role; password_hash: string; active: boolean; locked_until: Date | null; must_change_password: boolean }[]
+  >`select id, role, password_hash, active, locked_until, must_change_password
       from staff where lower(username) = lower(${username}) limit 1`
 
   const generic = { ok: false as const, error: 'Incorrect username or password.' }
@@ -240,5 +260,5 @@ export async function attemptLogin(username: string, password: string): Promise<
   }
 
   await sql`update staff set failed_logins = 0, locked_until = null, last_login_at = now() where id = ${row.id}`
-  return { ok: true, staff: { id: row.id, must_change_password: row.must_change_password } }
+  return { ok: true, staff: { id: row.id, role: row.role, must_change_password: row.must_change_password } }
 }

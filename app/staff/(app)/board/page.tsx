@@ -1,4 +1,4 @@
-import { requireStaff, visibleDepartments } from '@/lib/auth'
+import { requireOperational, visibleDepartments } from '@/lib/auth'
 import { loadAssignableStaff, loadBoard, loadChatRooms } from '@/lib/board'
 import { sql } from '@/lib/db'
 import Board from './Board'
@@ -6,7 +6,7 @@ import Board from './Board'
 export const dynamic = 'force-dynamic'
 
 export default async function BoardPage() {
-  const staff = await requireStaff()
+  const staff = await requireOperational()
 
   const [requests, chats, properties, assignable] = await Promise.all([
     loadBoard(staff),

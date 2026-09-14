@@ -1,9 +1,9 @@
 export type AppliesTo = 'unaccepted' | 'unfinished' | 'any'
 
 export const APPLIES_TO_LABEL: Record<AppliesTo, string> = {
-  unaccepted: 'Nobody has accepted it',
-  unfinished: 'Accepted but not finished',
-  any: 'Still open, either way',
+  unaccepted: 'only if nobody has picked it up',
+  unfinished: 'only if someone picked it up but has not finished',
+  any: 'whether or not someone picked it up',
 }
 
 export type RuleStaff = { id: string; name: string; phone: string | null }
@@ -24,7 +24,6 @@ export type EscalationRule = {
 export type EscalationInput = {
   id?: string | null
   department: string | null
-  step: number
   afterMinutes: number
   appliesTo: AppliesTo
   notifyManagers: boolean

@@ -18,6 +18,27 @@ import type { Staff } from './auth'
  * than a multiplier, and it is what someone configuring this actually means.
  */
 
+/**
+ * Steps are a consequence of how late each one is, not something anybody should
+ * have to type and keep in order. Renumbering after every write keeps them 1..n
+ * in time order, which is exactly what the sweep's `step > escalation_step`
+ * comparison wants.
+ *
+ * Reordering can let a request that already escalated fire one more time. That
+ * is a duplicate message after an admin edits the rules, which is a fair price
+ * for never making anyone hand-manage step numbers.
+ */
+async function renumber(propertyId: string): Promise<void> {
+  await sql`
+    with ordered as (
+      select id, row_number() over (order by after_minutes, created_at) as n
+        from escalation_rules where property_id = ${propertyId}
+    )
+    update escalation_rules e set step = ordered.n
+      from ordered
+     where e.id = ordered.id and e.step is distinct from ordered.n::int`
+}
+
 export async function listEscalationRules(actor: Staff, propertyId: string): Promise<EscalationRule[]> {
   if (!(await canManageProperty(actor, propertyId))) return []
 
@@ -58,12 +79,20 @@ export async function listEscalationCandidates(actor: Staff, propertyId: string)
 
 export async function saveEscalationRule(actor: Staff, propertyId: string, input: EscalationInput): Promise<Ok> {
   if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
-  if (!Number.isInteger(input.step) || input.step < 1 || input.step > 9) return fail('Step must be between 1 and 9.')
   if (!Number.isInteger(input.afterMinutes) || input.afterMinutes < 0 || input.afterMinutes > 1440) {
-    return fail('Delay must be between 0 and 1440 minutes past the target.')
+    return fail('Choose between 0 and 1440 minutes late.')
   }
   if (!input.notifyManagers && !input.notifyAdmins && input.staffIds.length === 0) {
-    return fail('Choose at least one person or group to tell — a rung that notifies nobody does nothing.')
+    return fail('Choose at least one person or group to tell — a step that tells nobody does nothing.')
+  }
+  const [clash] = await sql`
+    select 1 from escalation_rules
+     where property_id = ${propertyId}
+       and after_minutes = ${input.afterMinutes}
+       and department is not distinct from ${input.department}
+       and id is distinct from ${input.id ?? null}`
+  if (clash) {
+    return fail('There is already a step at that time for that team. Edit that one instead.')
   }
 
   let ruleId = input.id ?? null
@@ -72,7 +101,7 @@ export async function saveEscalationRule(actor: Staff, propertyId: string, input
     if (!owned) return fail('That rule no longer exists.')
     await sql`
       update escalation_rules
-         set department = ${input.department}, step = ${input.step},
+         set department = ${input.department},
              after_minutes = ${input.afterMinutes}, applies_to = ${input.appliesTo},
              notify_managers = ${input.notifyManagers}, notify_admins = ${input.notifyAdmins},
              active = ${input.active}
@@ -81,7 +110,7 @@ export async function saveEscalationRule(actor: Staff, propertyId: string, input
     const [row] = await sql<{ id: string }[]>`
       insert into escalation_rules
         (property_id, department, step, after_minutes, applies_to, notify_managers, notify_admins, active)
-      values (${propertyId}, ${input.department}, ${input.step}, ${input.afterMinutes},
+      values (${propertyId}, ${input.department}, 99, ${input.afterMinutes},
               ${input.appliesTo}, ${input.notifyManagers}, ${input.notifyAdmins}, ${input.active})
       returning id`
     ruleId = row.id
@@ -96,6 +125,8 @@ export async function saveEscalationRule(actor: Staff, propertyId: string, input
       on conflict do nothing`
   }
 
+  await renumber(propertyId)
+
   await audit({
     propertyId,
     staffId: actor.id,
@@ -103,7 +134,7 @@ export async function saveEscalationRule(actor: Staff, propertyId: string, input
     action: input.id ? 'escalation.updated' : 'escalation.created',
     entity: 'escalation_rule',
     entityId: ruleId ?? undefined,
-    meta: { step: input.step, after_minutes: input.afterMinutes, department: input.department },
+    meta: { after_minutes: input.afterMinutes, department: input.department },
   })
   return { ok: true }
 }
@@ -115,6 +146,7 @@ export async function deleteEscalationRule(actor: Staff, id: string): Promise<Ok
   if (!(await canManageProperty(actor, rule.property_id))) return fail('Not your property.')
 
   await sql`delete from escalation_rules where id = ${id}`
+  await renumber(rule.property_id)
   await audit({
     propertyId: rule.property_id,
     staffId: actor.id,

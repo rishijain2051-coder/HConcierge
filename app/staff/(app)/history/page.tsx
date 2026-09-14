@@ -1,4 +1,4 @@
-import { DEPARTMENTS, departmentLabel, requireStaff, visibleDepartments } from '@/lib/auth'
+import { DEPARTMENTS, departmentLabel, requireOperational, visibleDepartments } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { loadByDepartment, loadHistory, loadStats, type HistoryFilters } from '@/lib/history'
 import { rupees } from '@/lib/money'
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 const one = (v: string | string[] | undefined) => (typeof v === 'string' && v ? v : null)
 
 export default async function HistoryPage({ searchParams }: PageProps<'/staff/history'>) {
-  const staff = await requireStaff()
+  const staff = await requireOperational()
   const params = await searchParams
 
   const filters: HistoryFilters = {
