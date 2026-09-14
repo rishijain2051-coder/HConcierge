@@ -1,11 +1,11 @@
-import { requireManager } from '@/lib/auth'
+import { requireInOrganisation } from '@/lib/auth'
 import { listProperties, listStaff } from '@/lib/admin'
 import StaffManager from './StaffManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminStaffPage() {
-  const me = await requireManager()
+  const me = await requireInOrganisation()
   const [staff, properties] = await Promise.all([listStaff(me), listProperties(me)])
 
   return (

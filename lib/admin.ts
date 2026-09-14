@@ -29,7 +29,7 @@ export type Ok<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 export const fail = (error: string) => ({ ok: false as const, error })
 
 export async function canManageProperty(actor: Staff, propertyId: string | null): Promise<boolean> {
-  if (actor.role === 'platform') return true
+  if (actor.role === 'platform' && !actor.organisation_id) return true
   if (propertyId === null) return false
   const [prop] = await sql<{ id: string; organisation_id: string | null }[]>`
     select id, organisation_id from properties where id = ${propertyId}`
@@ -96,11 +96,11 @@ export async function listStaff(actor: Staff): Promise<StaffRow[]> {
       left join properties p on p.id = s.property_id
       left join organisations o on o.id = s.organisation_id
      where ${
-       actor.role === 'platform'
+       actor.role === 'platform' && !actor.organisation_id
          ? sql`true`
-         : actor.role === 'admin'
-           ? sql`s.organisation_id = ${actor.organisation_id}`
-           : sql`s.property_id = ${actor.property_id}`
+         : actor.role === 'manager' || actor.role === 'staff'
+           ? sql`s.property_id = ${actor.property_id}`
+           : sql`s.organisation_id = ${actor.organisation_id}`
      }
      order by case s.role when 'platform' then 0 when 'admin' then 1 when 'manager' then 2 else 3 end, s.name`
 }
@@ -132,7 +132,7 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
     input.role === 'platform'
       ? null
       : actor.role === 'platform'
-        ? (input.organisationId ?? null)
+        ? (input.organisationId ?? actor.organisation_id)
         : actor.organisation_id
   if (input.role !== 'platform' && !organisationId) return fail('Choose an organisation.')
 
@@ -343,7 +343,7 @@ export async function createProperty(
 ): Promise<Ok<{ id: string }>> {
   if (actor.role !== 'admin' && actor.role !== 'platform') return fail('Only an admin can add a property.')
 
-  const orgId = actor.role === 'platform' ? (organisationId ?? null) : actor.organisation_id
+  const orgId = actor.role === 'platform' ? (organisationId ?? actor.organisation_id) : actor.organisation_id
   if (!orgId) return fail('Choose an organisation for this property.')
 
   const name = input.name.trim().slice(0, 120)
@@ -788,11 +788,11 @@ export async function adminOverview(actor: Staff) {
            (select count(*)::int from requests where status in ('new','ack','in_progress')
                                               and property_id in (select id from mine))   as open_requests,
            (select count(*)::int from staff s where s.active and ${
-             actor.role === 'platform'
+             actor.role === 'platform' && !actor.organisation_id
                ? sql`true`
-               : actor.role === 'admin'
-                 ? sql`s.organisation_id = ${actor.organisation_id}`
-                 : sql`s.property_id = ${actor.property_id}`
+               : actor.role === 'manager' || actor.role === 'staff'
+                 ? sql`s.property_id = ${actor.property_id}`
+                 : sql`s.organisation_id = ${actor.organisation_id}`
            })                                                                             as staff`
   return row
 }

@@ -1,8 +1,16 @@
 import Link from 'next/link'
-import { requireManager } from '@/lib/auth'
+import { redirect } from 'next/navigation'
+import { enterOrganisation, requireManager, requirePlatform } from '@/lib/auth'
 import { adminOverview } from '@/lib/admin'
 
 export const dynamic = 'force-dynamic'
+
+async function leaveOrganisation(): Promise<void> {
+  'use server'
+  await requirePlatform()
+  await enterOrganisation(null)
+  redirect('/staff/admin/organisations')
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // Managers get the panel too, scoped to their own property — otherwise the
@@ -10,18 +18,35 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const staff = await requireManager()
   const stats = await adminOverview(staff)
 
-  const tabs = [
-    ...(staff.role === 'platform' ? [{ href: '/staff/admin/organisations', label: 'Organisations' }] : []),
-    { href: '/staff/admin', label: 'Staff' },
-    ...(staff.role === 'staff' ? [] : [{ href: '/staff/admin/properties', label: 'Properties' }]),
-    { href: '/staff/admin/catalog', label: 'Directory' },
-    { href: '/staff/admin/escalation', label: 'Escalation' },
-    { href: '/staff/admin/info', label: 'Hotel info' },
-    { href: '/staff/admin/audit', label: 'Activity' },
-  ]
+  // HConcierge picks a customer first. Everything else in the panel belongs to
+  // one organisation, so it only appears once you are inside one.
+  const choosing = staff.role === 'platform' && !staff.organisation_id
+
+  const tabs = choosing
+    ? [{ href: '/staff/admin/organisations', label: 'Organisations' }]
+    : [
+        { href: '/staff/admin', label: 'Staff' },
+        ...(staff.role === 'staff' ? [] : [{ href: '/staff/admin/properties', label: 'Properties' }]),
+        { href: '/staff/admin/catalog', label: 'Directory' },
+        { href: '/staff/admin/escalation', label: 'Escalation' },
+        { href: '/staff/admin/info', label: 'Hotel info' },
+        { href: '/staff/admin/audit', label: 'Activity' },
+      ]
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
+      {staff.role === 'platform' && staff.organisation_id && (
+        <div className="bg-paper border-line mb-4 flex flex-wrap items-center gap-3 rounded-xl border px-3.5 py-2.5">
+          <form action={leaveOrganisation}>
+            <button className="text-muted hover:text-ink text-[13px] font-medium">&larr; All organisations</button>
+          </form>
+          <p className="text-[13px]">
+            <span className="text-faint">Working inside</span>{' '}
+            <span className="font-semibold">{staff.organisation_name}</span>
+          </p>
+        </div>
+      )}
+
       <div className="border-line mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4">
         <nav className="flex flex-wrap gap-1">
           {tabs.map((t) => (

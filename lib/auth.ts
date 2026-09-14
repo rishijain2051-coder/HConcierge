@@ -101,6 +101,32 @@ export async function startSession(staffId: string): Promise<void> {
 export async function endSession(): Promise<void> {
   const store = await cookies()
   store.delete(SESSION_COOKIE)
+  store.delete(ORG_COOKIE)
+}
+
+/**
+ * Which customer HConcierge is working inside right now.
+ *
+ * Unsigned on purpose: this can only ever narrow what a platform account
+ * already sees, never widen it, and a value that is not a real organisation
+ * simply matches nothing. It is ignored entirely for everyone else, whose
+ * organisation comes from their own staff row.
+ */
+export const ORG_COOKIE = 'hc_org'
+
+export async function enterOrganisation(id: string | null): Promise<void> {
+  const store = await cookies()
+  if (id) {
+    store.set(ORG_COOKIE, id, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: SESSION_HOURS * 3600,
+    })
+  } else {
+    store.delete(ORG_COOKIE)
+  }
 }
 
 /**
@@ -114,13 +140,18 @@ export const getStaff = cache(async (): Promise<Staff | null> => {
   const payload = readToken(token)
   if (!payload) return null
 
+  const entered = (await cookies()).get(ORG_COOKIE)?.value
+  const orgId = entered && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(entered) ? entered : null
+
   const rows = await sql<Staff[]>`
-    select s.id, s.organisation_id, s.property_id, s.username, s.name, s.department,
-           s.role, s.phone,
+    select s.id, coalesce(s.organisation_id, o.id) as organisation_id, s.property_id,
+           s.username, s.name, s.department, s.role, s.phone,
            p.name as property_name, p.slug as property_slug, o.name as organisation_name
       from staff s
       left join properties p on p.id = s.property_id
-      left join organisations o on o.id = s.organisation_id
+      left join organisations o
+        on o.id = coalesce(s.organisation_id,
+                           case when s.role = 'platform' then ${orgId}::uuid end)
      where s.id = ${payload.sid} and s.active
      limit 1`
   return rows[0] ?? null
@@ -142,6 +173,18 @@ export async function requireManager(): Promise<Staff> {
 export async function requireAdmin(): Promise<Staff> {
   const staff = await requireStaff()
   if (staff.role !== 'admin' && staff.role !== 'platform') redirect('/staff/board')
+  if (staff.role === 'platform' && !staff.organisation_id) redirect('/staff/admin/organisations')
+  return staff
+}
+
+/**
+ * The panel screens that belong to one customer — staff, directory, escalation,
+ * info, activity. HConcierge has to step into an organisation first, or these
+ * would be a list of every customer's people and data at once.
+ */
+export async function requireInOrganisation(): Promise<Staff> {
+  const staff = await requireManager()
+  if (staff.role === 'platform' && !staff.organisation_id) redirect('/staff/admin/organisations')
   return staff
 }
 
@@ -209,8 +252,8 @@ export function canTouchProperty(
   staff: Staff,
   property: { id: string; organisation_id: string | null },
 ): boolean {
-  if (staff.role === 'platform') return true
-  if (staff.role === 'admin') {
+  if (staff.role === 'platform' && !staff.organisation_id) return true
+  if (staff.role === 'platform' || staff.role === 'admin') {
     return Boolean(staff.organisation_id) && property.organisation_id === staff.organisation_id
   }
   return staff.property_id === property.id

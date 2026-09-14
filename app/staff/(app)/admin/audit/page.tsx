@@ -1,4 +1,4 @@
-import { requireManager } from '@/lib/auth'
+import { requireInOrganisation } from '@/lib/auth'
 import { listAudit, listAuditActions } from '@/lib/admin'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +20,7 @@ const GROUPS: { value: string; label: string }[] = [
 ]
 
 export default async function AdminAuditPage({ searchParams }: PageProps<'/staff/admin/audit'>) {
-  const me = await requireManager()
+  const me = await requireInOrganisation()
   const params = await searchParams
   const action = one(params.action)
   const days = Number(one(params.days) ?? 7) || 7

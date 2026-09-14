@@ -43,7 +43,9 @@ export default async function StaffLayout({ children }: { children: React.ReactN
               <p className="text-[13px] leading-tight font-medium">{staff.name}</p>
               <p className="text-faint text-[11px] leading-tight">
                 {staff.role === 'platform'
-                  ? 'HConcierge · every organisation'
+                  ? staff.organisation_name
+                    ? `HConcierge · ${staff.organisation_name}`
+                    : 'HConcierge · every organisation'
                   : `${staff.property_name ?? staff.organisation_name ?? ''} · ${departmentLabel(staff.department)}`}
               </p>
             </div>

@@ -1,11 +1,11 @@
-import { requireManager } from '@/lib/auth'
+import { requireInOrganisation } from '@/lib/auth'
 import { listCatalog, listProperties } from '@/lib/admin'
 import CatalogManager from './CatalogManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminCatalogPage({ searchParams }: PageProps<'/staff/admin/catalog'>) {
-  const me = await requireManager()
+  const me = await requireInOrganisation()
   const { property } = await searchParams
   const properties = await listProperties(me)
 
@@ -21,7 +21,7 @@ export default async function AdminCatalogPage({ searchParams }: PageProps<'/sta
   return (
     <CatalogManager
       propertyId={selected}
-      properties={me.role === 'admin' ? properties.map((p) => ({ id: p.id, name: p.name })) : []}
+      properties={properties.length > 1 ? properties.map((p) => ({ id: p.id, name: p.name })) : []}
       categories={await listCatalog(me, selected)}
     />
   )

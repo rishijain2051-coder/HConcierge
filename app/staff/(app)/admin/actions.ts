@@ -5,7 +5,7 @@ import { requireManager, type Department, type Role } from '@/lib/auth'
 import * as admin from '@/lib/admin'
 import * as escalation from '@/lib/escalation'
 import * as orgs from '@/lib/organisations'
-import { requirePlatform } from '@/lib/auth'
+import { enterOrganisation as setOrganisation, requirePlatform } from '@/lib/auth'
 
 /**
  * Thin wrappers: every one re-reads the session server-side, so the panel's
@@ -183,6 +183,18 @@ export async function createOrganisation(input: {
   const res = await orgs.createOrganisation(actor, input)
   if (res.ok) touched()
   return res
+}
+
+/**
+ * Step into a customer, or back out to the list. Everything else in the panel
+ * reads the session, so this one cookie is all it takes for HConcierge to work
+ * inside an organisation instead of across all of them.
+ */
+export async function enterOrganisation(id: string | null) {
+  await requirePlatform()
+  await setOrganisation(id)
+  touched()
+  return { ok: true as const }
 }
 
 export async function updateOrganisation(id: string, name: string) {

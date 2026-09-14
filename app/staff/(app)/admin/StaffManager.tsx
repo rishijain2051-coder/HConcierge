@@ -17,9 +17,13 @@ const ROLES = [
   { value: 'platform', label: 'HConcierge — every organisation' },
 ]
 
-/** Nobody may mint a role at or above their own. */
+/**
+ * Nobody may mint a role at or above their own. HConcierge reaches this screen
+ * only from inside a customer, so it staffs that customer — a new platform
+ * account comes from `npm run db:platform`, not from a hotel's staff list.
+ */
 const ASSIGNABLE: Record<string, string[]> = {
-  platform: ['staff', 'manager', 'admin', 'platform'],
+  platform: ['staff', 'manager', 'admin'],
   admin: ['staff', 'manager'],
   manager: ['staff'],
 }
@@ -193,7 +197,7 @@ export default function StaffManager({
               options={DEPT_OPTIONS}
               hint="A staff account only sees this team's requests. Managers and admins see everything."
             />
-            {me.role === 'admin' && properties.length > 0 && (
+            {!me.propertyId && properties.length > 0 && (
               <Select
                 label="Property"
                 name="propertyId"

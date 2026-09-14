@@ -1,11 +1,11 @@
-import { requireManager } from '@/lib/auth'
+import { requireInOrganisation } from '@/lib/auth'
 import { listAdminInfoPages, listProperties } from '@/lib/admin'
 import InfoManager from './InfoManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminInfoPage({ searchParams }: PageProps<'/staff/admin/info'>) {
-  const me = await requireManager()
+  const me = await requireInOrganisation()
   const { property } = await searchParams
   const properties = await listProperties(me)
 
@@ -19,7 +19,7 @@ export default async function AdminInfoPage({ searchParams }: PageProps<'/staff/
   return (
     <InfoManager
       propertyId={selected}
-      properties={me.role === 'admin' ? properties.map((p) => ({ id: p.id, name: p.name })) : []}
+      properties={properties.length > 1 ? properties.map((p) => ({ id: p.id, name: p.name })) : []}
       pages={await listAdminInfoPages(me, selected)}
     />
   )

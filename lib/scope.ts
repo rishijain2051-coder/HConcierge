@@ -19,14 +19,15 @@ import type { Staff } from './auth'
 type Fragment = PendingQuery<Row[]>
 
 export function scopeTo(staff: Staff, column: Fragment, propertyId?: string | null): Fragment {
-  // HConcierge sees every organisation.
-  if (staff.role === 'platform') {
+  // HConcierge sees every organisation — until it steps into one, after which
+  // it is scoped to that customer exactly like their own admin.
+  if (staff.role === 'platform' && !staff.organisation_id) {
     return propertyId ? sql`${column} = ${propertyId}` : sql`true`
   }
 
   // An admin sees their own organisation's properties, and nothing else —
   // including when they hand us a property id directly.
-  if (staff.role === 'admin') {
+  if (staff.role === 'admin' || staff.role === 'platform') {
     const mine = sql`${column} in (select id from properties where organisation_id = ${staff.organisation_id})`
     return propertyId ? sql`${column} = ${propertyId} and ${mine}` : mine
   }

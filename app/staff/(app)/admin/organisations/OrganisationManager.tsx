@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { OrganisationRow } from '@/lib/organisations'
-import { createOrganisation, updateOrganisation } from '../actions'
+import { createOrganisation, enterOrganisation, updateOrganisation } from '../actions'
 import { Button, Err, Field, Modal, Panel, PasswordOnce } from '../ui'
 
 const slugify = (s: string) =>
@@ -33,7 +33,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
   return (
     <Panel
       title="Organisations"
-      description="Each customer is one organisation and owns its own properties, staff and data. An organisation's admin can never see another's. This screen is HConcierge's alone."
+      description="Each customer is one organisation and owns its own properties, staff and data. Open one to manage its properties, staff, directory and escalation — you work inside a single customer at a time, never across them."
       action={
         <Button
           variant="primary"
@@ -58,7 +58,17 @@ export default function OrganisationManager({ organisations }: { organisations: 
             <p className="text-muted min-w-[15rem] text-[12px] tabular-nums">
               {o.properties} propert{o.properties === 1 ? 'y' : 'ies'} · {o.rooms} rooms · {o.staff} staff
             </p>
-            <Button onClick={() => setEditing(o)}>Rename</Button>
+            <div className="flex shrink-0 gap-1.5">
+              <Button onClick={() => setEditing(o)}>Rename</Button>
+              <Button
+                variant="primary"
+                onClick={() =>
+                  run(() => enterOrganisation(o.id), () => router.push('/staff/admin'))
+                }
+              >
+                Open
+              </Button>
+            </div>
           </div>
         ))}
         {organisations.length === 0 && (

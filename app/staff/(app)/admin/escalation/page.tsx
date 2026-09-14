@@ -1,4 +1,4 @@
-import { requireManager } from '@/lib/auth'
+import { requireInOrganisation } from '@/lib/auth'
 import { listProperties } from '@/lib/admin'
 import { getWarnThreshold, listEscalationCandidates, listEscalationRules } from '@/lib/escalation'
 import EscalationManager from './EscalationManager'
@@ -6,7 +6,7 @@ import EscalationManager from './EscalationManager'
 export const dynamic = 'force-dynamic'
 
 export default async function AdminEscalationPage({ searchParams }: PageProps<'/staff/admin/escalation'>) {
-  const me = await requireManager()
+  const me = await requireInOrganisation()
   const { property } = await searchParams
   const properties = await listProperties(me)
 
