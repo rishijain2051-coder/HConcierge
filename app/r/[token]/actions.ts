@@ -94,17 +94,20 @@ export async function sendGuestMessage(token: string, body: string) {
   const text = body.trim().slice(0, MAX_MESSAGE)
   if (!text) return { ok: false as const, error: 'Type a message first.' }
 
-  const [{ count }] = await sql<{ count: number }[]>`
-    select count(*)::int as count from messages
-     where room_id = ${ctx.room.id} and sender = 'guest'
-       and created_at > now() - (${MESSAGE_WINDOW_MINUTES} || ' minutes')::interval`
-  if (count >= MESSAGE_MAX) {
+  // Count and insert in one statement. Checking first and inserting after let
+  // a fast thumb — or a script — land 24 messages against a cap of 15, because
+  // every one of them read the count before any of them had committed.
+  const sent = await sql<{ id: string }[]>`
+    insert into messages (property_id, room_id, sender, body)
+    select ${ctx.property.id}, ${ctx.room.id}, 'guest', ${text}
+     where (select count(*) from messages
+             where room_id = ${ctx.room.id} and sender = 'guest'
+               and created_at > now() - (${MESSAGE_WINDOW_MINUTES} || ' minutes')::interval)
+           < ${MESSAGE_MAX}
+    returning id`
+  if (sent.length === 0) {
     return { ok: false as const, error: 'Please wait a moment before sending more.' }
   }
-
-  await sql`
-    insert into messages (property_id, room_id, sender, body)
-    values (${ctx.property.id}, ${ctx.room.id}, 'guest', ${text})`
 
   await audit({
     propertyId: ctx.property.id,

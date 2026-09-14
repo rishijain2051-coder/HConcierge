@@ -13,6 +13,9 @@ const SWEEP_EVERY_MS = 30_000
 export async function GET(req: Request) {
   const staff = await getStaff()
   if (!staff) return Response.json({ error: 'unauthorised' }, { status: 401 })
+  // A platform account has no board, and `scopeTo` answers "every property
+  // everywhere" for one. This route used to let it through.
+  if (staff.role === 'platform') return Response.json({ error: 'no board' }, { status: 403 })
 
   const propertyId = new URL(req.url).searchParams.get('property')
 

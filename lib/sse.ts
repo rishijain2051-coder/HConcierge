@@ -13,9 +13,11 @@
 
 const MAX_MS = 4 * 60_000
 const HEARTBEAT_MS = 25_000
-// Several rows usually change together (a request and its lines, a charge and
-// its request). Wait a beat so one order becomes one push, not four.
-const SETTLE_MS = 120
+// Several rows change together and not all at once: an order is a request row,
+// then its lines a couple of hundred milliseconds later, then a charge. Wait
+// long enough for the whole thing to land so the guest gets one push carrying a
+// complete order, rather than four — the first of which has no dishes on it.
+const SETTLE_MS = 350
 
 export function sseStream<T>({
   signal,
@@ -24,7 +26,8 @@ export function sseStream<T>({
 }: {
   signal: AbortSignal
   subscribe: (fire: () => void) => () => void
-  load: () => Promise<T>
+  /** Returning null means "this viewer is no longer allowed" — the stream closes. */
+  load: () => Promise<T | null>
 }): Response {
   const encoder = new TextEncoder()
   // Held outside the stream so `cancel` can reach it. Without a cancel handler
@@ -61,7 +64,15 @@ export function sseStream<T>({
         }
         sending = true
         try {
-          const payload = JSON.stringify(await load())
+          const next = await load()
+          // Authorisation is re-checked on every push, not once at open. A
+          // stream that lives for minutes outlives checkouts, deactivations
+          // and expiries, and must not keep feeding a revoked viewer.
+          if (next === null) {
+            shutdown()
+            return
+          }
+          const payload = JSON.stringify(next)
           // The trigger fires on rows the guest cannot see, too. Only spend
           // bytes and a React render when the visible state actually moved.
           if (payload !== lastSent) {

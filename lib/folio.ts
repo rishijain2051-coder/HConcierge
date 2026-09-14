@@ -1,4 +1,6 @@
 import { sql } from './db'
+import { scopeTo } from './scope'
+import type { Staff } from './auth'
 
 /**
  * The single place money is written.
@@ -87,15 +89,28 @@ export async function settleRoom(roomId: string, by: string): Promise<number> {
   return rows.reduce((sum, r) => sum + r.amount_paise, 0)
 }
 
-/** CSV the front office keys into the PMS until a real integration exists. */
-export async function exportCsv(propertyId: string, from: Date, to: Date): Promise<string> {
+/**
+ * CSV the front office keys into the PMS until a real integration exists.
+ *
+ * Takes the staff member, not just a property id. The route used to read the
+ * property straight from the query string for admins, which let one customer's
+ * admin export another customer's billing — every admin can see property ids
+ * in their own picker, so nothing had to be guessed. The scope is enforced
+ * here, where it cannot be skipped.
+ */
+export async function exportCsv(
+  actor: Staff,
+  propertyId: string | null,
+  from: Date,
+  to: Date,
+): Promise<string> {
   const rows = await sql<
     { number: string; guest_name: string | null; description: string; amount_paise: number; created_at: Date }[]
   >`
     select r.number, f.guest_name, f.description, f.amount_paise, f.created_at
       from folio_entries f
       join rooms r on r.id = f.room_id
-     where f.property_id = ${propertyId}
+     where ${scopeTo(actor, sql`f.property_id`, propertyId)}
        and f.voided_at is null
        and f.created_at >= ${from} and f.created_at < ${to}
      order by r.number, f.created_at`

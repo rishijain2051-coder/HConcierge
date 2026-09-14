@@ -356,3 +356,22 @@ create trigger hc_notify_folio after insert or update or delete on folio_entries
 drop trigger if exists hc_notify_rooms on rooms;
 create trigger hc_notify_rooms after insert or update or delete on rooms
   for each row execute function hc_notify();
+
+-- An order's lines arrive as their own rows, moments after the request itself.
+-- Without a trigger here the pushed frame can carry "items": [] — the kitchen
+-- sees an order with no dishes on it until the next poll.
+create or replace function hc_notify_request_item() returns trigger language plpgsql as $$
+declare parent record;
+begin
+  select room_id, property_id into parent
+    from requests where id = coalesce(new.request_id, old.request_id);
+  if found then
+    perform pg_notify('hc_room', parent.room_id::text);
+    perform pg_notify('hc_property', parent.property_id::text);
+  end if;
+  return null;
+end $$;
+
+drop trigger if exists hc_notify_request_items on request_items;
+create trigger hc_notify_request_items after insert or update or delete on request_items
+  for each row execute function hc_notify_request_item();

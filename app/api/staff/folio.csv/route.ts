@@ -8,19 +8,22 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request) {
   const staff = await getStaff()
   if (!staff) return new Response('unauthorised', { status: 401 })
-  if (staff.role === 'staff') return new Response('forbidden', { status: 403 })
+  if (staff.role === 'staff' || staff.role === 'platform') {
+    return new Response('forbidden', { status: 403 })
+  }
 
   const url = new URL(req.url)
-  const propertyId = staff.role === 'admin' ? url.searchParams.get('property') : staff.property_id
-  if (!propertyId) return new Response('Choose a property first.', { status: 400 })
+  // Scoped inside exportCsv — an id from the query string is a request, not a
+  // permission.
+  const propertyId = url.searchParams.get('property') || staff.property_id
 
   const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 7) || 7, 1), 365)
   const to = new Date()
   const from = new Date(to.getTime() - days * 86400_000)
 
-  const csv = await exportCsv(propertyId, from, to)
+  const csv = await exportCsv(staff, propertyId, from, to)
   await audit({
-    propertyId,
+    propertyId: propertyId ?? staff.property_id,
     staffId: staff.id,
     actor: staff.name,
     action: 'folio.exported',

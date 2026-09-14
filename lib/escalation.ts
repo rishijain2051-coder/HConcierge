@@ -1,6 +1,6 @@
 import { sql } from './db'
 import { audit } from './audit'
-import { canManageProperty, fail, type Ok } from './admin'
+import { canManageProperty, fail, propertyRow, type Ok } from './admin'
 import type { AppliesTo, EscalationInput, EscalationRule, RuleStaff, Department, Role } from './types'
 export { APPLIES_TO_LABEL } from './types'
 export type { AppliesTo, EscalationInput, EscalationRule, RuleStaff } from './types'
@@ -179,7 +179,7 @@ export async function setWarnThreshold(actor: Staff, propertyId: string, percent
 }
 
 export async function getWarnThreshold(propertyId: string): Promise<number> {
-  const [row] = await sql<{ warn_at_percent: number }[]>`
-    select warn_at_percent from properties where id = ${propertyId}`
-  return row?.warn_at_percent ?? 60
+  // Free: every caller has already run a permission guard, which loaded and
+  // memoised this exact row.
+  return (await propertyRow(propertyId))?.warn_at_percent ?? 60
 }

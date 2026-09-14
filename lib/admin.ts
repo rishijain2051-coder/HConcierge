@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { randomBytes } from 'node:crypto'
 import { sql } from './db'
 import { audit } from './audit'
@@ -28,11 +29,25 @@ export type Ok<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 
 export const fail = (error: string) => ({ ok: false as const, error })
 
+/**
+ * The property row, once per request.
+ *
+ * Half a dozen guards on a single page each need to know who owns a property,
+ * and each used to pay its own round trip to Mumbai for the same three columns.
+ * `cache` collapses them into one — including calls that overlap inside a
+ * `Promise.all`, which share the in-flight promise rather than racing.
+ */
+export const propertyRow = cache(async (id: string) => {
+  const [row] = await sql<
+    { id: string; organisation_id: string | null; warn_at_percent: number; name: string }[]
+  >`select id, organisation_id, warn_at_percent, name from properties where id = ${id}`
+  return row ?? null
+})
+
 export async function canManageProperty(actor: Staff, propertyId: string | null): Promise<boolean> {
   if (actor.role === 'platform' && !actor.organisation_id) return true
   if (propertyId === null) return false
-  const [prop] = await sql<{ id: string; organisation_id: string | null }[]>`
-    select id, organisation_id from properties where id = ${propertyId}`
+  const prop = await propertyRow(propertyId)
   return Boolean(prop) && canTouchProperty(actor, prop)
 }
 
@@ -458,23 +473,23 @@ export type AdminCategory = {
 export async function listCatalog(actor: Staff, propertyId: string): Promise<AdminCategory[]> {
   if (!(await canManageProperty(actor, propertyId))) return []
 
-  const [categories, items] = await Promise.all([
-    sql<Omit<AdminCategory, 'items'>[]>`
-      select id, kind, name, icon, sort, active from categories
-       where property_id = ${propertyId} order by sort, name`,
-    sql<AdminItem[]>`
-      select i.id, i.category_id, i.name, i.description, i.price_paise, i.unit, i.department,
-             i.sla_minutes, i.veg, i.needs_time, i.available, i.sort
-        from items i where i.property_id = ${propertyId} order by i.sort, i.name`,
-  ])
-
-  const byCategory = new Map<string, AdminItem[]>()
-  for (const i of items) {
-    const list = byCategory.get(i.category_id)
-    if (list) list.push(i)
-    else byCategory.set(i.category_id, [i])
-  }
-  return categories.map((c) => ({ ...c, items: byCategory.get(c.id) ?? [] }))
+  // One round trip. The database is in Mumbai and the stitching is trivial;
+  // paying a second crossing to do it in JavaScript is the expensive part.
+  return sql<AdminCategory[]>`
+    select c.id, c.kind, c.name, c.icon, c.sort, c.active,
+           coalesce(i.items, '[]'::json) as items
+      from categories c
+      left join lateral (
+        select json_agg(json_build_object(
+                 'id', it.id, 'category_id', it.category_id, 'name', it.name,
+                 'description', it.description, 'price_paise', it.price_paise, 'unit', it.unit,
+                 'department', it.department, 'sla_minutes', it.sla_minutes, 'veg', it.veg,
+                 'needs_time', it.needs_time, 'available', it.available, 'sort', it.sort)
+                 order by it.sort, it.name) as items
+          from items it where it.category_id = c.id
+      ) i on true
+     where c.property_id = ${propertyId}
+     order by c.sort, c.name`
 }
 
 export type ItemInput = {

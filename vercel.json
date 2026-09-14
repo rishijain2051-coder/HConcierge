@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["bom1"],
+  "functions": {
+    "app/api/guest/[token]/live/route.ts": { "maxDuration": 300 },
+    "app/api/staff/board/live/route.ts": { "maxDuration": 300 }
+  }
+}

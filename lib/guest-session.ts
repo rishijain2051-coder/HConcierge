@@ -19,7 +19,8 @@ import type { Room } from './types'
  * without anything having to be revoked.
  */
 
-const COOKIE = 'hc_guest'
+export const GUEST_COOKIE = 'hc_guest'
+const COOKIE = GUEST_COOKIE
 const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 15
 const SESSION_DAYS = 30
@@ -56,13 +57,24 @@ function read(token: string): Grant | null {
 const stayOf = (room: Pick<Room, 'checked_in_at'>) =>
   room.checked_in_at ? new Date(room.checked_in_at).toISOString() : ''
 
-export async function hasGuestAccess(room: Room): Promise<boolean> {
+/**
+ * Does this grant still open this room, right now?
+ *
+ * Takes the raw cookie rather than reading the jar, so a long-lived stream can
+ * re-check it against a freshly loaded room on every push. A grant is bound to
+ * the stay, so a checkout — or a checkout and a new guest — invalidates it
+ * without anything having to be revoked.
+ */
+export function accessFor(raw: string | undefined, room: Room): boolean {
   // An unoccupied room has no stay to be part of.
   if (!room.occupied || !room.checked_in_at) return false
-  const raw = (await cookies()).get(COOKIE)?.value
   if (!raw) return false
   const grant = read(raw)
   return Boolean(grant && grant.rid === room.id && grant.cin === stayOf(room))
+}
+
+export async function hasGuestAccess(room: Room): Promise<boolean> {
+  return accessFor((await cookies()).get(COOKIE)?.value, room)
 }
 
 async function grant(room: Room): Promise<void> {
@@ -84,9 +96,16 @@ export async function submitRoomCode(room: Room, code: string): Promise<CodeResu
   const entered = code.replace(/\D/g, '')
   if (entered.length !== 4) return { ok: false, error: 'Enter the four digits from your welcome card.' }
 
+  // Reading and clearing in one statement. A lock that has run out has been
+  // served: without this the count stays at five, the next typo re-locks for
+  // another fifteen minutes, and the guest can never get in again.
   const [row] = await sql<
     { access_code: string | null; code_attempts: number; code_locked_until: Date | null }[]
-  >`select access_code, code_attempts, code_locked_until from rooms where id = ${room.id}`
+  >`update rooms
+       set code_attempts     = case when code_locked_until <= now() then 0 else code_attempts end,
+           code_locked_until = case when code_locked_until <= now() then null else code_locked_until end
+     where id = ${room.id}
+    returning access_code, code_attempts, code_locked_until`
 
   if (!row?.access_code) {
     return { ok: false, error: 'This room has no code yet. Please ask the front desk.' }

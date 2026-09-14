@@ -18,7 +18,18 @@ import type { Staff } from './auth'
  */
 type Fragment = PendingQuery<Row[]>
 
+/**
+ * Query strings are typed by people and forged by scripts. Postgres answers a
+ * malformed uuid with an error, which surfaces as a 500; this turns it back
+ * into "no such property", which is what it actually means.
+ */
+export const isUuid = (v: unknown): v is string =>
+  typeof v === 'string' && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(v)
+
 export function scopeTo(staff: Staff, column: Fragment, propertyId?: string | null): Fragment {
+  // A property filter that cannot be a property id is not a filter.
+  if (propertyId != null && !isUuid(propertyId)) return sql`false`
+
   // HConcierge sees every organisation — until it steps into one, after which
   // it is scoped to that customer exactly like their own admin.
   if (staff.role === 'platform' && !staff.organisation_id) {

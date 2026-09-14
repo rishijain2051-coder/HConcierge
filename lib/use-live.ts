@@ -51,6 +51,7 @@ export function useLive<T>({
 
     const open = () => {
       if (stopped || source) return
+      failures = 0
       source = new EventSource(streamUrl)
 
       source.onmessage = (e) => {
@@ -71,7 +72,6 @@ export function useLive<T>({
         if (++failures >= 3) {
           source?.close()
           source = null
-          stopped = true
         }
       }
     }
@@ -81,8 +81,10 @@ export function useLive<T>({
       source = null
     }
 
-    // A phone in a pocket should cost nothing. Drop the stream when the screen
-    // is away and take one fresh reading when it comes back.
+    // A phone in a pocket should cost nothing: drop the stream when the screen
+    // goes away, and take one fresh reading when it comes back. Coming back is
+    // also the moment to retry a stream that gave up — without that, one server
+    // restart left the phone a minute behind for the rest of the stay.
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
         open()
@@ -96,7 +98,11 @@ export function useLive<T>({
     document.addEventListener('visibilitychange', onVisibility)
 
     const poll = setInterval(() => {
-      if (document.visibilityState === 'visible') void refresh()
+      if (document.visibilityState !== 'visible') return
+      void refresh()
+      // The poll is also the retry: if the stream gave up, try it again rather
+      // than staying a minute behind for the rest of the stay.
+      open()
     }, pollMs)
 
     return () => {

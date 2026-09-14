@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireOperational } from '@/lib/auth'
 import { sql } from '@/lib/db'
-import { scopeTo } from '@/lib/scope'
+import { isUuid, scopeTo } from '@/lib/scope'
 import { baseUrl } from '@/lib/qr'
 import Rooms, { type RoomRow } from './Rooms'
 
@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic'
 export default async function RoomsPage({ searchParams }: PageProps<'/staff/rooms'>) {
   const staff = await requireOperational()
   const { property } = await searchParams
-  const selected = typeof property === 'string' ? property : ''
+  // Postgres rejects a malformed uuid with an error, which surfaces as a 500.
+  // A hand-typed query string is a bad request, not a broken server.
+  const selected = typeof property === 'string' && isUuid(property) ? property : ''
 
 
   const [rooms, properties, base] = await Promise.all([

@@ -134,14 +134,13 @@ export async function enterOrganisation(id: string | null): Promise<void> {
  * deactivating someone logs them out immediately instead of at cookie expiry.
  * `cache` keeps that to one query per request, not one per component.
  */
-export const getStaff = cache(async (): Promise<Staff | null> => {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value
+export async function staffFromToken(token?: string, enteredOrg?: string): Promise<Staff | null> {
   if (!token) return null
   const payload = readToken(token)
   if (!payload) return null
 
-  const entered = (await cookies()).get(ORG_COOKIE)?.value
-  const orgId = entered && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(entered) ? entered : null
+  const orgId =
+    enteredOrg && /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(enteredOrg) ? enteredOrg : null
 
   const rows = await sql<Staff[]>`
     select s.id, coalesce(s.organisation_id, o.id) as organisation_id, s.property_id,
@@ -155,6 +154,18 @@ export const getStaff = cache(async (): Promise<Staff | null> => {
      where s.id = ${payload.sid} and s.active
      limit 1`
   return rows[0] ?? null
+}
+
+/**
+ * The signed-in staff member for this request.
+ *
+ * `cache` keeps that to one query per request, not one per component — which
+ * also means it must NOT be used inside a long-lived stream, where the whole
+ * point is to notice that something changed. Streams call `staffFromToken`.
+ */
+export const getStaff = cache(async (): Promise<Staff | null> => {
+  const jar = await cookies()
+  return staffFromToken(jar.get(SESSION_COOKIE)?.value, jar.get(ORG_COOKIE)?.value)
 })
 
 export async function requireStaff(): Promise<Staff> {
@@ -271,10 +282,15 @@ export type LoginResult =
  * every few minutes and protects nobody.
  */
 export async function attemptLogin(username: string, password: string): Promise<LoginResult> {
+  // Reading and clearing in one statement: a lockout that has expired resets
+  // the count, or the next typo re-locks immediately and forever.
   const rows = await sql<
     { id: string; role: Role; password_hash: string; active: boolean; locked_until: Date | null }[]
-  >`select id, role, password_hash, active, locked_until
-      from staff where lower(username) = lower(${username}) limit 1`
+  >`update staff
+       set failed_logins = case when locked_until <= now() then 0 else failed_logins end,
+           locked_until  = case when locked_until <= now() then null else locked_until end
+     where lower(username) = lower(${username})
+    returning id, role, password_hash, active, locked_until`
 
   const generic = { ok: false as const, error: 'Incorrect username or password.' }
   const row = rows[0]
