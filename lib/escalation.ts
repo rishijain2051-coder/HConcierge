@@ -1,5 +1,6 @@
 import { sql } from './db'
 import { audit } from './audit'
+import { scopeTo } from './scope'
 import { canManageProperty, fail, propertyRow, type Ok } from './admin'
 import type { AppliesTo, EscalationInput, EscalationRule, RuleStaff, Department, Role } from './types'
 export { APPLIES_TO_LABEL } from './types'
@@ -39,38 +40,37 @@ async function renumber(propertyId: string): Promise<void> {
      where e.id = ordered.id and e.step is distinct from ordered.n::int`
 }
 
+/**
+ * The ladder and the people on it, in one round trip, permission included.
+ *
+ * This was three crossings to Mumbai: check the property, read the rules, then
+ * read the named staff for those rules. The scope is now part of the WHERE
+ * clause and the staff come back nested.
+ */
 export async function listEscalationRules(actor: Staff, propertyId: string): Promise<EscalationRule[]> {
-  if (!(await canManageProperty(actor, propertyId))) return []
-
-  const rules = await sql<Omit<EscalationRule, 'staff'>[]>`
-    select id, property_id, department, step, after_minutes, applies_to,
-           notify_managers, notify_admins, active
-      from escalation_rules where property_id = ${propertyId}
-     order by step, after_minutes`
-  if (rules.length === 0) return []
-
-  const named = await sql<(RuleStaff & { rule_id: string })[]>`
-    select rs.rule_id, s.id, s.name, s.phone
-      from escalation_rule_staff rs join staff s on s.id = rs.staff_id
-     where rs.rule_id = any(${rules.map((r) => r.id)})
-     order by s.name`
-
-  const byRule = new Map<string, RuleStaff[]>()
-  for (const n of named) {
-    const list = byRule.get(n.rule_id)
-    if (list) list.push(n)
-    else byRule.set(n.rule_id, [n])
-  }
-  return rules.map((r) => ({ ...r, staff: byRule.get(r.id) ?? [] }))
+  return sql<EscalationRule[]>`
+    select e.id, e.property_id, e.department, e.step, e.after_minutes, e.applies_to,
+           e.notify_managers, e.notify_admins, e.active,
+           coalesce(n.staff, '[]'::json) as staff
+      from escalation_rules e
+      left join lateral (
+        select json_agg(json_build_object('id', s.id, 'name', s.name, 'phone', s.phone)
+                        order by s.name) as staff
+          from escalation_rule_staff rs join staff s on s.id = rs.staff_id
+         where rs.rule_id = e.id
+      ) n on true
+     where e.property_id = ${propertyId}
+       and ${scopeTo(actor, sql`e.property_id`, propertyId)}
+     order by e.step, e.after_minutes`
 }
 
 /** Everyone who could be named on a rung: this property's staff, plus the org's admins. */
 export async function listEscalationCandidates(actor: Staff, propertyId: string) {
-  if (!(await canManageProperty(actor, propertyId))) return []
   return sql<{ id: string; name: string; role: Role; department: Department; phone: string | null }[]>`
     select s.id, s.name, s.role, s.department, s.phone
       from staff s, properties p
      where p.id = ${propertyId}
+       and ${scopeTo(actor, sql`p.id`, propertyId)}
        and s.active
        and (s.property_id = ${propertyId}
             or (s.role = 'admin' and s.organisation_id = p.organisation_id))
@@ -121,7 +121,16 @@ export async function saveEscalationRule(actor: Staff, propertyId: string, input
   await sql`delete from escalation_rule_staff where rule_id = ${ruleId}`
   for (const staffId of [...new Set(input.staffIds)].slice(0, 20)) {
     await sql`
-      insert into escalation_rule_staff (rule_id, staff_id) values (${ruleId}, ${staffId})
+      insert into escalation_rule_staff (rule_id, staff_id)
+      -- The same test the picker uses. A staff id is a suggestion, not a
+      -- permission: without this, a rung could name anybody in the database and
+      -- another customer's phone would ring for your guests' late requests.
+      select ${ruleId}, s.id
+        from staff s, properties p
+       where p.id = ${propertyId}
+         and s.id = ${staffId}
+         and s.active
+         and (s.property_id = p.id or (s.role = 'admin' and s.organisation_id = p.organisation_id))
       on conflict do nothing`
   }
 

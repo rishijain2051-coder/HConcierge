@@ -255,8 +255,8 @@ export function PasswordOnce({ username, password, onClose }: { username: string
   return (
     <Modal title="One-time password" onClose={onClose}>
       <p className="text-muted text-[14px] leading-relaxed">
-        Give this to <span className="text-ink font-semibold">{username}</span>. They will be asked to change it the
-        first time they sign in.
+        Give this to <span className="text-ink font-semibold">{username}</span>. It is shown once and cannot be read
+        back — if it is lost, issue another. They can set their own under Password once they are in.
       </p>
       <div className="border-line bg-paper mt-4 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3">
         <code className="text-[17px] font-semibold tracking-wide tabular-nums select-all">{password}</code>

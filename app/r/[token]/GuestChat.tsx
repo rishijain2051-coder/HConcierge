@@ -39,7 +39,7 @@ export default function GuestChat({
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-11rem)] flex-col px-4 pt-5">
+    <div className="flex min-h-[calc(100dvh-13rem)] flex-col px-4 pt-5">
       <div className="flex-1">
         <h1 className="text-[22px] font-semibold tracking-tight">Front desk</h1>
         <p className="text-muted mt-0.5 mb-5 text-sm">
@@ -62,7 +62,7 @@ export default function GuestChat({
                     <p className="text-faint mb-1 ml-3 text-[11px] font-medium">{m.staff_name}</p>
                   )}
                   <div
-                    className={`rounded-2xl px-3.5 py-2.5 text-[15px] leading-snug whitespace-pre-line ${
+                    className={`rounded-2xl px-3.5 py-2.5 text-[15px] leading-snug break-words whitespace-pre-line ${
                       m.sender === 'guest'
                         ? 'brand-bg rounded-br-md text-white'
                         : 'bg-surface border-line rounded-bl-md border'
@@ -83,7 +83,13 @@ export default function GuestChat({
 
       {error && <p className="text-late mt-3 text-center text-xs">{error}</p>}
 
-      <form onSubmit={send} className="bg-paper sticky bottom-0 flex gap-2 py-3">
+      {/* The navigation is fixed to the bottom of the screen, so the composer
+          has to stop above it — flush with bottom-0 it was invisible and every
+          tap on it hit a nav tab instead. */}
+      <form
+        onSubmit={send}
+        className="bg-paper sticky bottom-[calc(env(safe-area-inset-bottom)+3.65rem)] flex gap-2 py-3"
+      >
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

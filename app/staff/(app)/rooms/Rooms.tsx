@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { rupees } from '@/lib/money'
 import { addRoom, checkIn, checkOut, newAccessCode, rotateToken, settleBill, unlockRoomCode } from './actions'
 
@@ -94,7 +94,7 @@ export default function Rooms({
       {error && <p className="bg-late-soft text-late mb-3 rounded-xl px-3.5 py-2.5 text-[13px] break-all">{error}</p>}
 
       <div className="bg-surface border-line divide-line divide-y overflow-hidden rounded-2xl border">
-        <div className="text-muted bg-paper grid grid-cols-[4.5rem_1fr_auto] gap-3 px-4 py-2 text-[11px] font-semibold tracking-wide uppercase sm:grid-cols-[4.5rem_7rem_1fr_5.5rem_auto]">
+        <div className="text-muted bg-paper hidden grid-cols-[4.5rem_1fr_auto] gap-3 px-4 py-2 text-[11px] font-semibold tracking-wide uppercase sm:grid sm:grid-cols-[4.5rem_7rem_1fr_5.5rem_auto]">
           <span>Room</span>
           <span className="hidden sm:block">Type</span>
           <span>Guest</span>
@@ -107,7 +107,10 @@ export default function Rooms({
           return (
             <div
               key={r.id}
-              className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-3 px-4 py-2.5 sm:grid-cols-[4.5rem_7rem_1fr_5.5rem_auto]"
+              // On a phone the actions column is several buttons wide, which
+              // squeezed the guest name, the balance and "wants to settle" down
+              // to nothing. Below sm this stacks instead of competing for width.
+              className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:grid sm:grid-cols-[4.5rem_7rem_1fr_5.5rem_auto] sm:gap-3 sm:py-2.5"
             >
               <div>
                 <p className="text-[15px] font-semibold tabular-nums">{r.number}</p>
@@ -119,7 +122,7 @@ export default function Rooms({
                 {r.floor ? ` · Fl ${r.floor}` : ''}
               </p>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1 basis-[55%] sm:basis-auto">
                 {r.occupied ? (
                   <>
                     <p className="truncate text-[14px] font-medium">{r.guest_name}</p>
@@ -140,8 +143,12 @@ export default function Rooms({
                 )}
               </div>
 
+              {/* The code plus the QR token IS the guest's login — it opens
+                  their bill, their private thread with the desk, and the
+                  ability to charge the room. Only the people who issue it see
+                  it; everyone else gets the same dash as an empty room. */}
               <div className="hidden text-center sm:block">
-                {r.occupied && r.access_code ? (
+                {canEdit && r.occupied && r.access_code ? (
                   <span className="bg-paper rounded-lg px-2 py-1 text-[15px] font-semibold tracking-[0.14em] tabular-nums">
                     {r.access_code}
                   </span>
@@ -150,7 +157,7 @@ export default function Rooms({
                 )}
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+              <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">
                 {canEdit &&
                   (r.occupied ? (
                     <>
@@ -457,6 +464,13 @@ function Field({
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  // Every other dialog in the app closes on Escape; these did not.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />

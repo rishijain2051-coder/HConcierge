@@ -3,9 +3,23 @@ import postgres from 'postgres'
 const url = process.env.DATABASE_URL
 if (!url) throw new Error('DATABASE_URL is not set — copy .env.example to .env.local')
 
-// Supabase's pooler on :6543 is pgbouncer in transaction mode. It cannot carry
-// prepared statements across pooled connections, so `prepare: false` is not
-// optional here — with it on you get "prepared statement already exists".
+/**
+ * `prepare: false` is not optional, however tempting it looks.
+ *
+ * Without prepared statements Postgres re-plans every join and correlated
+ * subquery on each execution, which is roughly half the cost of a query here —
+ * turning them on measured a clean 2x on a single statement repeated in a
+ * loop, over hundreds of executions with no errors.
+ *
+ * It still does not work. Run a realistic mix instead — a dozen DIFFERENT
+ * statements, concurrently, over a pool — and Supabase's transaction pooler
+ * hands the connection a backend that has never seen the statement:
+ *
+ *     PostgresError: prepared statement "iszaizk1v24" does not exist
+ *
+ * Reproduced in seconds. The speed has to come from making fewer round trips,
+ * not from cheaper ones.
+ */
 function connect() {
   return postgres(url!, {
     prepare: false,

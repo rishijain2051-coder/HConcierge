@@ -33,6 +33,13 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
     baseUrl(),
   ])
 
+  // Hiding the code in the markup is not hiding it: props to a client
+  // component are serialised into the page either way. A department account
+  // never receives the credential in the first place. The token goes with it —
+  // token plus code IS the guest's login.
+  const canEdit = staff.role !== 'staff'
+  const visible = canEdit ? rooms : rooms.map((r) => ({ ...r, access_code: null, token: '' }))
+
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
@@ -51,9 +58,9 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
       </div>
 
       <Rooms
-        rooms={rooms}
+        rooms={visible}
         base={base}
-        canEdit={staff.role !== 'staff'}
+        canEdit={canEdit}
         properties={staff.role === 'admin' ? properties : []}
         selectedProperty={selected}
         defaultPropertyId={staff.property_id ?? properties[0]?.id ?? ''}

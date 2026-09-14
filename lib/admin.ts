@@ -51,6 +51,30 @@ export async function canManageProperty(actor: Staff, propertyId: string | null)
   return Boolean(prop) && canTouchProperty(actor, prop)
 }
 
+type StaffTarget = { role: Role; property_id: string | null; organisation_id: string | null }
+
+/**
+ * May this person administer that account?
+ *
+ * The old test read "can you manage their property, OR are they an admin" —
+ * and because an admin has no property, the second half cancelled the first.
+ * Any admin could reset the password of, deactivate, or edit any OTHER
+ * customer's admin. The question was never about the property; it is about
+ * the organisation.
+ */
+async function canManageStaff(actor: Staff, target: StaffTarget): Promise<boolean> {
+  // HConcierge, not currently standing inside a customer.
+  if (actor.role === 'platform' && !actor.organisation_id) return true
+  // Never across customers, whatever the roles involved.
+  if (!actor.organisation_id || target.organisation_id !== actor.organisation_id) return false
+  if (actor.role === 'platform' || actor.role === 'admin') return true
+  // A manager reaches their own property, and never an admin above them.
+  if (actor.role === 'manager') {
+    return target.role !== 'admin' && target.role !== 'platform' && target.property_id === actor.property_id
+  }
+  return false
+}
+
 /** Nobody may mint a role at or above their own. */
 function canAssignRole(actor: Staff, role: Role): boolean {
   if (actor.role === 'platform') return true
@@ -194,10 +218,15 @@ export async function updateStaff(
     { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
   >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
-  if (!(await canManageProperty(actor, target.property_id)) && target.role !== 'admin') return fail('Not your property.')
+  if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
   if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can edit that account.')
   if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can edit an admin.')
-  if (!canAssignRole(actor, input.role)) return fail('Only a group admin can grant manager or admin.')
+  // Only a role CHANGE needs the authority to grant it. Requiring it to leave
+  // someone where they are meant an admin could not edit another admin's phone
+  // number — or their own — without the form silently demoting them to staff.
+  if (input.role !== target.role && !canAssignRole(actor, input.role)) {
+    return fail('Only a group admin can grant manager or admin.')
+  }
 
   if (id === actor.id && input.role !== actor.role) {
     return fail('You cannot change your own role. Ask another admin.')
@@ -207,7 +236,12 @@ export async function updateStaff(
   }
 
   const propertyId = input.role === 'admin' || input.role === 'platform' ? null : (input.propertyId ?? target.property_id)
-  if ((input.role === 'manager' || input.role === 'staff') && !propertyId) return fail('Choose a property.')
+  if (input.role === 'manager' || input.role === 'staff') {
+    if (!propertyId) return fail('Choose a property.')
+    // createStaff checked this and updateStaff did not, so an edit could move
+    // somebody into another customer's property and hand them its board.
+    if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
+  }
   const organisationId = input.role === 'platform' ? null : (target.organisation_id ?? actor.organisation_id)
 
   await sql`
@@ -244,7 +278,7 @@ export async function setStaffActive(actor: Staff, id: string, active: boolean):
     return fail('This is the last HConcierge account. There would be no way back in.')
   }
   if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can do that.')
-  if (!(await canManageProperty(actor, target.property_id)) && target.role !== 'admin') return fail('Not your property.')
+  if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
   if (!active && target.role === 'admin' && (await activeAdminCount(target.organisation_id, id)) === 0) {
     return fail('This is the last active admin. There would be no way back in.')
   }
@@ -270,7 +304,7 @@ export async function resetStaffPassword(actor: Staff, id: string): Promise<Ok<{
   if (!target) return fail('That account no longer exists.')
   if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can reset that account.')
   if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can reset an admin.')
-  if (!(await canManageProperty(actor, target.property_id)) && target.role !== 'admin') return fail('Not your property.')
+  if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
 
   const password = generatePassword()
   await sql`
@@ -292,10 +326,13 @@ export async function resetStaffPassword(actor: Staff, id: string): Promise<Ok<{
 }
 
 export async function unlockStaff(actor: Staff, id: string): Promise<Ok> {
-  const [target] = await sql<{ property_id: string | null; username: string }[]>`
-    select property_id, username from staff where id = ${id}`
+  const [target] = await sql<
+    { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
+  >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
-  if (!(await canManageProperty(actor, target.property_id))) return fail('Not your property.')
+  // This used to ask only about the property. An admin has none, so a
+  // locked-out admin could never be let back in by anyone.
+  if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
 
   await sql`update staff set failed_logins = 0, locked_until = null where id = ${id}`
   await audit({
@@ -369,6 +406,12 @@ export async function createProperty(
 
   const [clash] = await sql`select 1 from properties where slug = ${slug}`
   if (clash) return fail(`The slug “${slug}” is taken.`)
+
+  // Checked before the insert, not after: a rejected copy source used to leave
+  // the half-made property behind.
+  if (copyCatalogFrom && !(await canManageProperty(actor, copyCatalogFrom))) {
+    return fail('That property is not yours to copy from.')
+  }
 
   const [property] = await sql<{ id: string }[]>`
     insert into properties (organisation_id, slug, name, address, phone, brand_color, timezone)
@@ -470,11 +513,14 @@ export type AdminCategory = {
   items: AdminItem[]
 }
 
+/**
+ * One round trip, permission included.
+ *
+ * The scope is part of the WHERE clause rather than a guard query in front of
+ * it: a property this person cannot manage simply matches no rows, and the
+ * page loses a whole crossing to Mumbai it used to pay before it could start.
+ */
 export async function listCatalog(actor: Staff, propertyId: string): Promise<AdminCategory[]> {
-  if (!(await canManageProperty(actor, propertyId))) return []
-
-  // One round trip. The database is in Mumbai and the stitching is trivial;
-  // paying a second crossing to do it in JavaScript is the expensive part.
   return sql<AdminCategory[]>`
     select c.id, c.kind, c.name, c.icon, c.sort, c.active,
            coalesce(i.items, '[]'::json) as items
@@ -489,6 +535,7 @@ export async function listCatalog(actor: Staff, propertyId: string): Promise<Adm
           from items it where it.category_id = c.id
       ) i on true
      where c.property_id = ${propertyId}
+       and ${scopeTo(actor, sql`c.property_id`, propertyId)}
      order by c.sort, c.name`
 }
 
@@ -691,10 +738,11 @@ export type AdminInfoPage = {
 }
 
 export async function listAdminInfoPages(actor: Staff, propertyId: string): Promise<AdminInfoPage[]> {
-  if (!(await canManageProperty(actor, propertyId))) return []
   return sql<AdminInfoPage[]>`
     select id, slug, title, body, icon, sort, active from info_pages
-     where property_id = ${propertyId} order by sort, title`
+     where property_id = ${propertyId}
+       and ${scopeTo(actor, sql`property_id`, propertyId)}
+     order by sort, title`
 }
 
 export async function saveInfoPage(

@@ -24,9 +24,11 @@ export function useLive<T>({
   streamUrl: string
   pollUrl: string
   pollMs?: number
-}): { state: T; refresh: () => void; live: boolean } {
+}): { state: T; refresh: () => void; live: boolean; gone: boolean } {
   const [state, setState] = useState(initial)
   const [live, setLive] = useState(false)
+  // The server has stopped recognising us — checked out, or the grant expired.
+  const [gone, setGone] = useState(false)
   const inFlight = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -36,7 +38,13 @@ export function useLive<T>({
     inFlight.current = true
     try {
       const res = await fetch(pollUrl, { cache: 'no-store', signal: AbortSignal.timeout(20_000) })
-      if (res.ok) setState(await res.json())
+      // Swallowing this was how a checked-out phone kept rendering a live
+      // tracker forever, with nothing on screen to say the stay had ended.
+      if (res.status === 401 || res.status === 404) setGone(true)
+      else if (res.ok) {
+        setGone(false)
+        setState(await res.json())
+      }
     } catch {
       // Hotel wifi drops. Keep the last known state on screen and try again.
     } finally {
@@ -113,5 +121,5 @@ export function useLive<T>({
     }
   }, [streamUrl, refresh, pollMs])
 
-  return { state, refresh: () => void refresh(), live }
+  return { state, refresh: () => void refresh(), live, gone }
 }

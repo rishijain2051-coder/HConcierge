@@ -2,7 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { rupees } from '@/lib/money'
-import { formatAge, minutesRemaining } from '@/lib/sla'
+import { minutesRemaining, since } from '@/lib/sla'
 import { useLive } from '@/lib/use-live'
 import {
   GUEST_STATUS_LABEL,
@@ -34,12 +34,6 @@ type Chosen = { group: string; name: string; price_paise: number }
 type CartEntry = { key: string; item: Item; qty: number; modifiers: Chosen[]; note: string }
 type Tab = 'home' | 'dining' | 'services' | 'info' | 'chat'
 type Toast = { text: string; tone: 'ok' | 'bad' }
-
-/** formatAge already says "just now", which does not take an "ago". */
-const said = (from: string, now: number) => {
-  const age = formatAge(from, new Date(now))
-  return age === 'just now' ? age : `${age} ago`
-}
 
 const cartKey = (item: Item, mods: Chosen[], note: string) =>
   [item.id, ...mods.map((m) => `${m.group}:${m.name}`).sort(), note].join('|')
@@ -77,9 +71,11 @@ export default function GuestApp({
   const [cartOpen, setCartOpen] = useState(false)
   const [billOpen, setBillOpen] = useState(false)
   const [toast, setToast] = useState<Toast | null>(null)
+  // Everything from the desk after this is unread. Set when the guest looks.
+  const [chatSeenAt, setChatSeenAt] = useState(() => Date.now())
 
   // Pushed from the server the moment anything in this room changes.
-  const { state, refresh } = useLive<GuestState>({
+  const { state, refresh, gone } = useLive<GuestState>({
     initial: initialState,
     streamUrl: `/api/guest/${token}/live`,
     pollUrl: `/api/guest/${token}/state`,
@@ -98,8 +94,9 @@ export default function GuestApp({
 
   const cartCount = cart.reduce((s, e) => s + e.qty, 0)
   const cartTotal = cart.reduce((s, e) => s + entryUnit(e) * e.qty, 0)
-  const openRequests = state.requests.filter((r) => r.status !== 'done' && r.status !== 'cancelled')
-  const unreadFromStaff = state.messages.filter((m) => m.sender === 'staff').length
+  const unreadFromStaff = state.messages.filter(
+    (m) => m.sender === 'staff' && new Date(m.created_at).getTime() > chatSeenAt,
+  ).length
 
   useEffect(() => {
     if (!toast) return
@@ -129,6 +126,31 @@ export default function GuestApp({
 
   // A plain item counts up in place; one with choices has to be configured.
   const tapItem = useCallback((item: Item) => (isSimple(item) ? bump(item, 1) : setSheetItem(item)), [bump])
+
+  if (gone) {
+    return (
+      <div
+        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center"
+        style={{ ['--brand' as string]: property.brand_color }}
+      >
+        <p className="text-faint text-[11px] font-semibold tracking-[0.18em] uppercase">{property.name}</p>
+        <h1 className="font-display mt-3 text-[clamp(1.8rem,7vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">
+          This stay has ended
+        </h1>
+        <p className="text-muted mt-3 text-[15px] leading-relaxed">
+          Room {room.number} has been checked out, so this phone is signed out. If you are still with us, scan the
+          card on the desk and enter your code again.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="brand-bg ease-glide mx-auto mt-7 rounded-full px-6 py-3 text-[15px] font-semibold text-white transition duration-300 active:scale-[0.98]"
+        >
+          Start again
+        </button>
+        {property.phone && <p className="text-faint mt-6 text-[13px]">Front desk — {property.phone}</p>}
+      </div>
+    )
+  }
 
   return (
     <div
@@ -198,7 +220,7 @@ export default function GuestApp({
         <div className="mx-auto flex max-w-2xl pb-[env(safe-area-inset-bottom)]">
           {(
             [
-              ['home', 'Home', IconHome, openRequests.length],
+              ['home', 'Home', IconHome, 0],
               ['dining', 'Dining', IconDining, 0],
               ['services', 'Services', IconBell, 0],
               ['info', 'Hotel', IconInfo, 0],
@@ -207,7 +229,10 @@ export default function GuestApp({
           ).map(([id, label, Ico, badge]) => (
             <button
               key={id}
-              onClick={() => setTab(id)}
+              onClick={() => {
+                setTab(id)
+                if (id === 'chat') setChatSeenAt(Date.now())
+              }}
               aria-current={tab === id ? 'page' : undefined}
               className={`ease-glide relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors duration-300 ${
                 tab === id ? 'brand-text' : 'text-faint'
@@ -363,12 +388,20 @@ function Home({
   const [freeform, setFreeform] = useState('')
   const [sending, setSending] = useState(false)
 
-  const open = state.requests.filter((r) => r.status !== 'done' && r.status !== 'cancelled')
-  const recent = state.requests.filter((r) => r.status === 'done' || r.status === 'cancelled').slice(0, 4)
+  // The clock only matters while there is something to timestamp, and it lives
+  // here so a tick re-renders the trackers rather than the whole app. Read
+  // before it is used: a render that calls Date.now() itself is not a function
+  // of its props, and React is right to complain.
+  const now = useClock(state.requests.length > 0)
 
-  // The clock only matters while something is in flight, and it lives here so
-  // a tick re-renders the trackers rather than the whole app.
-  const now = useClock(open.length > 0)
+  // A finished order stays on the tracker for a few minutes, so the guest
+  // actually sees it reach "Delivered" instead of it vanishing into Earlier.
+  const justDone = (r: GuestRequest) =>
+    r.status === 'done' && r.completed_at != null && now - new Date(r.completed_at).getTime() < 180_000
+  const open = state.requests.filter((r) => (r.status !== 'done' && r.status !== 'cancelled') || justDone(r))
+  const recent = state.requests
+    .filter((r) => (r.status === 'done' || r.status === 'cancelled') && !justDone(r))
+    .slice(0, 4)
 
   // One shortcut per kind of need, taken from the top of each section, so this
   // stays correct when the hotel edits its own directory.
@@ -512,8 +545,16 @@ function useClock(active: boolean) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!active) return
-    const t = setInterval(() => setNow(Date.now()), 30_000)
-    return () => clearInterval(t)
+    const tick = () => setNow(Date.now())
+    const t = setInterval(tick, 30_000)
+    // A phone that has been in a pocket wakes up with a clock half a minute
+    // stale, which reads as an ETA going up. Re-read it on the way back.
+    const onVisible = () => document.visibilityState === 'visible' && tick()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [active])
   return now
 }
@@ -583,9 +624,11 @@ function OrderTracker({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-faint text-[10px] font-semibold tracking-[0.16em] uppercase">
-              #{request.ref} · {said(request.created_at, now)}
+              #{request.ref} · {since(request.created_at, new Date(now))}
             </p>
-            <p className="mt-1 text-[16px] leading-snug font-semibold tracking-[-0.01em]">{title}</p>
+            <p className="mt-1 text-[16px] leading-snug font-semibold tracking-[-0.01em] break-words">
+              {title}
+            </p>
           </div>
           {request.total_paise > 0 && (
             <p className="text-muted shrink-0 text-[13px] font-semibold tabular-nums">
@@ -663,9 +706,9 @@ function ClosedCard({ request, now }: { request: GuestRequest; now: number }) {
   return (
     <div className="bg-surface/60 flex items-center justify-between gap-3 rounded-[16px] px-3.5 py-3 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_5%,transparent)]">
       <div className="min-w-0">
-        <p className="text-muted truncate text-[14px]">{title}</p>
+        <p className="text-muted truncate text-[14px] break-words">{title}</p>
         <p className="text-faint mt-0.5 text-[11px]">
-          #{request.ref} · {said(request.created_at, now)}
+          #{request.ref} · {since(request.created_at, new Date(now))}
         </p>
       </div>
       <span
@@ -894,12 +937,18 @@ function ItemSheet({
 
   const unit = item.price_paise + picked.reduce((s, m) => s + m.price_paise, 0)
 
-  function toggle(group: { name: string; max: number }, option: { name: string; price_paise: number }) {
+  function toggle(group: { name: string; min?: number; max: number }, option: { name: string; price_paise: number }) {
     setPicked((prev) => {
       const inGroup = prev.filter((p) => p.group === group.name)
       const already = inGroup.find((p) => p.name === option.name)
       const others = prev.filter((p) => p.group !== group.name)
-      if (already) return [...others, ...inGroup.filter((p) => p.name !== option.name)]
+      if (already) {
+        // A required group cannot be emptied by tapping its own answer. It used
+        // to let you, keep Add enabled, and refuse the whole order on send with
+        // no way back into the line to fix it.
+        if ((group.min ?? 0) > 0 && inGroup.length <= (group.min ?? 0)) return prev
+        return [...others, ...inGroup.filter((p) => p.name !== option.name)]
+      }
       if ((group.max ?? 1) <= 1) return [...others, { group: group.name, ...option }]
       if (inGroup.length >= (group.max ?? 1)) return prev
       return [...others, ...inGroup, { group: group.name, ...option }]
@@ -1197,7 +1246,7 @@ function BillSheet({
               style={{ ['--d' as string]: `${Math.min(i, 8) * 45}ms` }}
             >
               <div className="min-w-0">
-                <p className="text-[14.5px] leading-snug font-medium">{line.description}</p>
+                <p className="text-[14.5px] leading-snug font-medium break-words">{line.description}</p>
                 <p className="text-faint mt-0.5 text-[11px]">
                   {new Date(line.created_at).toLocaleString([], {
                     day: 'numeric',
@@ -1300,16 +1349,42 @@ function Info({ pages, property }: { pages: InfoPage[]; property: Property }) {
 
 /* ----------------------------------------------------------------- sheet */
 
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
+
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
 
+  // A dialog that says aria-modal and then lets Tab wander the page behind it
+  // is worse than one that does not claim to be modal at all.
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const panel = ref.current
+    const returnTo = document.activeElement as HTMLElement | null
+    const inside = () => Array.from(panel?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
+
+    ;(inside()[0] ?? panel)?.focus()
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose()
+      if (e.key !== 'Tab') return
+      const items = inside()
+      if (items.length === 0) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
+      returnTo?.focus()
     }
   }, [onClose])
 
@@ -1322,6 +1397,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
       />
       <div
         ref={ref}
+        tabIndex={-1}
         style={{ animation: 'hc-sheet-in 460ms var(--ease-glide) both' }}
         className="bg-surface relative max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[var(--shadow-float)] sm:rounded-[28px] sm:pb-5"
       >

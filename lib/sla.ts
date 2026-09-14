@@ -31,6 +31,17 @@ export function minutesRemaining(r: SlaInput, now: Date = new Date()): number {
   return Math.round((r.sla_minutes || 15) - minutesElapsed(r.created_at, now))
 }
 
+/**
+ * "12m ago", or just "just now" — which does not take an "ago" after it.
+ *
+ * Three screens appended one themselves and all three read wrong for the first
+ * sixty seconds of a request's life, which is exactly when people look.
+ */
+export function since(from: string | Date, now: Date = new Date()): string {
+  const age = formatAge(from, now)
+  return age === 'just now' ? age : `${age} ago`
+}
+
 export function formatAge(from: string | Date, now: Date = new Date()): string {
   const m = Math.floor(minutesElapsed(from, now))
   if (m < 1) return 'just now'

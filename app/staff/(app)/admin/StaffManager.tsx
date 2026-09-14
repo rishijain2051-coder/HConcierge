@@ -50,8 +50,13 @@ export default function StaffManager({
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null)
   const [confirming, setConfirming] = useState<StaffRow | null>(null)
 
+  // Whoever you are editing keeps their own role as an option, even if you
+  // could not grant it. Without this, an admin editing an admin saw a select
+  // with no "admin" in it, and saving quietly demoted them to staff.
   const allowed = ASSIGNABLE[me.role] ?? ['staff']
-  const roleOptions = ROLES.filter((r) => allowed.includes(r.value))
+  const roleOptions = ROLES.filter(
+    (r) => allowed.includes(r.value) || r.value === editing?.role,
+  )
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) {
     setError(null)

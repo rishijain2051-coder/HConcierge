@@ -106,8 +106,15 @@ export async function createRequests(
     if (!Number.isFinite(qty) || qty < 1 || qty > MAX_QTY) {
       return { ok: false, error: `Choose between 1 and ${MAX_QTY} of ${item.name}.` }
     }
-    if (item.needs_time && !opts.scheduledFor) {
-      return { ok: false, error: `Please pick a time for ${item.name}.` }
+    if (item.needs_time) {
+      if (!opts.scheduledFor) return { ok: false, error: `Please pick a time for ${item.name}.` }
+      const when = new Date(opts.scheduledFor)
+      if (Number.isNaN(when.getTime())) return { ok: false, error: 'That time is not valid.' }
+      // A minute of slack for a slow thumb; beyond that, a wake-up call
+      // scheduled for yesterday is a typo nobody will act on.
+      if (when.getTime() < Date.now() - 60_000) {
+        return { ok: false, error: `Pick a time in the future for ${item.name}.` }
+      }
     }
 
     const mods = resolveModifiers(item, line.modifiers ?? [])
@@ -141,13 +148,16 @@ export async function createRequests(
     // done when the whole tray arrives.
     const slaMinutes = Math.max(...lines.map((l) => l.item.sla_minutes))
     const kind = KIND_BY_CATEGORY[lines[0].item.category_kind] ?? 'other'
+    // The time belongs to the item that asked for one. One wake-up call in the
+    // basket used to schedule the towels and the biryani for seven tomorrow.
+    const scheduledFor = lines.some((l) => l.item.needs_time) ? opts.scheduledFor || null : null
 
     const [request] = await sql<{ id: string; ref: string }[]>`
       insert into requests (property_id, room_id, kind, department, note, scheduled_for,
                             total_paise, sla_minutes, guest_name)
       values (${property.id}, ${room.id}, ${kind}, ${department},
               ${(opts.note ?? '').slice(0, MAX_NOTE) || null},
-              ${opts.scheduledFor || null}, ${total}, ${slaMinutes}, ${room.guest_name})
+              ${scheduledFor}, ${total}, ${slaMinutes}, ${room.guest_name})
       returning id, ref::text as ref`
 
     for (const l of lines) {

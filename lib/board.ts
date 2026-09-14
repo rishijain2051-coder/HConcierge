@@ -154,9 +154,12 @@ export async function setRequestStatus(
   reason?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const [current] = await sql<
-    { id: string; property_id: string; organisation_id: string | null; room_id: string; department: string; status: RequestStatus; total_paise: number; ref: string; guest_name: string | null }[]
+    { id: string; property_id: string; organisation_id: string | null; room_id: string; department: string; status: RequestStatus; total_paise: number; ref: string; guest_name: string | null; summary: string | null }[]
   >`select r.id, r.property_id, r.room_id, r.department, r.status, r.total_paise,
-           r.ref::text as ref, r.guest_name, p.organisation_id
+           r.ref::text as ref, r.guest_name, p.organisation_id,
+           (select string_agg(case when ri.qty > 1 then ri.qty || '× ' || ri.name else ri.name end,
+                              ', ' order by ri.name)
+              from request_items ri where ri.request_id = r.id) as summary
       from requests r join properties p on p.id = r.property_id where r.id = ${requestId}`
 
   if (!current) return { ok: false, error: 'That request no longer exists.' }
@@ -184,7 +187,8 @@ export async function setRequestStatus(
       propertyId: current.property_id,
       roomId: current.room_id,
       requestId: current.id,
-      description: `Request #${current.ref}`,
+      // What they ordered, not a reference number nobody recognises.
+      description: current.summary ?? `Request #${current.ref}`,
       amountPaise: current.total_paise,
       guestName: current.guest_name,
     })

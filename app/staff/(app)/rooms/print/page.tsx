@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireStaff } from '@/lib/auth'
+import { requireOperational, requireManager } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { scopeTo } from '@/lib/scope'
 import { baseUrl, qrSvg, roomUrl } from '@/lib/qr'
@@ -19,12 +19,14 @@ type Row = {
 }
 
 export default async function PrintPage({ searchParams }: PageProps<'/staff/rooms/print'>) {
-  const staff = await requireStaff()
   const { property, room, slip } = await searchParams
   const propertyId = typeof property === 'string' ? property : null
   const roomId = typeof room === 'string' ? room : null
   // A welcome card carries the stay's code; a desk card is permanent and does not.
   const isSlip = slip === '1' && Boolean(roomId)
+  // Anyone may print the permanent desk card. The welcome card is the guest's
+  // credential, so printing one is a front-desk job.
+  const staff = isSlip ? await requireManager() : await requireOperational()
 
   const rooms = await sql<Row[]>`
     select r.id, r.number, r.token, r.guest_name, r.access_code,

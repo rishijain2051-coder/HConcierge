@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import type { FormState } from './login/actions'
 
 type Field = {
@@ -28,6 +28,11 @@ export default function AuthForm({
   footer?: string
 }) {
   const [state, formAction, pending] = useActionState(action, {})
+  // Controlled on purpose. React empties an uncontrolled form when its action
+  // settles, including when it failed — so a mistyped password wiped the
+  // username too, and the next click on Sign in submitted an empty required
+  // field and never reached the server at all.
+  const [values, setValues] = useState<Record<string, string>>({})
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
@@ -44,6 +49,8 @@ export default function AuthForm({
               id={f.name}
               name={f.name}
               type={f.type}
+              value={values[f.name] ?? ''}
+              onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
               autoComplete={f.autoComplete}
               autoFocus={f.autoFocus}
               required

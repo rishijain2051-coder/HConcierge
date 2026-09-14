@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { rupees } from '@/lib/money'
-import { formatAge, minutesRemaining, slaState } from '@/lib/sla'
+import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
 import { DEPARTMENTS, departmentLabel, STATUS_LABEL, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { assign, openThread, reply, updateStatus } from './actions'
@@ -50,6 +50,23 @@ export default function Board({
 
   const canFilterDepartment = visibleDepartments.length === 0
 
+
+  // Declared above `apply`, which calls it: read the other way round it
+  // captured a stale `alerts` and could chime after the toggle was off.
+  const announce = useCallback((arrived: BoardRequest[]) => {
+    if (!alerts) return
+    chime.current?.()
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      for (const r of arrived.slice(0, 3)) {
+        const what = r.items.length ? r.items.map((i) => `${i.qty}× ${i.name}`).join(', ') : r.note || 'New request'
+        new Notification(`Room ${r.room_number} — ${departmentLabel(r.department)}`, {
+          body: what,
+          tag: r.id,
+        })
+      }
+    }
+  }, [alerts])
+
   // One landing point for new data, whether it was pushed or fetched.
   const apply = useCallback(
     (data: { requests: BoardRequest[]; chats: ChatRoom[] }) => {
@@ -61,8 +78,7 @@ export default function Board({
       for (const r of data.requests) seen.current.add(r.id)
       if (arrived.length > 0) announce(arrived)
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [alerts],
+    [announce],
   )
 
   const refresh = useCallback(async () => {
@@ -88,19 +104,6 @@ export default function Board({
     }
   }, [property, apply])
 
-  function announce(arrived: BoardRequest[]) {
-    if (!alerts) return
-    chime.current?.()
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      for (const r of arrived.slice(0, 3)) {
-        const what = r.items.length ? r.items.map((i) => `${i.qty}× ${i.name}`).join(', ') : r.note || 'New request'
-        new Notification(`Room ${r.room_number} — ${departmentLabel(r.department)}`, {
-          body: what,
-          tag: r.id,
-        })
-      }
-    }
-  }
 
   useEffect(() => {
     const t = setInterval(refresh, POLL_MS)
@@ -390,8 +393,13 @@ function Card({
             #{r.ref} · {formatAge(r.created_at, new Date(now))}
           </span>
         </div>
-        <p className="mt-1.5 text-[13px] leading-snug">{summary}</p>
-        {r.note && r.items.length > 0 && <p className="text-muted mt-1 text-[12px] italic">“{r.note}”</p>}
+        {/* A guest can type 500 characters without a space. Below lg the grid
+            has no explicit columns, so one such note sized the whole board to
+            max-content and gave it 4,800px of sideways scroll. */}
+        <p className="mt-1.5 text-[13px] leading-snug break-words">{summary}</p>
+        {r.note && r.items.length > 0 && (
+          <p className="text-muted mt-1 text-[12px] break-words italic">“{r.note}”</p>
+        )}
 
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <Tag>{departmentLabel(r.department)}</Tag>
@@ -505,7 +513,7 @@ function RequestDetail({
           {r.room_floor ? ` · Floor ${r.room_floor}` : ''}
         </p>
         <p className="text-muted mt-0.5 text-[13px]">
-          Raised {formatAge(r.created_at, new Date(now))} ago · target {r.sla_minutes} min ·{' '}
+          Raised {since(r.created_at, new Date(now))} · target {r.sla_minutes} min ·{' '}
           <span className={slaState(r, new Date(now)) === 'late' ? 'text-late font-semibold' : ''}>
             {STATUS_LABEL[r.status]}
           </span>
@@ -653,7 +661,7 @@ function Messages({ chats, onOpen }: { chats: ChatRoom[]; onOpen: (c: ChatRoom) 
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
               <span className="truncate text-[13px] font-medium">{c.guest_name ?? 'Guest'}</span>
-              <span className="text-faint shrink-0 text-[11px]">{formatAge(c.last_at)} ago</span>
+              <span className="text-faint shrink-0 text-[11px]">{since(c.last_at)}</span>
             </span>
             <span className={`mt-0.5 block truncate text-[13px] ${c.unread > 0 ? 'text-ink font-medium' : 'text-muted'}`}>
               {c.last_sender === 'staff' ? 'You: ' : ''}

@@ -96,9 +96,15 @@ export async function loadStats(staff: Staff, f: HistoryFilters): Promise<Histor
 
 /** Which teams are carrying the load — the slide that sells this to a GM. */
 export async function loadByDepartment(staff: Staff, f: HistoryFilters) {
-  return sql<{ department: string; total: number; within_sla: number; avg_resolve: number | null }[]>`
+  return sql<
+    { department: string; total: number; done: number; within_sla: number; avg_resolve: number | null }[]
+  >`
+    -- "On time" has to be counted out of what actually finished. Dividing the
+    -- completed-and-on-time count by every request including the open and
+    -- cancelled ones put 39% under a headline that said 78%.
     select r.department,
            count(*)::int as total,
+           count(*) filter (where r.status = 'done')::int as done,
            count(*) filter (
              where r.status = 'done'
                and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval

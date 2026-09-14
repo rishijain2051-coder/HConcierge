@@ -123,7 +123,7 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
         <div className="bg-surface border-line mb-5 overflow-hidden rounded-2xl border">
           <div className="divide-line grid divide-y sm:grid-cols-4 sm:divide-x sm:divide-y-0">
             {byDept.map((d) => {
-              const rate = d.total > 0 ? Math.round((d.within_sla / d.total) * 100) : 0
+              const rate = d.done > 0 ? Math.round((d.within_sla / d.done) * 100) : 0
               return (
                 <div key={d.department} className="p-3.5">
                   <p className="text-[13px] font-semibold">{departmentLabel(d.department)}</p>
@@ -136,7 +136,9 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
                       style={{ width: `${rate}%` }}
                     />
                   </div>
-                  <p className="text-faint mt-1 text-[11px]">{rate}% on time</p>
+                  <p className="text-faint mt-1 text-[11px]">
+                    {d.done > 0 ? `${rate}% on time` : 'none finished yet'}
+                  </p>
                 </div>
               )
             })}
