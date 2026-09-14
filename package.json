@@ -1,26 +1,33 @@
 {
-  "name": "concierge",
+  "name": "hconcierge",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:push": "node --env-file=.env.local db/push.mjs",
+    "db:seed": "node --env-file=.env.local db/seed.mjs",
+    "db:reset": "node --env-file=.env.local db/reset.mjs"
   },
   "dependencies": {
     "next": "16.3.5",
+    "postgres": "^3.4.9",
+    "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "description": "HConcierge — in-room guest request platform for RN Hospitality"
 }

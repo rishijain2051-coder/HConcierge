@@ -1,0 +1,38 @@
+import { getStaff } from '@/lib/auth'
+import { exportCsv } from '@/lib/folio'
+import { audit } from '@/lib/audit'
+
+export const dynamic = 'force-dynamic'
+
+/** The hand-off to the PMS until a real integration exists. */
+export async function GET(req: Request) {
+  const staff = await getStaff()
+  if (!staff) return new Response('unauthorised', { status: 401 })
+  if (staff.role === 'staff') return new Response('forbidden', { status: 403 })
+
+  const url = new URL(req.url)
+  const propertyId = staff.role === 'admin' ? url.searchParams.get('property') : staff.property_id
+  if (!propertyId) return new Response('Choose a property first.', { status: 400 })
+
+  const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 7) || 7, 1), 365)
+  const to = new Date()
+  const from = new Date(to.getTime() - days * 86400_000)
+
+  const csv = await exportCsv(propertyId, from, to)
+  await audit({
+    propertyId,
+    staffId: staff.id,
+    actor: staff.name,
+    action: 'folio.exported',
+    meta: { days },
+  })
+
+  const stamp = to.toISOString().slice(0, 10)
+  return new Response(csv, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="hconcierge-charges-${stamp}.csv"`,
+      'Cache-Control': 'no-store',
+    },
+  })
+}

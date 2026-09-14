@@ -1,0 +1,94 @@
+import { sql } from './db'
+
+/**
+ * The single place money is written.
+ *
+ * Today every charge lands in `folio_entries` and the front office exports a
+ * CSV to key into their PMS. When RN Hospitality's PMS is wired up, the adapter
+ * goes behind these four functions and nothing else in the app changes — that
+ * is the whole point of routing every charge through here rather than letting
+ * routes insert rows directly.
+ */
+
+export type FolioEntry = {
+  id: string
+  room_id: string
+  request_id: string | null
+  description: string
+  amount_paise: number
+  created_at: Date
+  exported_at: Date | null
+  voided_at: Date | null
+}
+
+export type PostChargeInput = {
+  propertyId: string
+  roomId: string
+  requestId: string
+  description: string
+  amountPaise: number
+  guestName?: string | null
+}
+
+/**
+ * Idempotent: `folio_request_key` is a unique index on request_id, so a retried
+ * request or a double-tapped "complete" cannot bill the guest twice.
+ */
+export async function postCharge(input: PostChargeInput): Promise<FolioEntry | null> {
+  if (input.amountPaise <= 0) return null
+  const rows = await sql<FolioEntry[]>`
+    insert into folio_entries (property_id, room_id, request_id, description, amount_paise, guest_name)
+    values (${input.propertyId}, ${input.roomId}, ${input.requestId},
+            ${input.description}, ${input.amountPaise}, ${input.guestName ?? null})
+    on conflict (request_id) where request_id is not null do nothing
+    returning *`
+  return rows[0] ?? null
+}
+
+export async function voidCharge(entryId: string, reason: string): Promise<void> {
+  await sql`
+    update folio_entries
+       set voided_at = now(), void_reason = ${reason}
+     where id = ${entryId} and voided_at is null`
+}
+
+/** Live charges for a room — what the guest sees and what checkout settles. */
+export async function roomFolio(roomId: string): Promise<FolioEntry[]> {
+  return sql<FolioEntry[]>`
+    select * from folio_entries
+     where room_id = ${roomId} and voided_at is null
+     order by created_at desc`
+}
+
+export async function roomFolioTotal(roomId: string): Promise<number> {
+  const [row] = await sql<{ total: string | null }[]>`
+    select sum(amount_paise)::text as total from folio_entries
+     where room_id = ${roomId} and voided_at is null`
+  return Number(row?.total ?? 0)
+}
+
+/** CSV the front office keys into the PMS until a real integration exists. */
+export async function exportCsv(propertyId: string, from: Date, to: Date): Promise<string> {
+  const rows = await sql<
+    { number: string; guest_name: string | null; description: string; amount_paise: number; created_at: Date }[]
+  >`
+    select r.number, f.guest_name, f.description, f.amount_paise, f.created_at
+      from folio_entries f
+      join rooms r on r.id = f.room_id
+     where f.property_id = ${propertyId}
+       and f.voided_at is null
+       and f.created_at >= ${from} and f.created_at < ${to}
+     order by r.number, f.created_at`
+
+  const esc = (v: unknown) => {
+    const s = String(v ?? '')
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }
+  const header = 'Room,Guest,Description,Amount (INR),Posted at'
+  const body = rows.map((r) =>
+    [r.number, r.guest_name, r.description, (r.amount_paise / 100).toFixed(2), r.created_at.toISOString()]
+      .map(esc)
+      .join(','),
+  )
+  return [header, ...body].join('\n')
+}

@@ -1,0 +1,116 @@
+import { sql } from './db'
+import { visibleDepartments, type Staff } from './auth'
+import type { RequestStatus } from './types'
+
+export type HistoryFilters = {
+  propertyId?: string | null
+  department?: string | null
+  status?: string | null
+  room?: string | null
+  days: number
+}
+
+export type HistoryRow = {
+  id: string
+  ref: string
+  created_at: string
+  completed_at: string | null
+  acknowledged_at: string | null
+  escalated_at: string | null
+  status: RequestStatus
+  department: string
+  kind: string
+  note: string | null
+  total_paise: number
+  sla_minutes: number
+  room_number: string
+  guest_name: string | null
+  property_name: string
+  assigned_name: string | null
+  summary: string | null
+  response_minutes: number | null
+  resolve_minutes: number | null
+}
+
+export type HistoryStats = {
+  total: number
+  done: number
+  cancelled: number
+  escalated: number
+  within_sla: number
+  avg_response: number | null
+  avg_resolve: number | null
+  revenue_paise: number
+}
+
+function scopes(staff: Staff, f: HistoryFilters) {
+  const property =
+    staff.role === 'admin'
+      ? f.propertyId
+        ? sql`r.property_id = ${f.propertyId}`
+        : sql`true`
+      : sql`r.property_id = ${staff.property_id}`
+
+  const visible = visibleDepartments(staff)
+  const allowed = visible.length === 0 ? sql`true` : sql`r.department = any(${visible})`
+  const department = f.department ? sql`r.department = ${f.department}` : sql`true`
+  const status = f.status ? sql`r.status = ${f.status}` : sql`true`
+  const room = f.room ? sql`rm.number = ${f.room}` : sql`true`
+  const since = sql`r.created_at > now() - (${f.days} || ' days')::interval`
+
+  return sql`${property} and ${allowed} and ${department} and ${status} and ${room} and ${since}`
+}
+
+export async function loadHistory(staff: Staff, f: HistoryFilters, limit = 300): Promise<HistoryRow[]> {
+  return sql<HistoryRow[]>`
+    select r.id, r.ref::text as ref, r.created_at, r.completed_at, r.acknowledged_at, r.escalated_at,
+           r.status, r.department, r.kind, r.note, r.total_paise, r.sla_minutes,
+           rm.number as room_number, r.guest_name, p.name as property_name, s.name as assigned_name,
+           (select string_agg(ri.qty || '× ' || ri.name, ', ' order by ri.name)
+              from request_items ri where ri.request_id = r.id) as summary,
+           round(extract(epoch from (r.acknowledged_at - r.created_at)) / 60)::int as response_minutes,
+           round(extract(epoch from (r.completed_at - r.created_at)) / 60)::int as resolve_minutes
+      from requests r
+      join rooms rm on rm.id = r.room_id
+      join properties p on p.id = r.property_id
+      left join staff s on s.id = r.assigned_to
+     where ${scopes(staff, f)}
+     order by r.created_at desc
+     limit ${limit}`
+}
+
+export async function loadStats(staff: Staff, f: HistoryFilters): Promise<HistoryStats> {
+  const [row] = await sql<HistoryStats[]>`
+    select count(*)::int as total,
+           count(*) filter (where r.status = 'done')::int as done,
+           count(*) filter (where r.status = 'cancelled')::int as cancelled,
+           count(*) filter (where r.escalated_at is not null)::int as escalated,
+           count(*) filter (
+             where r.completed_at is not null and r.status = 'done'
+               and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval
+           )::int as within_sla,
+           round(avg(extract(epoch from (r.acknowledged_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_response,
+           round(avg(extract(epoch from (r.completed_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_resolve,
+           coalesce(sum(r.total_paise) filter (where r.status = 'done'), 0)::int as revenue_paise
+      from requests r
+      join rooms rm on rm.id = r.room_id
+     where ${scopes(staff, f)}`
+  return row
+}
+
+/** Which teams are carrying the load — the slide that sells this to a GM. */
+export async function loadByDepartment(staff: Staff, f: HistoryFilters) {
+  return sql<{ department: string; total: number; within_sla: number; avg_resolve: number | null }[]>`
+    select r.department,
+           count(*)::int as total,
+           count(*) filter (
+             where r.status = 'done'
+               and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval
+           )::int as within_sla,
+           round(avg(extract(epoch from (r.completed_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_resolve
+      from requests r
+      join rooms rm on rm.id = r.room_id
+     where ${scopes(staff, f)}
+     group by r.department
+     order by count(*) desc`
+}

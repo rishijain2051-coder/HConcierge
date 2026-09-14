@@ -1,36 +1,146 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HConcierge
 
-## Getting Started
+In-room guest requests for **RN Hospitality**, built to take the phone out of the loop
+between a hotel room and reception.
 
-First, run the development server:
+A guest scans the QR card on their desk and lands straight in their room's page — no app,
+no login, no typing. They order room service, ask for towels, book a massage, request a
+wake-up call, read the wifi password, or just message the front desk. Every request is
+routed to the team that actually does it, timed against a target, and escalated if it is
+forgotten.
+
+---
+
+## Running it
 
 ```bash
+npm install
+cp .env.example .env.local   # then fill in DATABASE_URL and SESSION_SECRET
+npm run db:push              # create the schema
+npm run db:seed              # two RN properties, staff, rooms, full directory
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`db:seed` prints the staff logins and two guest room links to open on a phone.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Generate a session secret with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-## Learn More
+### Environment
 
-To learn more about Next.js, take a look at the following resources:
+| Variable | Required | What it does |
+| --- | --- | --- |
+| `DATABASE_URL` | yes | Postgres. Use Supabase's **pooler on port 6543**. |
+| `SESSION_SECRET` | yes | Signs the staff session cookie. Rotating it logs everyone out. |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | no | WhatsApp or SMS escalation. Unset = escalations log to the console instead. |
+| `NOTIFY_ON_NEW` | no | `1` also messages staff on every new request, not just escalations. |
+| `CRON_SECRET` | no | Set on Vercel so only the cron can call `/api/cron/escalate`. |
+| `NEXT_PUBLIC_BASE_URL` | no | Only needed if the QR origin cannot be read from the request. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## How it works
 
-## Deploy on Vercel
+### The guest
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`/r/<token>` — the token is printed into the room's QR code and is the guest's entire
+credential. It is reissued on check-in, check-out and on demand, so a photo of last
+week's QR stops working.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Five screens: **Home** (quick asks, live status, free-text box, running bill), **Dining**
+(the room service menu with a cart and modifiers), **Services** (housekeeping, laundry,
+spa, travel, front desk), **Hotel** (wifi, timings, pool, house rules), **Chat**.
+
+### The routing
+
+One basket can become several requests. A towel and a biryani ordered together split into
+a Housekeeping request and an F&B request, each with its own target time. Housekeeping
+never sees the biryani. This is the part that stops reception being a switchboard.
+
+Departments: `front_desk`, `housekeeping`, `fnb`, `maintenance`.
+
+### The SLA
+
+Every catalogue item carries a target time; a request inherits the slowest item in it.
+Cards turn amber at 60% of the budget and red past it. A request nobody accepted within
+its target, or accepted and then sat on for twice it, is escalated — flagged on the board
+and messaged to duty managers.
+
+The sweep runs opportunistically on every board poll (so it lands within seconds while
+anyone is working) and from a Vercel cron every 10 minutes (so it still fires at 4am when
+no board is open).
+
+### The money
+
+Prices are **never** trusted from the client. The phone sends item ids, quantities and
+modifier *names*; `lib/requests.ts` re-resolves every price from the database.
+
+Charges post on **completion**, not on order — a guest is not billed for food that never
+arrived. Everything goes through `lib/folio.ts`, which is the only module that writes
+money. `folio_entries` has a unique index on `request_id`, so a double-tapped "Done"
+cannot bill twice.
+
+Today the front office exports a CSV and keys it into the PMS. When RN's PMS is wired up,
+the adapter goes behind those four functions and nothing else in the app changes.
+
+---
+
+## Layout
+
+```
+app/
+  r/[token]/          guest app — server shell, client UI, server actions
+  staff/login/        sign-in and the forced first-login password change
+  staff/(app)/        authenticated chrome
+    board/            live request board + per-room chat
+    rooms/            registry, check-in/out, QR rotation, printable cards
+    history/          SLA stats, per-team breakdown, searchable log
+  api/
+    guest/[token]/state   guest poll
+    staff/board           board poll (+ opportunistic escalation sweep)
+    staff/folio.csv       charge export
+    cron/escalate         escalation backstop
+lib/
+  db.ts        one pooled postgres client
+  auth.ts      scrypt hashes, signed cookie, lockout, role scoping
+  requests.ts  the guest→database trust boundary
+  board.ts     everything reception reads and writes
+  folio.ts     the only module that writes money
+  notify.ts    Twilio + the escalation sweep
+  sla.ts       one definition of "late", shared by server and client
+db/
+  schema.sql   idempotent, run with npm run db:push
+  seed.mjs     RN Hospitality demo data
+```
+
+---
+
+## Decisions worth knowing
+
+**Polling, not websockets.** The guest polls every 5s, the board every 4s. A hotel makes a
+few hundred requests a day; this is two indexed reads. It is also the only option that
+survives serverless and pgbouncer without extra infrastructure. Swap in Supabase Realtime
+if a property ever gets busy enough for it to show in database load.
+
+**`prepare: false` is mandatory.** Supabase's pooler on 6543 is pgbouncer in transaction
+mode and cannot carry prepared statements across pooled connections.
+
+**Multi-property from the schema up.** Every table carries `property_id`. Admins roam,
+managers and staff are pinned to their property, and a housekeeping account asking for
+"the board" gets housekeeping's board.
+
+**Modifier groups are JSONB**, not two more tables — read-mostly config that is never
+queried by modifier, and it saves an entire CRUD screen.
+
+**Money is integer paise.** It only becomes a string at the edge, in `lib/money.ts`, with
+Indian digit grouping.
+
+## Not built yet
+
+- Menu and info-page editing from the UI (edit `db/seed.mjs` and re-seed, or edit rows directly)
+- A real PMS integration — the seam is there, the adapter is not
+- In-app payment; everything posts to the room folio
+- Languages other than English, though all guest strings sit in the components ready to lift
