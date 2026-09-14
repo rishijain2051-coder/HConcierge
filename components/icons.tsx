@@ -121,14 +121,6 @@ export function IconAlert(p: IconProps) {
   )
 }
 
-export function IconClock(p: IconProps) {
-  return (
-    <Icon {...p}>
-      <circle cx="12" cy="12" r="8.6" />
-      <path d="M12 7.3V12l3.1 1.9" />
-    </Icon>
-  )
-}
 
 export function IconPhoneOff(p: IconProps) {
   return (
@@ -139,14 +131,6 @@ export function IconPhoneOff(p: IconProps) {
   )
 }
 
-export function IconSpark(p: IconProps) {
-  return (
-    <Icon {...p}>
-      <path d="M12 3.4c.9 4.4 2.3 5.8 6.7 6.7-4.4.9-5.8 2.3-6.7 6.7-.9-4.4-2.3-5.8-6.7-6.7 4.4-.9 5.8-2.3 6.7-6.7Z" />
-      <path d="M18 16.2c.45 2.05 1.05 2.65 3.1 3.1-2.05.45-2.65 1.05-3.1 3.1-.45-2.05-1.05-2.65-3.1-3.1 2.05-.45 2.65-1.05 3.1-3.1Z" />
-    </Icon>
-  )
-}
 
 export function IconReceipt(p: IconProps) {
   return (
@@ -169,6 +153,36 @@ export function IconPlus(p: IconProps) {
   return (
     <Icon {...p}>
       <path d="M12 6v12M6 12h12" />
+    </Icon>
+  )
+}
+
+export function IconChevron(p: IconProps) {
+  return (
+    <Icon {...p}>
+      <path d="M6 9.5 12 15.5 18 9.5" />
+    </Icon>
+  )
+}
+
+export function IconClose(p: IconProps) {
+  return (
+    <Icon {...p}>
+      <path d="M6.5 6.5 17.5 17.5M17.5 6.5 6.5 17.5" />
+    </Icon>
+  )
+}
+
+/** Filled when alerts are armed, so the state reads without colour alone. */
+export function IconAlarm({ on = false, ...p }: IconProps & { on?: boolean }) {
+  return (
+    <Icon {...p}>
+      <path
+        d="M18 16.2V11a6 6 0 1 0-12 0v5.2L4.4 18.4h15.2z"
+        fill={on ? 'currentColor' : 'none'}
+        fillOpacity={on ? 0.16 : 0}
+      />
+      <path d="M9.6 21.2a2.6 2.6 0 0 0 4.8 0" />
     </Icon>
   )
 }

@@ -6,6 +6,7 @@ import { rupees } from '@/lib/money'
 import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
 import { DEPARTMENTS, departmentLabel, STATUS_LABEL, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
+import { IconAlarm } from '@/components/icons'
 import { assign, openThread, reply, updateStatus } from './actions'
 
 // The board is pushed, not polled — see /api/staff/board/live. This is the
@@ -261,11 +262,12 @@ export default function Board({
             onClick={() => (alerts ? setAlerts(false) : enableAlerts())}
             aria-pressed={alerts}
             title={alerts ? 'Stop the chime and the notifications' : 'Chime and notify when a request arrives'}
-            className={`rounded-xl border px-3 py-2 text-[13px] font-semibold transition ${
+            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold transition ${
               alerts ? 'border-ok text-ok' : 'border-line hover:border-ink'
             }`}
           >
-            🔔 {alerts ? 'Alerts on' : 'Turn on alerts'}
+            <IconAlarm size={15} on={alerts} />
+            {alerts ? 'Alerts on' : 'Turn on alerts'}
           </button>
         </div>
       </div>

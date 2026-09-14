@@ -28,11 +28,9 @@
      Linear and ease-in-out both read as software; this reads as weight. */
   --ease-glide: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* Diffused ambient light rather than a drop shadow. Three stacked layers,
-     none of them dark enough to see on its own. */
-  --shadow-float:
-    0 1px 1px rgb(28 25 23 / 0.03), 0 10px 26px -14px rgb(28 25 23 / 0.16),
-    0 28px 52px -34px rgb(28 25 23 / 0.2);
+  /* One layer, with an offset and a long blur. Two more underneath it were
+     invisible on paper and cost a repaint each. */
+  --shadow-float: 0 12px 32px -16px rgb(28 25 23 / 0.22);
 }
 
 :root {
@@ -152,18 +150,6 @@ a {
   }
 }
 
-/* A very slow breath behind the staff greeting. Nothing else on that screen moves. */
-@keyframes hc-breathe {
-  0%,
-  100% {
-    opacity: 0.34;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.52;
-    transform: scale(1.06);
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -178,29 +164,22 @@ a {
 /* ---------------------------------------------------------------------------
    Guest surfaces.
 
-   A card is not ink on paper — it is a brighter plate sitting in a tray. The
-   outer shell carries the tint and the hairline, the inner core carries the
-   content and a top highlight, and the radii are concentric so the curves
-   stay parallel. Two elements, and cards stop looking printed on.
+   One surface, one hairline. This was a tray holding a plate — an outer tinted
+   wrapper around an inner card, with concentric radii. It read as machined
+   hardware and it was a card inside a card, which is two containers doing the
+   work of none. What separates things here is space.
    ------------------------------------------------------------------------ */
 
-@utility tray {
-  border-radius: 26px;
-  padding: 6px;
-  background: color-mix(in oklab, var(--brand) 5%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 6%, transparent);
-}
-
-@utility plate {
-  border-radius: 20px; /* 26 − 6, so the curves are concentric */
+@utility card {
+  border-radius: 18px;
   background: var(--color-surface);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 1px 2px rgb(28 25 23 / 0.04);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 7%, transparent);
 }
 
-/* Arriving content: heavy, slightly out of focus, settling into place.
-   Stagger with --d rather than a class per index. */
+/* The one authored entrance, and it belongs to a single thing: a request
+   arriving on the guest's screen. It used to be on the greeting, the bill
+   lines, the hotel-info rows, the basket bar and both loading screens — which
+   is not an authored moment, it is a transition applied to everything. */
 @keyframes hc-rise {
   from {
     opacity: 0;
@@ -214,7 +193,6 @@ a {
 
 @utility rise {
   animation: hc-rise 620ms var(--ease-glide) both;
-  animation-delay: var(--d, 0ms);
 }
 
 /* The step a request is actually sitting on, so the rail reads as live. */

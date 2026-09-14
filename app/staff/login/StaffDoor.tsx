@@ -49,7 +49,6 @@ export default function StaffDoor() {
           className="pointer-events-none absolute -top-1/4 -right-1/4 h-[130%] w-[130%] rounded-full opacity-45"
           style={{
             background: 'radial-gradient(closest-side, var(--brand), transparent 72%)',
-            animation: 'hc-breathe 9s ease-in-out infinite',
           }}
         />
         <div className="relative">

@@ -20,6 +20,8 @@ import {
   IconArrowRight,
   IconBell,
   IconChat,
+  IconChevron,
+  IconClose,
   IconDining,
   IconHome,
   IconInfo,
@@ -133,8 +135,7 @@ export default function GuestApp({
         className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center"
         style={{ ['--brand' as string]: property.brand_color }}
       >
-        <p className="text-faint text-[11px] font-semibold tracking-[0.18em] uppercase">{property.name}</p>
-        <h1 className="font-display mt-3 text-[clamp(1.8rem,7vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">
+        <h1 className="font-display text-[clamp(1.8rem,7vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">
           This stay has ended
         </h1>
         <p className="text-muted mt-3 text-[15px] leading-relaxed">
@@ -163,7 +164,7 @@ export default function GuestApp({
             <p className="text-ink truncate text-[15px] leading-tight font-semibold tracking-[-0.01em]">
               {property.name}
             </p>
-            <p className="text-faint text-[11px] tracking-[0.06em] uppercase">
+            <p className="text-faint text-[12px]">
               Room {room.number}
               {room.room_type ? ` · ${room.room_type}` : ''}
             </p>
@@ -184,10 +185,8 @@ export default function GuestApp({
             counts={counts}
             onTap={tapItem}
             onBump={bump}
-            onGo={setTab}
             onToast={setToast}
             onRefresh={refresh}
-            onBill={() => setBillOpen(true)}
           />
         )}
         {tab === 'dining' && (
@@ -295,7 +294,7 @@ export default function GuestApp({
           className="pointer-events-none fixed inset-x-0 bottom-32 z-[60] flex justify-center px-4"
         >
           <div
-            className={`rise rounded-full px-4 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-float)] ${
+            className={`rounded-full px-4 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-float)] ${
               toast.tone === 'ok' ? 'bg-ink' : 'bg-late'
             }`}
           >
@@ -313,17 +312,10 @@ function BillChip({ total, onOpen }: { total: number; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="group ease-glide flex shrink-0 items-center gap-2 rounded-full bg-[color-mix(in_oklab,var(--color-ink)_4%,transparent)] py-1 pr-1 pl-3 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_7%,transparent)] transition duration-300 active:scale-[0.97]"
+      className="ease-glide flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_9%,transparent)] transition duration-300 active:scale-[0.97]"
     >
-      <span className="flex items-center gap-1.5">
-        <IconReceipt size={14} className="text-faint" />
-        <span className="text-[13px] font-semibold tabular-nums">
-          {total > 0 ? rupees(total) : 'Bill'}
-        </span>
-      </span>
-      <span className="bg-surface ease-glide grid h-7 w-7 place-items-center rounded-full shadow-[0_1px_2px_rgb(28_25_23/0.10)] transition duration-300 group-hover:translate-x-[1px] group-hover:-translate-y-px group-hover:scale-105">
-        <IconArrowRight size={13} />
-      </span>
+      <IconReceipt size={14} className="text-faint" />
+      <span className="text-[13px] font-semibold tabular-nums">{total > 0 ? rupees(total) : 'Bill'}</span>
     </button>
   )
 }
@@ -337,25 +329,18 @@ function BillChip({ total, onOpen }: { total: number; onOpen: () => void }) {
 function BasketBar({ count, total, onOpen }: { count: number; total: number; onOpen: () => void }) {
   return (
     <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+3.65rem)] z-30 px-3">
-      <div className="rise mx-auto max-w-2xl rounded-[24px] bg-[color-mix(in_oklab,var(--color-ink)_7%,transparent)] p-1.5 shadow-[var(--shadow-float)] backdrop-blur-xl">
-        <button
-          onClick={onOpen}
-          className="group bg-ink ease-glide flex w-full items-center gap-3 rounded-[18px] py-2.5 pr-2 pl-4 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.14)] transition duration-300 active:scale-[0.985]"
-        >
-          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/15 px-1.5 text-[12px] font-bold tabular-nums">
-            {count}
-          </span>
-          <span className="flex-1 text-left text-[14px] font-semibold tracking-[-0.01em]">
-            {total > 0 ? rupees(total) : 'Nothing to pay'}
-            <span className="ml-1.5 text-[12px] font-normal text-white/55">
-              {count === 1 ? '1 item' : `${count} items`}
-            </span>
-          </span>
-          <span className="ease-glide grid h-8 w-8 place-items-center rounded-full bg-white/15 transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-px group-hover:scale-105">
-            <IconArrowRight size={15} />
-          </span>
-        </button>
-      </div>
+      <button
+        onClick={onOpen}
+        className="bg-ink ease-glide mx-auto flex w-full max-w-2xl items-center gap-3 rounded-full py-3 pr-5 pl-4 text-white shadow-[var(--shadow-float)] transition duration-300 active:scale-[0.985]"
+      >
+        <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/20 px-1.5 text-[12px] font-bold tabular-nums">
+          {count}
+        </span>
+        <span className="flex-1 text-left text-[14px] font-semibold tracking-[-0.01em]">
+          {total > 0 ? rupees(total) : 'Nothing to pay'}
+        </span>
+        <IconArrowRight size={15} />
+      </button>
     </div>
   )
 }
@@ -371,10 +356,8 @@ function Home({
   counts,
   onTap,
   onBump,
-  onGo,
   onToast,
   onRefresh,
-  onBill,
 }: {
   room: Room
   property: Property
@@ -384,10 +367,8 @@ function Home({
   counts: Map<string, number>
   onTap: (i: Item) => void
   onBump: (i: Item, by: number) => void
-  onGo: (t: Tab) => void
   onToast: (t: Toast) => void
   onRefresh: () => void
-  onBill: () => void
 }) {
   const [freeform, setFreeform] = useState('')
   const [sending, setSending] = useState(false)
@@ -435,109 +416,64 @@ function Home({
   }
 
   return (
-    <div className="space-y-7 px-4 pt-6">
-      <section className="rise">
-        <h1 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em]">
-          {greeting()}
-          {room.guest_name ? `, ${room.guest_name.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*/, '')}` : ''}
-        </h1>
-        <p className="text-muted mt-1.5 max-w-[38ch] text-[14px] leading-relaxed">
-          Anything you need, ask here instead of the phone. Someone will see it straight away.
-        </p>
-      </section>
+    <div className="space-y-8 px-4 pt-7">
+      <h1 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] text-balance">
+        {greeting()}
+        {room.guest_name ? `, ${room.guest_name.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*/, '')}` : ''}
+      </h1>
 
       {open.length > 0 && (
-        <section>
-          <SectionTitle>Happening now</SectionTitle>
-          <div className="space-y-3">
-            {open.map((r, i) => (
-              <OrderTracker
-                key={r.id}
-                request={r}
-                now={now}
-                token={token}
-                delay={i * 70}
-                onChanged={onRefresh}
-                onToast={onToast}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section>
-        <SectionTitle>Ask for something</SectionTitle>
-        <div className="grid grid-cols-2 gap-2.5">
-          {quick.map((item) => (
-            <QuickTile key={item.id} item={item} qty={counts.get(item.id) ?? 0} onTap={onTap} onBump={onBump} />
+        <div className="space-y-3">
+          {open.map((r) => (
+            <OrderTracker key={r.id} request={r} now={now} token={token} onChanged={onRefresh} onToast={onToast} />
           ))}
         </div>
-        <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-          <Jump label="Room service" onClick={() => onGo('dining')} />
-          <Jump label="All services" onClick={() => onGo('services')} />
-        </div>
-      </section>
+      )}
 
-      <section>
-        <SectionTitle>Something else?</SectionTitle>
-        <div className="tray">
-          <div className="plate p-3">
-            <textarea
-              value={freeform}
-              onChange={(e) => setFreeform(e.target.value)}
-              rows={3}
-              maxLength={500}
-              placeholder="Tell us in your own words — we read every one."
-              className="placeholder:text-faint w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none"
-            />
-            <div className="mt-1 flex justify-end">
-              <button
-                onClick={sendFreeform}
-                disabled={!freeform.trim() || sending}
-                className="brand-bg ease-glide rounded-full px-4 py-2 text-[13px] font-semibold text-white transition duration-300 active:scale-[0.97] disabled:opacity-25"
-              >
-                {sending ? 'Sending…' : 'Send'}
-              </button>
-            </div>
+      {/* No label above this. Six tiles with a name, a time and a + on each say
+          what they are; a heading reading "Ask for something" said it again. */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {quick.map((item) => (
+          <QuickTile key={item.id} item={item} qty={counts.get(item.id) ?? 0} onTap={onTap} onBump={onBump} />
+        ))}
+      </div>
+
+      <div>
+        <textarea
+          value={freeform}
+          onChange={(e) => setFreeform(e.target.value)}
+          rows={3}
+          maxLength={500}
+          placeholder="Or ask for anything else, in your own words."
+          className="placeholder:text-faint focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full resize-none rounded-[18px] bg-transparent px-3.5 py-3 text-[15px] leading-relaxed shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_9%,transparent)] transition duration-300 outline-none"
+        />
+        {freeform.trim() && (
+          <div className="mt-2 flex justify-end">
+            <button
+              onClick={sendFreeform}
+              disabled={sending}
+              className="brand-bg ease-glide rounded-full px-4 py-2 text-[13px] font-semibold text-white transition duration-300 active:scale-[0.97] disabled:opacity-40"
+            >
+              {sending ? 'Sending…' : 'Send'}
+            </button>
           </div>
-        </div>
-      </section>
+        )}
+      </div>
 
-      <section>
-        <SectionTitle>Your bill</SectionTitle>
-        <button onClick={onBill} className="group tray ease-glide block w-full text-left transition duration-300 active:scale-[0.99]">
-          <div className="plate flex items-center justify-between gap-4 px-4 py-3.5">
-            <div className="min-w-0">
-              <p className="font-display text-[30px] leading-none tracking-[-0.02em] tabular-nums">
-                {rupees(state.folio_total_paise)}
-              </p>
-              <p className="text-faint mt-1.5 text-[12px]">
-                {state.settle_requested_at
-                  ? 'The front desk is on the way to settle this'
-                  : state.folio_total_paise > 0
-                    ? `Charged to Room ${room.number} · nothing taken yet`
-                    : 'Nothing charged to your room so far'}
-              </p>
-            </div>
-            <span className="bg-paper ease-glide grid h-9 w-9 shrink-0 place-items-center rounded-full transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-px group-hover:scale-105">
-              <IconArrowRight size={15} />
-            </span>
-          </div>
-        </button>
-      </section>
-
+      {/* The one label left on this screen. Faded rows at the foot of a page
+          are ambiguous without it; everything above says what it is. */}
       {recent.length > 0 && (
-        <section>
-          <SectionTitle>Earlier</SectionTitle>
-          <div className="space-y-2">
+        <div>
+          <h2 className="text-faint mb-2.5 text-[12px]">Earlier</h2>
+          <div className="space-y-1.5">
             {recent.map((r) => (
               <ClosedCard key={r.id} request={r} now={now} />
             ))}
           </div>
-        </section>
+        </div>
       )}
 
-      <p className="text-faint pt-1 pb-4 text-center text-[12px]">
+      <p className="text-faint pb-4 text-center text-[12px]">
         {property.phone ? `Prefer to call? ${property.phone}` : 'We are here around the clock.'}
       </p>
     </div>
@@ -563,25 +499,7 @@ function useClock(active: boolean) {
   return now
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 className="text-faint mb-2.5 text-[10px] font-semibold tracking-[0.18em] uppercase">{children}</h2>
-  )
-}
 
-function Jump({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="group brand-soft-bg ease-glide flex items-center justify-between gap-2 rounded-[18px] px-3.5 py-3 transition duration-300 active:scale-[0.98]"
-    >
-      <span className="brand-text text-[13.5px] font-semibold tracking-[-0.01em]">{label}</span>
-      <span className="bg-surface/70 ease-glide brand-text grid h-6 w-6 place-items-center rounded-full transition duration-300 group-hover:translate-x-0.5">
-        <IconArrowRight size={12} />
-      </span>
-    </button>
-  )
-}
 
 /* --------------------------------------------------------------- tracking */
 
@@ -596,14 +514,12 @@ function OrderTracker({
   request,
   now,
   token,
-  delay,
   onChanged,
   onToast,
 }: {
   request: GuestRequest
   now: number
   token: string
-  delay: number
   onChanged: () => void
   onToast: (t: Toast) => void
 }) {
@@ -623,80 +539,78 @@ function OrderTracker({
   }
 
   return (
-    <article className="tray rise" style={{ ['--d' as string]: `${delay}ms` }}>
-      <div className="plate px-4 py-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-faint text-[10px] font-semibold tracking-[0.16em] uppercase">
-              #{request.ref} · {since(request.created_at, new Date(now))}
-            </p>
-            <p className="mt-1 text-[16px] leading-snug font-semibold tracking-[-0.01em] break-words">
-              {title}
-            </p>
-          </div>
-          {request.total_paise > 0 && (
-            <p className="text-muted shrink-0 text-[13px] font-semibold tabular-nums">
-              {rupees(request.total_paise)}
-            </p>
-          )}
-        </div>
-
-        <div className="relative mt-5">
-          <div className="bg-line absolute top-[5px] right-[10%] left-[10%] h-[2px] rounded-full" />
-          <div
-            className="brand-bg ease-glide absolute top-[5px] left-[10%] h-[2px] origin-left rounded-full transition-transform duration-[900ms]"
-            style={{ width: '80%', transform: `scaleX(${step / (GUEST_STEPS.length - 1)})` }}
-          />
-          <ol className="relative flex justify-between">
-            {GUEST_STEPS.map((label, i) => {
-              const done = i <= step
-              const current = i === step && request.status !== 'done'
-              return (
-                <li key={label} className="flex w-1/4 flex-col items-center gap-1.5">
-                  <span className="relative grid h-3 w-3 place-items-center">
-                    {current && (
-                      <span
-                        className="brand-bg absolute inset-0 rounded-full"
-                        style={{ animation: 'hc-pulse 2.2s var(--ease-glide) infinite' }}
-                      />
-                    )}
-                    <span
-                      className={`ease-glide relative h-3 w-3 rounded-full transition-all duration-500 ${
-                        done ? 'brand-bg scale-100' : 'bg-line scale-[0.6]'
-                      }`}
-                    />
-                  </span>
-                  <span
-                    className={`text-center text-[10px] leading-tight font-medium tracking-[0.01em] ${
-                      done ? 'text-ink' : 'text-faint'
-                    }`}
-                  >
-                    {label}
-                  </span>
-                </li>
-              )
-            })}
-          </ol>
-        </div>
-
-        <div className="border-line mt-4 flex items-center justify-between gap-3 border-t pt-3">
-          <p className="text-muted text-[12.5px]">
-            {request.status === 'done'
-              ? 'Delivered — thank you'
-              : left > 0
-                ? `About ${left} min to go`
-                : 'Taking longer than usual — we have flagged it'}
+    <article className="card rise px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {/* The reference and the age sit under the title, not in a tracked
+              all-caps line above it. A heading does not need announcing. */}
+          <p className="text-[16px] leading-snug font-semibold tracking-[-0.01em] break-words">{title}</p>
+          <p className="text-faint mt-0.5 text-[12px]">
+            #{request.ref} · {since(request.created_at, new Date(now))}
           </p>
-          {(request.status === 'new' || request.status === 'ack') && (
-            <button
-              onClick={cancel}
-              disabled={busy}
-              className="text-faint hover:text-late ease-glide shrink-0 text-[12px] font-medium underline transition duration-200 disabled:opacity-40"
-            >
-              Cancel
-            </button>
-          )}
         </div>
+        {request.total_paise > 0 && (
+          <p className="text-muted shrink-0 text-[13px] font-semibold tabular-nums">
+            {rupees(request.total_paise)}
+          </p>
+        )}
+      </div>
+
+      <div className="relative mt-5">
+        <div className="bg-line absolute top-[5px] right-[10%] left-[10%] h-[2px] rounded-full" />
+        <div
+          className="brand-bg ease-glide absolute top-[5px] left-[10%] h-[2px] origin-left rounded-full transition-transform duration-[900ms]"
+          style={{ width: '80%', transform: `scaleX(${step / (GUEST_STEPS.length - 1)})` }}
+        />
+        <ol className="relative flex justify-between">
+          {GUEST_STEPS.map((label, i) => {
+            const done = i <= step
+            const current = i === step && request.status !== 'done'
+            return (
+              <li key={label} className="flex w-1/4 flex-col items-center gap-1.5">
+                <span className="relative grid h-3 w-3 place-items-center">
+                  {current && (
+                    <span
+                      className="brand-bg absolute inset-0 rounded-full"
+                      style={{ animation: 'hc-pulse 2.2s var(--ease-glide) infinite' }}
+                    />
+                  )}
+                  <span
+                    className={`ease-glide relative h-3 w-3 rounded-full transition-all duration-500 ${
+                      done ? 'brand-bg scale-100' : 'bg-line scale-[0.6]'
+                    }`}
+                  />
+                </span>
+                <span
+                  className={`text-center text-[10px] leading-tight font-medium tracking-[0.01em] ${
+                    done ? 'text-ink' : 'text-faint'
+                  }`}
+                >
+                  {label}
+                </span>
+              </li>
+            )
+          })}
+        </ol>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-muted text-[12.5px]">
+          {request.status === 'done'
+            ? 'Delivered — thank you'
+            : left > 0
+              ? `About ${left} min to go`
+              : 'Taking longer than usual — we have flagged it'}
+        </p>
+        {(request.status === 'new' || request.status === 'ack') && (
+          <button
+            onClick={cancel}
+            disabled={busy}
+            className="text-faint hover:text-late ease-glide shrink-0 text-[12px] font-medium underline transition duration-200 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        )}
       </div>
     </article>
   )
@@ -708,20 +622,11 @@ function ClosedCard({ request, now }: { request: GuestRequest; now: number }) {
     : request.note || 'Request'
 
   return (
-    <div className="bg-surface/60 flex items-center justify-between gap-3 rounded-[16px] px-3.5 py-3 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_5%,transparent)]">
-      <div className="min-w-0">
-        <p className="text-muted truncate text-[14px] break-words">{title}</p>
-        <p className="text-faint mt-0.5 text-[11px]">
-          #{request.ref} · {since(request.created_at, new Date(now))}
-        </p>
-      </div>
-      <span
-        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-          request.status === 'done' ? 'bg-ok-soft text-ok' : 'bg-paper text-faint'
-        }`}
-      >
-        {GUEST_STATUS_LABEL[request.status]}
-      </span>
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <p className="text-muted min-w-0 flex-1 truncate text-[14px] break-words">{title}</p>
+      <p className="text-faint shrink-0 text-[12px]">
+        {request.status === 'done' ? 'Delivered' : 'Cancelled'} · {since(request.created_at, new Date(now))}
+      </p>
     </div>
   )
 }
@@ -760,7 +665,6 @@ const Catalog = memo(function Catalog({
                   : 'bg-surface text-muted shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_7%,transparent)]'
               }`}
             >
-              {c.icon ? `${c.icon} ` : ''}
               {c.name}
             </button>
           ))}
@@ -967,9 +871,7 @@ function ItemSheet({
         <div key={g.name} className="mb-5">
           <div className="mb-2 flex items-baseline justify-between">
             <p className="text-[13px] font-semibold">{g.name}</p>
-            <p className="text-faint text-[10px] font-semibold tracking-[0.14em] uppercase">
-              {(g.min ?? 0) > 0 ? 'Required' : `Up to ${g.max ?? 1}`}
-            </p>
+            <p className="text-faint text-[12px]">{(g.min ?? 0) > 0 ? 'Required' : `Up to ${g.max ?? 1}`}</p>
           </div>
           <div className="space-y-1.5">
             {g.options.map((o) => {
@@ -1242,31 +1144,22 @@ function BillSheet({
 
   return (
     <Sheet onClose={onClose} title="Your bill">
-      <div className="tray -mt-1 mb-5">
-        <div className="plate px-4 py-4">
-          <p className="text-faint text-[10px] font-semibold tracking-[0.18em] uppercase">
-            Room {room.number} · outstanding
-          </p>
-          <p className="font-display mt-2 text-[44px] leading-none tracking-[-0.03em] tabular-nums">
-            {rupees(state.folio_total_paise)}
-          </p>
-          <p className="text-muted mt-2.5 max-w-[34ch] text-[12.5px] leading-relaxed">
-            Everything you have asked for that carries a charge. Nothing has been taken from a card — the front desk
-            settles this with you.
-          </p>
-        </div>
-      </div>
+      {/* The figure is the heading. It had a tracked all-caps line above it,
+          a three-line explainer below it, and a Total row further down
+          repeating the same number. */}
+      <p className="font-display -mt-1 text-[46px] leading-none tracking-[-0.03em] tabular-nums">
+        {rupees(state.folio_total_paise)}
+      </p>
+      <p className="text-muted mt-2 mb-6 text-[13px]">Charged to Room {room.number}, nothing taken yet.</p>
 
       {state.folio.length === 0 ? (
         <p className="text-muted py-8 text-center text-sm">Nothing has been charged to your room yet.</p>
       ) : (
         <ul className="divide-line divide-y">
-          {state.folio.map((line, i) => (
+          {state.folio.map((line) => (
             <li
               key={line.id}
-              className="rise flex items-baseline justify-between gap-4 py-3"
-              style={{ ['--d' as string]: `${Math.min(i, 8) * 45}ms` }}
-            >
+              className="flex items-baseline justify-between gap-4 py-3">
               <div className="min-w-0">
                 <p className="text-[14.5px] leading-snug font-medium break-words">{line.description}</p>
                 <p className="text-faint mt-0.5 text-[11px]">
@@ -1287,11 +1180,6 @@ function BillSheet({
 
       {state.folio_total_paise > 0 && (
         <>
-          <div className="border-line mt-4 flex items-baseline justify-between border-t pt-3.5">
-            <span className="text-[13px] font-semibold tracking-[-0.01em]">Total</span>
-            <span className="text-[20px] font-semibold tabular-nums">{rupees(state.folio_total_paise)}</span>
-          </div>
-
           {asked ? (
             <div className="brand-soft-bg mt-4 rounded-[18px] px-4 py-3.5">
               <p className="brand-text text-[13.5px] font-semibold">Someone is on their way</p>
@@ -1304,19 +1192,14 @@ function BillSheet({
             <button
               onClick={settle}
               disabled={busy}
-              className="group brand-bg ease-glide mt-4 flex w-full items-center gap-3 rounded-full py-2.5 pr-2 pl-5 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] transition duration-300 active:scale-[0.98] disabled:opacity-50"
+              className="brand-bg ease-glide mt-5 w-full rounded-full px-5 py-3 text-[15px] font-semibold text-white transition duration-300 active:scale-[0.98] disabled:opacity-50"
             >
-              <span className="flex-1 text-left text-[15px] font-semibold tracking-[-0.01em]">
-                {busy ? 'Telling the front desk…' : 'Ask to settle this'}
-              </span>
-              <span className="ease-glide grid h-9 w-9 place-items-center rounded-full bg-white/18 transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-px group-hover:scale-105">
-                <IconArrowRight size={15} />
-              </span>
+              {busy ? 'Telling the front desk…' : 'Ask to settle this'}
             </button>
           )}
 
-          <p className="text-faint mt-3 text-center text-[11.5px] leading-relaxed">
-            Payment is taken at the desk, by card or cash. HConcierge never asks for card details.
+          <p className="text-faint mt-3 text-center text-[11.5px]">
+            Paid at the desk, by card or cash. We never ask for card details.
           </p>
         </>
       )}
@@ -1334,37 +1217,31 @@ function Info({ pages, property }: { pages: InfoPage[]; property: Property }) {
       <h1 className="text-[24px] leading-tight font-semibold tracking-[-0.02em]">{property.name}</h1>
       {property.address && <p className="text-muted mt-1 text-sm leading-relaxed">{property.address}</p>}
 
-      <div className="mt-5 space-y-2">
-        {pages.map((p, i) => (
-          <div
-            key={p.id}
-            className="bg-surface rise overflow-hidden rounded-[18px] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_6%,transparent)]"
-            style={{ ['--d' as string]: `${Math.min(i, 8) * 45}ms` }}
-          >
+      {/* Rules divide these, not a card each. The seeded emoji beside every
+          title said the same thing as the title. */}
+      <div className="divide-line mt-6 divide-y">
+        {pages.map((p) => (
+          <div key={p.id}>
             <button
               onClick={() => setOpen(open === p.id ? null : p.id)}
               aria-expanded={open === p.id}
-              className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+              className="flex w-full items-center justify-between gap-3 py-3.5 text-left"
             >
-              <span className="flex items-center gap-2.5 text-[15px] font-medium">
-                {p.icon && <span className="text-lg">{p.icon}</span>}
-                {p.title}
-              </span>
-              <span
-                className={`text-faint ease-glide transition-transform duration-500 ${open === p.id ? 'rotate-180' : ''}`}
-              >
-                ⌄
-              </span>
+              <span className="text-[15px] font-medium">{p.title}</span>
+              <IconChevron
+                size={16}
+                className={`text-faint ease-glide shrink-0 transition-transform duration-500 ${
+                  open === p.id ? 'rotate-180' : ''
+                }`}
+              />
             </button>
             {open === p.id && (
-              <p className="text-muted border-line border-t px-4 py-3.5 text-[14px] leading-relaxed whitespace-pre-line">
-                {p.body}
-              </p>
+              <p className="text-muted pb-4 text-[14px] leading-relaxed whitespace-pre-line">{p.body}</p>
             )}
           </div>
         ))}
       </div>
-      <div className="h-6" />
+      <div className="h-8" />
     </div>
   )
 }
@@ -1428,9 +1305,9 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-faint hover:text-ink bg-paper ease-glide -mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full text-lg leading-none transition duration-200 active:scale-90"
+            className="text-faint hover:text-ink bg-paper ease-glide -mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full transition duration-200 active:scale-90"
           >
-            ×
+            <IconClose size={15} />
           </button>
         </div>
         {children}

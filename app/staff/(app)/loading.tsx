@@ -16,11 +16,7 @@ export default function Loading() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="bg-surface border-line rise space-y-3 rounded-2xl border p-4"
-            style={{ ['--d' as string]: `${i * 70}ms` }}
-          >
+          <div key={i} className="bg-surface border-line space-y-3 rounded-2xl border p-4">
             <div className="skeleton h-3 w-20" />
             <div className="skeleton h-16 w-full rounded-[14px]" />
             <div className="skeleton h-16 w-full rounded-[14px]" />
