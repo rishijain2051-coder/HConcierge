@@ -37,7 +37,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `SESSION_SECRET` | yes | Signs the staff session cookie. Rotating it logs everyone out. |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | no | WhatsApp or SMS escalation. Unset = escalations log to the console instead. |
 | `NOTIFY_ON_NEW` | no | `1` also messages staff on every new request, not just escalations. |
-| `CRON_SECRET` | no | Set on Vercel so only the cron can call `/api/cron/escalate`. |
+| `CRON_SECRET` | in production | Shared with the pg_cron job. The route refuses to run unauthenticated once deployed. |
 | `NEXT_PUBLIC_BASE_URL` | no | Only needed if the QR origin cannot be read from the request. |
 
 ---
@@ -70,8 +70,21 @@ its target, or accepted and then sat on for twice it, is escalated — flagged o
 and messaged to duty managers.
 
 The sweep runs opportunistically on every board poll (so it lands within seconds while
-anyone is working) and from a Vercel cron every 10 minutes (so it still fires at 4am when
-no board is open).
+anyone is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at
+4am when no board is open).
+
+Not Vercel Cron: the Hobby plan only permits one cron run per day. `db/cron.sql` schedules
+it in Postgres instead and calls `/api/cron/escalate` over `pg_net` — which also means the
+schedule survives moving the app off Vercel entirely. Run that file once in the Supabase
+SQL editor after deploying, replacing the domain and `CRON_SECRET` placeholders.
+
+**Cron budget: 200 runs/day, hard cap.** `*/10 * * * *` is 6/hour × 24 = **144/day**.
+If you ever tighten it, `*/8` (180/day) is the floor.
+
+Two traps, both documented in `db/cron.sql`: `net.http_post` only *queues* the request, so
+`cron.job_run_details` reports success even when the app returned a 404 — the real answer
+is in `net._http_response`. And `pg_net` must be created `with schema extensions`, or it
+lands in `public` and cannot be relocated afterwards.
 
 ### The money
 
@@ -114,6 +127,7 @@ lib/
 db/
   schema.sql   idempotent, run with npm run db:push
   seed.mjs     RN Hospitality demo data
+  cron.sql     pg_cron schedule for the escalation sweep, run once in Supabase
 ```
 
 ---

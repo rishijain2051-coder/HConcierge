@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { rupees } from '@/lib/money'
 import { formatAge, minutesRemaining } from '@/lib/sla'
 import { GUEST_STATUS_LABEL, type Category, type GuestRequest, type GuestState, type InfoPage, type Item, type Property, type Room } from '@/lib/types'
+import { IconBell, IconChat, IconDining, IconHome, IconInfo } from '@/components/icons'
 import { cancelRequest, submitCart, submitFreeform } from './actions'
 import GuestChat from './GuestChat'
 
@@ -157,13 +158,13 @@ export default function GuestApp({
         <div className="mx-auto flex max-w-2xl pb-[env(safe-area-inset-bottom)]">
           {(
             [
-              ['home', 'Home', '⌂', openRequests.length],
-              ['dining', 'Dining', '🍽', 0],
-              ['services', 'Services', '🛎', 0],
-              ['info', 'Hotel', 'ℹ', 0],
-              ['chat', 'Chat', '💬', unreadFromStaff],
+              ['home', 'Home', IconHome, openRequests.length],
+              ['dining', 'Dining', IconDining, 0],
+              ['services', 'Services', IconBell, 0],
+              ['info', 'Hotel', IconInfo, 0],
+              ['chat', 'Chat', IconChat, unreadFromStaff],
             ] as const
-          ).map(([id, label, icon, badge]) => (
+          ).map(([id, label, Ico, badge]) => (
             <button
               key={id}
               onClick={() => setTab(id)}
@@ -171,7 +172,7 @@ export default function GuestApp({
                 tab === id ? 'brand-text' : 'text-faint'
               }`}
             >
-              <span className="text-lg leading-none">{icon}</span>
+              <Ico size={19} />
               {label}
               {badge > 0 && id !== 'home' && (
                 <span className="brand-bg absolute top-1.5 right-[22%] h-1.5 w-1.5 rounded-full" />

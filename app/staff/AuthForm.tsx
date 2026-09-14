@@ -31,8 +31,7 @@ export default function AuthForm({
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
-      <p className="text-muted text-[11px] font-semibold tracking-[0.16em] uppercase">RN Hospitality</p>
-      <h1 className="mt-2 text-[30px] leading-tight font-semibold tracking-tight">{title}</h1>
+      <h1 className="font-display text-[clamp(1.9rem,4vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">{title}</h1>
       <p className="text-muted mt-1.5 text-sm">{subtitle}</p>
 
       <form action={formAction} className="mt-7 space-y-4">

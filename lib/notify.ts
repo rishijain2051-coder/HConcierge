@@ -71,8 +71,8 @@ type EscalationRow = {
  * The second case is the one that actually generates complaints.
  *
  * Called opportunistically from the staff board poll (so escalation lands
- * within seconds while anyone is working) and from a Vercel cron (so it still
- * fires at 4am when no board is open).
+ * within seconds while anyone is working) and from Supabase pg_cron every ten
+ * minutes (so it still fires at 4am when no board is open). See db/cron.sql.
  */
 export async function sweepEscalations(propertyId?: string): Promise<number> {
   const rows = await sql<EscalationRow[]>`
