@@ -46,9 +46,25 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ### The guest
 
-`/r/<token>` — the token is printed into the room's QR code and is the guest's entire
-credential. It is reissued on check-in, check-out and on demand, so a photo of last
-week's QR stops working.
+`/r/<token>` — two factors, neither of them a password.
+
+1. **The room's QR token.** Permanent, printed once, laminated, left on the desk. It
+   identifies the room. It is not a secret worth defending on its own.
+2. **A 4-digit code**, issued by the front desk for one stay and printed on the guest's
+   welcome card.
+
+Four digits is only 10,000 combinations, which is defensible *because* it sits behind the
+token and behind a lockout: five wrong codes locks that room for fifteen minutes, and the
+front desk can see and clear it. A guest who photographs the QR and returns next month
+has a valid token and a dead code.
+
+The granted cookie is signed against the room **and** that stay's check-in timestamp, so
+checking a guest out invalidates every device they used without anything being revoked.
+The token and the code are both checked on every read and every write, not once at page
+load.
+
+This replaced an earlier model where the token rotated at check-in — which silently
+invalidated the printed card and would have meant reprinting one per room per stay.
 
 Five screens: **Home** (quick asks, live status, free-text box, running bill), **Dining**
 (the room service menu with a cart and modifiers), **Services** (housekeeping, laundry,

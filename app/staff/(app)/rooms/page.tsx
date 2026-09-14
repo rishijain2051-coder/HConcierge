@@ -17,6 +17,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
     sql<RoomRow[]>`
       select r.id, r.number, r.floor, r.room_type, r.token, r.occupied, r.guest_name,
              r.checked_in_at, r.checkout_at, r.property_id, p.name as property_name,
+             r.access_code, r.code_attempts, r.code_locked_until,
              (select count(*)::int from requests q
                where q.room_id = r.id and q.status in ('new','ack','in_progress')) as open_requests
         from rooms r join properties p on p.id = r.property_id

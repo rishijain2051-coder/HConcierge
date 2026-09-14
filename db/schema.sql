@@ -62,6 +62,16 @@ create table if not exists rooms (
   unique (property_id, number)
 );
 
+-- Per-stay access code. The QR token identifies the room and is permanent, so
+-- the printed card never has to be replaced; this 4-digit code is the part that
+-- changes with the guest. Alone it is only 10,000 combinations, which is why
+-- code_attempts/code_locked_until exist — it is a second factor behind a random
+-- token that lives physically inside the room, not a password.
+alter table rooms add column if not exists access_code       text;
+alter table rooms add column if not exists code_set_at        timestamptz;
+alter table rooms add column if not exists code_attempts      int not null default 0;
+alter table rooms add column if not exists code_locked_until  timestamptz;
+
 -- ------------------------------------------------------------------ catalog
 -- kind drives which guest screen the category appears on:
 --   amenity     free housekeeping items (towels, pillows)

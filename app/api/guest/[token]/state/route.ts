@@ -1,4 +1,5 @@
 import { loadGuestState, loadRoom } from '@/lib/guest'
+import { hasGuestAccess } from '@/lib/guest-session'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,8 @@ export async function GET(_req: Request, ctx: RouteContext<'/api/guest/[token]/s
   const { token } = await ctx.params
   const room = await loadRoom(token)
   if (!room) return Response.json({ error: 'unknown room' }, { status: 404 })
+  // The token identifies the room; it does not authorise reading the stay.
+  if (!(await hasGuestAccess(room.room))) return Response.json({ error: 'locked' }, { status: 401 })
 
   const state = await loadGuestState(room.room.id)
   return Response.json(state, { headers: { 'Cache-Control': 'no-store' } })

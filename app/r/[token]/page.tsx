@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDirectory, loadGuestState, loadInfoPages, loadRoom } from '@/lib/guest'
+import { hasGuestAccess } from '@/lib/guest-session'
+import CodeGate from './CodeGate'
 import GuestApp from './GuestApp'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +21,31 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
   const { token } = await params
   const ctx = await loadRoom(token)
   if (!ctx) notFound()
+
+  // The QR is permanent and lives in the room, so it identifies the room but
+  // proves nothing about who is holding it. The stay's code does that.
+  if (!ctx.room.occupied) {
+    return (
+      <div
+        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center"
+        style={{ ['--brand' as string]: ctx.property.brand_color }}
+      >
+        <p className="text-muted text-[14px] font-semibold tracking-tight">{ctx.property.name}</p>
+        <h1 className="font-display mt-2 text-[clamp(1.9rem,7vw,2.5rem)] leading-[1.05] tracking-[-0.02em]">
+          Room {ctx.room.number} is not checked in
+        </h1>
+        <p className="text-muted mt-3 text-[15px] leading-relaxed">
+          Once you have checked in, the front desk will give you a four-digit code for this room. Scan again then and
+          you are straight in.
+        </p>
+        {ctx.property.phone && <p className="text-faint mt-6 text-[13px]">Front desk — {ctx.property.phone}</p>}
+      </div>
+    )
+  }
+
+  if (!(await hasGuestAccess(ctx.room))) {
+    return <CodeGate token={token} room={ctx.room} property={ctx.property} />
+  }
 
   const [directory, info, state] = await Promise.all([
     loadDirectory(ctx.property.id),

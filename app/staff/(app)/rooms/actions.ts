@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
 import { audit } from '@/lib/audit'
 import { canTouchProperty, requireManager, type Staff } from '@/lib/auth'
+import { generateAccessCode } from '@/lib/guest-session'
 
 const newToken = () => randomBytes(8).toString('base64url')
 
@@ -15,20 +16,28 @@ async function roomFor(staff: Staff, roomId: string) {
   return room
 }
 
+/**
+ * Check-in issues a fresh 4-digit code and leaves the QR token alone.
+ *
+ * The token used to rotate here, which quietly invalidated the printed card in
+ * the room and meant reprinting one per check-in. The card is now permanent and
+ * the code is the part that changes with the guest.
+ */
 export async function checkIn(roomId: string, guestName: string, checkoutAt: string | null) {
   const staff = await requireManager()
   const room = await roomFor(staff, roomId)
-  if (!room) return { ok: false, error: 'Not your room.' }
+  if (!room) return { ok: false as const, error: 'Not your room.' }
 
   const name = guestName.trim().slice(0, 120)
-  if (!name) return { ok: false, error: 'Enter the guest name.' }
+  if (!name) return { ok: false as const, error: 'Enter the guest name.' }
 
-  // A fresh token on check-in means the previous guest's photo of the QR is
-  // already dead, even if nobody remembered to check them out.
+  const code = generateAccessCode()
   await sql`
     update rooms
        set occupied = true, guest_name = ${name}, checked_in_at = now(),
-           checkout_at = ${checkoutAt || null}, token = ${newToken()}
+           checkout_at = ${checkoutAt || null},
+           access_code = ${code}, code_set_at = now(),
+           code_attempts = 0, code_locked_until = null
      where id = ${roomId}`
 
   await audit({
@@ -41,20 +50,21 @@ export async function checkIn(roomId: string, guestName: string, checkoutAt: str
     meta: { room: room.number, guest: name },
   })
   revalidatePath('/staff/rooms')
-  return { ok: true }
+  return { ok: true as const, code }
 }
 
 export async function checkOut(roomId: string) {
   const staff = await requireManager()
   const room = await roomFor(staff, roomId)
-  if (!room) return { ok: false, error: 'Not your room.' }
+  if (!room) return { ok: false as const, error: 'Not your room.' }
 
+  // Clearing checked_in_at is what invalidates the guest's device: their cookie
+  // is signed against that timestamp, so it stops matching the moment they go.
   await sql`
     update rooms
-       set occupied = false, guest_name = null, checked_in_at = null,
-           checkout_at = null, token = ${newToken()}
+       set occupied = false, guest_name = null, checked_in_at = null, checkout_at = null,
+           access_code = null, code_set_at = null, code_attempts = 0, code_locked_until = null
      where id = ${roomId}`
-  // Open requests belong to a guest who has left.
   await sql`
     update requests set status = 'cancelled', cancel_reason = 'Guest checked out', completed_at = now()
      where room_id = ${roomId} and status in ('new','ack','in_progress')`
@@ -69,14 +79,66 @@ export async function checkOut(roomId: string) {
     meta: { room: room.number },
   })
   revalidatePath('/staff/rooms')
-  return { ok: true }
+  return { ok: true as const }
 }
 
-/** For a card that went missing, or a QR somebody photographed and shared. */
+/** A new code for the same stay — for a guest who lost the welcome card. */
+export async function newAccessCode(roomId: string) {
+  const staff = await requireManager()
+  const room = await roomFor(staff, roomId)
+  if (!room) return { ok: false as const, error: 'Not your room.' }
+
+  const [occupied] = await sql<{ occupied: boolean }[]>`select occupied from rooms where id = ${roomId}`
+  if (!occupied?.occupied) return { ok: false as const, error: 'Check the guest in first.' }
+
+  const code = generateAccessCode()
+  await sql`
+    update rooms
+       set access_code = ${code}, code_set_at = now(), code_attempts = 0, code_locked_until = null
+     where id = ${roomId}`
+
+  await audit({
+    propertyId: room.property_id,
+    staffId: staff.id,
+    actor: staff.name,
+    action: 'room.code_reissued',
+    entity: 'room',
+    entityId: roomId,
+    meta: { room: room.number },
+  })
+  revalidatePath('/staff/rooms')
+  return { ok: true as const, code }
+}
+
+/** Clears a lockout after too many wrong codes, without changing the code. */
+export async function unlockRoomCode(roomId: string) {
+  const staff = await requireManager()
+  const room = await roomFor(staff, roomId)
+  if (!room) return { ok: false as const, error: 'Not your room.' }
+
+  await sql`update rooms set code_attempts = 0, code_locked_until = null where id = ${roomId}`
+  await audit({
+    propertyId: room.property_id,
+    staffId: staff.id,
+    actor: staff.name,
+    action: 'room.code_unlocked',
+    entity: 'room',
+    entityId: roomId,
+    meta: { room: room.number },
+  })
+  revalidatePath('/staff/rooms')
+  return { ok: true as const }
+}
+
+/**
+ * Reissues the QR itself. Rarely needed now that the card is permanent — only
+ * for one that has been damaged, or photographed by someone who should not have
+ * it. The printed card MUST be replaced afterwards; the old one stops working.
+ */
 export async function rotateToken(roomId: string) {
   const staff = await requireManager()
   const room = await roomFor(staff, roomId)
-  if (!room) return { ok: false, error: 'Not your room.' }
+  if (!room) return { ok: false as const, error: 'Not your room.' }
 
   await sql`update rooms set token = ${newToken()} where id = ${roomId}`
   await audit({
@@ -89,18 +151,18 @@ export async function rotateToken(roomId: string) {
     meta: { room: room.number },
   })
   revalidatePath('/staff/rooms')
-  return { ok: true }
+  return { ok: true as const }
 }
 
 export async function addRoom(propertyId: string, number: string, floor: string, roomType: string) {
   const staff = await requireManager()
-  if (!canTouchProperty(staff, propertyId)) return { ok: false, error: 'Not your property.' }
+  if (!canTouchProperty(staff, propertyId)) return { ok: false as const, error: 'Not your property.' }
 
   const num = number.trim().slice(0, 16)
-  if (!num) return { ok: false, error: 'Enter a room number.' }
+  if (!num) return { ok: false as const, error: 'Enter a room number.' }
 
   const existing = await sql`select 1 from rooms where property_id = ${propertyId} and number = ${num}`
-  if (existing.length > 0) return { ok: false, error: `Room ${num} already exists.` }
+  if (existing.length > 0) return { ok: false as const, error: `Room ${num} already exists.` }
 
   await sql`
     insert into rooms (property_id, number, floor, room_type, token)
@@ -116,5 +178,5 @@ export async function addRoom(propertyId: string, number: string, floor: string,
     meta: { room: num },
   })
   revalidatePath('/staff/rooms')
-  return { ok: true }
+  return { ok: true as const }
 }
