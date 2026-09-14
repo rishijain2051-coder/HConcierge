@@ -163,6 +163,9 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   if (!/^[a-z0-9._-]{3,60}$/.test(username)) {
     return fail('Usernames use 3–60 lowercase letters, numbers, dot, dash or underscore.')
   }
+  // A forged form field used to reach the CHECK constraint and come back as a
+  // 500. The database is the backstop, not the validation.
+  if (!DEPARTMENTS_WITH_ALL.includes(input.department)) return fail('Choose a team.')
   if (!canAssignRole(actor, input.role)) return fail('Only a group admin can create managers or admins.')
 
   // platform is org-less by definition; everyone else inherits the actor's
@@ -209,6 +212,8 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   return { ok: true, password }
 }
 
+const DEPARTMENTS_WITH_ALL: string[] = ['front_desk', 'housekeeping', 'fnb', 'maintenance', 'all']
+
 export async function updateStaff(
   actor: Staff,
   id: string,
@@ -219,6 +224,7 @@ export async function updateStaff(
   >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
   if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
+  if (!DEPARTMENTS_WITH_ALL.includes(input.department)) return fail('Choose a team.')
   if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can edit that account.')
   if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can edit an admin.')
   // Only a role CHANGE needs the authority to grant it. Requiring it to leave
@@ -464,6 +470,8 @@ export async function createProperty(
 
 export async function updateProperty(actor: Staff, id: string, input: PropertyInput): Promise<Ok> {
   if (!(await canManageProperty(actor, id))) return fail('Not your property.')
+  // The same rules as creating one. An edit could previously blank the name.
+  if (!input.name.trim()) return fail('Enter a name.')
   if (!/^#[0-9a-fA-F]{6}$/.test(input.brandColor)) return fail('Brand colour must be a hex value like #0F766E.')
 
   await sql`
@@ -757,6 +765,12 @@ export async function saveInfoPage(
   if (!input.body.trim()) return fail('Enter something for the guest to read.')
 
   if (input.id) {
+    // Checked, not caught: the unique index used to surface as a 500.
+    const [clash] = await sql`
+      select 1 from info_pages
+       where property_id = ${propertyId} and slug = ${slug} and id <> ${input.id}`
+    if (clash) return fail(`Another page already uses the address “${slug}”.`)
+
     await sql`
       update info_pages
          set slug = ${slug}, title = ${title}, body = ${input.body.trim()},

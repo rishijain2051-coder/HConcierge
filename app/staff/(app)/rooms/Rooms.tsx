@@ -128,6 +128,7 @@ export default function Rooms({
                     <p className="truncate text-[14px] font-medium">{r.guest_name}</p>
                     <p className="text-faint text-[11px]">
                       In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '—'}
+                      {r.checkout_at && ` · out ${new Date(r.checkout_at).toLocaleDateString()}`}
                       {r.open_requests > 0 && ` · ${r.open_requests} open`}
                       {r.balance_paise > 0 && (
                         <span className="text-ink font-semibold"> · {rupees(r.balance_paise)}</span>

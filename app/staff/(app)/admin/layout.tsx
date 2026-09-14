@@ -26,7 +26,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     ? [{ href: '/staff/admin/organisations', label: 'Organisations' }]
     : [
         { href: '/staff/admin', label: 'Staff' },
-        ...(staff.role === 'staff' ? [] : [{ href: '/staff/admin/properties', label: 'Properties' }]),
+        // Properties is admin-level; a manager who clicked it was bounced to
+        // the board with no explanation.
+        ...(staff.role === 'manager' ? [] : [{ href: '/staff/admin/properties', label: 'Properties' }]),
         { href: '/staff/admin/catalog', label: 'Directory' },
         { href: '/staff/admin/escalation', label: 'Escalation' },
         { href: '/staff/admin/info', label: 'Hotel info' },

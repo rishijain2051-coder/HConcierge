@@ -289,7 +289,11 @@ export default function GuestApp({
       )}
 
       {toast && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-32 z-[60] flex justify-center px-4">
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-0 bottom-32 z-[60] flex justify-center px-4"
+        >
           <div
             className={`rise rounded-full px-4 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-float)] ${
               toast.tone === 'ok' ? 'bg-ink' : 'bg-late'
@@ -481,7 +485,7 @@ function Home({
             <textarea
               value={freeform}
               onChange={(e) => setFreeform(e.target.value)}
-              rows={2}
+              rows={3}
               maxLength={500}
               placeholder="Tell us in your own words — we read every one."
               className="placeholder:text-faint w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none"
@@ -1015,9 +1019,19 @@ function ItemSheet({
 
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-full p-1 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_10%,transparent)]">
-          <SheetStep icon={<IconMinus size={16} />} onClick={() => setQty((q) => Math.max(1, q - 1))} disabled={qty <= 1} label="One fewer" />
+          <SheetStep
+            icon={<IconMinus size={16} />}
+            onClick={() => setQty((q) => Math.max(1, q - 1))}
+            disabled={qty <= 1}
+            label={`One fewer ${item.name}`}
+          />
           <span className="w-7 text-center text-[15px] font-semibold tabular-nums">{qty}</span>
-          <SheetStep icon={<IconPlus size={16} />} onClick={() => setQty((q) => Math.min(20, q + 1))} disabled={qty >= 20} label="One more" />
+          <SheetStep
+            icon={<IconPlus size={16} />}
+            onClick={() => setQty((q) => Math.min(20, q + 1))}
+            disabled={qty >= 20}
+            label={`One more ${item.name}`}
+          />
         </div>
         <button
           onClick={() => onAdd(picked, note, qty)}
@@ -1122,9 +1136,17 @@ function CartSheet({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center rounded-full p-0.5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_10%,transparent)]">
-                  <SheetStep icon={<IconMinus size={15} />} onClick={() => setQty(e.key, e.qty - 1)} label="One fewer" />
+                  <SheetStep
+                    icon={<IconMinus size={15} />}
+                    onClick={() => setQty(e.key, e.qty - 1)}
+                    label={`One fewer ${e.item.name}`}
+                  />
                   <span className="w-6 text-center text-sm font-semibold tabular-nums">{e.qty}</span>
-                  <SheetStep icon={<IconPlus size={15} />} onClick={() => setQty(e.key, Math.min(20, e.qty + 1))} label="One more" />
+                  <SheetStep
+                    icon={<IconPlus size={15} />}
+                    onClick={() => setQty(e.key, Math.min(20, e.qty + 1))}
+                    label={`One more ${e.item.name}`}
+                  />
                 </div>
               </div>
             ))}

@@ -112,7 +112,11 @@ export async function submitRoomCode(room: Room, code: string): Promise<CodeResu
   }
   if (row.code_locked_until && row.code_locked_until > new Date()) {
     const mins = Math.ceil((row.code_locked_until.getTime() - Date.now()) / 60000)
-    return { ok: false, error: 'Too many attempts. The front desk can let you straight in.', lockedMinutes: mins }
+    return {
+      ok: false,
+      error: `Too many attempts. Try again in ${mins} minute${mins === 1 ? '' : 's'}, or the front desk can let you straight in.`,
+      lockedMinutes: mins,
+    }
   }
 
   // Constant-time, so the response cannot be used to narrow the code digit by digit.

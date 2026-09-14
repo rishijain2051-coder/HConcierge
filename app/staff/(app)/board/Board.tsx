@@ -257,16 +257,16 @@ export default function Board({
             </span>
           )}
           {stale && <span className="text-warn text-[12px] font-medium">Reconnecting…</span>}
-          {!alerts ? (
-            <button
-              onClick={enableAlerts}
-              className="border-line hover:border-ink rounded-xl border px-3 py-2 text-[13px] font-semibold"
-            >
-              🔔 Turn on alerts
-            </button>
-          ) : (
-            <span className="text-ok text-[12px] font-medium">🔔 Alerts on</span>
-          )}
+          <button
+            onClick={() => (alerts ? setAlerts(false) : enableAlerts())}
+            aria-pressed={alerts}
+            title={alerts ? 'Stop the chime and the notifications' : 'Chime and notify when a request arrives'}
+            className={`rounded-xl border px-3 py-2 text-[13px] font-semibold transition ${
+              alerts ? 'border-ok text-ok' : 'border-line hover:border-ink'
+            }`}
+          >
+            🔔 {alerts ? 'Alerts on' : 'Turn on alerts'}
+          </button>
         </div>
       </div>
 

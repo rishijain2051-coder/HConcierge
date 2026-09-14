@@ -237,9 +237,9 @@ export default function CatalogManager({
                 name="price"
                 type="number"
                 min={0}
-                step="1"
+                step="0.01"
                 defaultValue={editingItem ? editingItem.price_paise / 100 : 0}
-                hint="0 shows as complimentary."
+                hint="0 shows as complimentary. Paise are allowed — 249.50."
               />
               <Field
                 label="Target (minutes)"
