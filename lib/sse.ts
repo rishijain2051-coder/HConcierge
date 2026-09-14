@@ -27,8 +27,16 @@ export function sseStream<T>({
   load: () => Promise<T>
 }): Response {
   const encoder = new TextEncoder()
+  // Held outside the stream so `cancel` can reach it. Without a cancel handler
+  // the runtime reports a normal client hang-up as "destination stream closed
+  // early", and a log full of stack traces for people closing a browser tab is
+  // a log nobody reads.
+  let cleanup = () => {}
 
   const stream = new ReadableStream<Uint8Array>({
+    cancel() {
+      cleanup()
+    },
     start(controller) {
       let closed = false
       let queued: NodeJS.Timeout | null = null
@@ -98,6 +106,7 @@ export function sseStream<T>({
         }
       }
 
+      cleanup = shutdown
       signal.addEventListener('abort', shutdown)
       // `retry` is how long the browser waits before reopening after we close.
       write('retry: 3000\n\n')
