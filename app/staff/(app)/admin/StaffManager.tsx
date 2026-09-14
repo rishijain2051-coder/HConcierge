@@ -104,7 +104,6 @@ export default function StaffManager({
                 <Tag>{departmentLabel(s.department)}</Tag>
                 {!s.active && <Tag tone="late">Deactivated</Tag>}
                 {locked && <Tag tone="late">Locked</Tag>}
-                {s.must_change_password && s.active && <Tag tone="warn">Must change password</Tag>}
                 {!s.last_login_at && s.active && <Tag>Never signed in</Tag>}
               </div>
 

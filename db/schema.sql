@@ -31,13 +31,14 @@ create table if not exists staff (
   role          text not null default 'staff' check (role in ('admin','manager','staff')),
   phone         text,
   active        boolean not null default true,
-  must_change_password boolean not null default false,
   failed_logins int not null default 0,
   locked_until  timestamptz,
   last_login_at timestamptz,
   created_at    timestamptz not null default now()
 );
 create unique index if not exists staff_username_key on staff (lower(username));
+-- passwords are set and reset by an admin; nothing forces a change at sign-in
+alter table staff drop column if exists must_change_password;
 
 -- admins are group-level and have no property; everyone else must have one
 alter table staff drop constraint if exists staff_property_required;

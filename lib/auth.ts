@@ -16,7 +16,6 @@ export type Staff = {
   department: Department
   role: Role
   phone: string | null
-  must_change_password: boolean
   property_name?: string | null
   property_slug?: string | null
   organisation_name?: string | null
@@ -117,7 +116,7 @@ export const getStaff = cache(async (): Promise<Staff | null> => {
 
   const rows = await sql<Staff[]>`
     select s.id, s.organisation_id, s.property_id, s.username, s.name, s.department,
-           s.role, s.phone, s.must_change_password,
+           s.role, s.phone,
            p.name as property_name, p.slug as property_slug, o.name as organisation_name
       from staff s
       left join properties p on p.id = s.property_id
@@ -220,7 +219,7 @@ export function canTouchProperty(
 // --------------------------------------------------------------- login limits
 
 export type LoginResult =
-  | { ok: true; staff: { id: string; role: Role; must_change_password: boolean } }
+  | { ok: true; staff: { id: string; role: Role } }
   | { ok: false; error: string }
 
 /**
@@ -230,8 +229,8 @@ export type LoginResult =
  */
 export async function attemptLogin(username: string, password: string): Promise<LoginResult> {
   const rows = await sql<
-    { id: string; role: Role; password_hash: string; active: boolean; locked_until: Date | null; must_change_password: boolean }[]
-  >`select id, role, password_hash, active, locked_until, must_change_password
+    { id: string; role: Role; password_hash: string; active: boolean; locked_until: Date | null }[]
+  >`select id, role, password_hash, active, locked_until
       from staff where lower(username) = lower(${username}) limit 1`
 
   const generic = { ok: false as const, error: 'Incorrect username or password.' }
@@ -260,5 +259,5 @@ export async function attemptLogin(username: string, password: string): Promise<
   }
 
   await sql`update staff set failed_logins = 0, locked_until = null, last_login_at = now() where id = ${row.id}`
-  return { ok: true, staff: { id: row.id, role: row.role, must_change_password: row.must_change_password } }
+  return { ok: true, staff: { id: row.id, role: row.role } }
 }

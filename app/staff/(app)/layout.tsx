@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { departmentLabel, homeFor, requireStaff } from '@/lib/auth'
 import { logout } from '../login/actions'
 
@@ -7,8 +6,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const staff = await requireStaff()
-  // A seeded account cannot reach the board until its password is its own.
-  if (staff.must_change_password) redirect('/staff/password')
 
   // HConcierge runs the product, not a front desk: no board, no rooms, no shift.
   const nav =

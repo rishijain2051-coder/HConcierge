@@ -28,7 +28,7 @@ export async function login(_prev: FormState, form: FormData): Promise<FormState
   await audit({ staffId: result.staff.id, actor: username, action: 'staff.login' })
 
   // redirect throws by design — it must be outside any try/catch.
-  redirect(result.staff.must_change_password ? '/staff/password' : homeFor(result.staff))
+  redirect(homeFor(result.staff))
 }
 
 export async function logout(): Promise<void> {
@@ -60,8 +60,7 @@ export async function changePassword(_prev: FormState, form: FormData): Promise<
   }
 
   await sql`
-    update staff set password_hash = ${hashPassword(next)}, must_change_password = false
-     where id = ${staff.id}`
+    update staff set password_hash = ${hashPassword(next)} where id = ${staff.id}`
   await audit({
     propertyId: staff.property_id,
     staffId: staff.id,

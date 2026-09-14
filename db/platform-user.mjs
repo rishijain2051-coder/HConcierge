@@ -47,8 +47,8 @@ try {
   const password = generate()
   const [row] = await sql`
     insert into staff (organisation_id, property_id, username, name, password_hash,
-                       department, role, must_change_password)
-    values (null, null, ${username}, ${name}, ${hash(password)}, 'all', 'platform', true)
+                       department, role)
+    values (null, null, ${username}, ${name}, ${hash(password)}, 'all', 'platform')
     on conflict (lower(username)) do update
       set password_hash = excluded.password_hash,
           name = excluded.name,
@@ -56,14 +56,13 @@ try {
           organisation_id = null,
           property_id = null,
           active = true,
-          must_change_password = true,
           failed_logins = 0,
           locked_until = null
     returning id, username`
 
   console.log(`\n  platform account: ${row.username}`)
   console.log(`  password:         ${password}`)
-  console.log('\n  Shown once. You will be asked to change it at first sign-in.')
+  console.log('\n  Shown once. Change it under Password once you are in.')
   console.log('  This account sees every organisation — keep it off shared machines.\n')
 } catch (err) {
   console.error('✗ failed:', err.message)

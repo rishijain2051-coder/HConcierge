@@ -77,7 +77,6 @@ export type StaffRow = {
   department: Department
   phone: string | null
   active: boolean
-  must_change_password: boolean
   failed_logins: number
   locked_until: string | null
   last_login_at: string | null
@@ -90,7 +89,7 @@ export type StaffRow = {
 export async function listStaff(actor: Staff): Promise<StaffRow[]> {
   return sql<StaffRow[]>`
     select s.id, s.username, s.name, s.role, s.department, s.phone, s.active,
-           s.must_change_password, s.failed_logins, s.locked_until, s.last_login_at,
+           s.failed_logins, s.locked_until, s.last_login_at,
            s.property_id, p.name as property_name,
            s.organisation_id, o.name as organisation_name
       from staff s
@@ -152,9 +151,9 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
 
   const [row] = await sql<{ id: string }[]>`
     insert into staff (organisation_id, property_id, username, name, password_hash, department,
-                       role, phone, must_change_password)
+                       role, phone)
     values (${organisationId}, ${propertyId}, ${username}, ${name}, ${hashPassword(password)},
-            ${input.department}, ${input.role}, ${input.phone?.trim() || null}, true)
+            ${input.department}, ${input.role}, ${input.phone?.trim() || null})
     returning id`
 
   await audit({
@@ -261,7 +260,7 @@ export async function resetStaffPassword(actor: Staff, id: string): Promise<Ok<{
   const password = generatePassword()
   await sql`
     update staff
-       set password_hash = ${hashPassword(password)}, must_change_password = true,
+       set password_hash = ${hashPassword(password)},
            failed_logins = 0, locked_until = null
      where id = ${id}`
 

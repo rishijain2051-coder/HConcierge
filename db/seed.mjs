@@ -488,9 +488,9 @@ async function main() {
 
   for (const s of STAFF) {
     await sql`
-      insert into staff (property_id, username, name, password_hash, department, role, must_change_password)
+      insert into staff (property_id, username, name, password_hash, department, role)
       values (${s.property ? bySlug[s.property] : null}, ${s.username}, ${s.name},
-              ${passwordHash}, ${s.department}, ${s.role}, true)
+              ${passwordHash}, ${s.department}, ${s.role})
       on conflict (lower(username)) do update
         set password_hash = excluded.password_hash,
             property_id = excluded.property_id,
