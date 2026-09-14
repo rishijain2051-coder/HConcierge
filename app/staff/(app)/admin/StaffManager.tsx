@@ -13,8 +13,16 @@ type Property = { id: string; name: string }
 const ROLES = [
   { value: 'staff', label: 'Staff — one department’s board' },
   { value: 'manager', label: 'Manager — the whole property, gets escalations' },
-  { value: 'admin', label: 'Admin — every property' },
+  { value: 'admin', label: 'Admin — every property in this organisation' },
+  { value: 'platform', label: 'HConcierge — every organisation' },
 ]
+
+/** Nobody may mint a role at or above their own. */
+const ASSIGNABLE: Record<string, string[]> = {
+  platform: ['staff', 'manager', 'admin', 'platform'],
+  admin: ['staff', 'manager'],
+  manager: ['staff'],
+}
 
 const DEPT_OPTIONS = [
   ...DEPARTMENTS.map((d) => ({ value: d.value, label: d.label })),
@@ -38,7 +46,8 @@ export default function StaffManager({
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null)
   const [confirming, setConfirming] = useState<StaffRow | null>(null)
 
-  const roleOptions = me.role === 'admin' ? ROLES : ROLES.filter((r) => r.value === 'staff')
+  const allowed = ASSIGNABLE[me.role] ?? ['staff']
+  const roleOptions = ROLES.filter((r) => allowed.includes(r.value))
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) {
     setError(null)
@@ -75,12 +84,23 @@ export default function StaffManager({
                   {s.id === me.id && <span className="text-faint ml-2 text-[11px] font-normal">you</span>}
                 </p>
                 <p className="text-faint text-[12px]">
-                  {s.username} · {s.property_name ?? 'All properties'}
+                  {s.username} ·{' '}
+                  {s.role === 'platform'
+                    ? 'every organisation'
+                    : (s.property_name ?? s.organisation_name ?? 'All properties')}
                 </p>
               </div>
 
               <div className="flex min-w-[13rem] flex-wrap items-center gap-1.5">
-                <Tag>{s.role === 'admin' ? 'Admin' : s.role === 'manager' ? 'Manager' : 'Staff'}</Tag>
+                <Tag>
+                  {s.role === 'platform'
+                    ? 'HConcierge'
+                    : s.role === 'admin'
+                      ? 'Admin'
+                      : s.role === 'manager'
+                        ? 'Manager'
+                        : 'Staff'}
+                </Tag>
                 <Tag>{departmentLabel(s.department)}</Tag>
                 {!s.active && <Tag tone="late">Deactivated</Tag>}
                 {locked && <Tag tone="late">Locked</Tag>}
@@ -136,7 +156,7 @@ export default function StaffManager({
             action={(form) => {
               const input = {
                 name: String(form.get('name') ?? ''),
-                role: String(form.get('role') ?? 'staff') as 'staff' | 'manager' | 'admin',
+                role: String(form.get('role') ?? 'staff') as 'staff' | 'manager' | 'admin' | 'platform',
                 department: String(form.get('department') ?? 'front_desk') as never,
                 propertyId: String(form.get('propertyId') ?? '') || me.propertyId,
                 phone: String(form.get('phone') ?? '') || null,

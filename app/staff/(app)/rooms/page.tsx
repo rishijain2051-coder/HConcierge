@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireStaff } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { scopeTo } from '@/lib/scope'
 import { baseUrl } from '@/lib/qr'
 import Rooms, { type RoomRow } from './Rooms'
 
@@ -11,7 +12,6 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
   const { property } = await searchParams
   const selected = typeof property === 'string' ? property : ''
 
-  const scopeId = staff.role === 'admin' ? selected || null : staff.property_id
 
   const [rooms, properties, base] = await Promise.all([
     sql<RoomRow[]>`
@@ -21,9 +21,10 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
              (select count(*)::int from requests q
                where q.room_id = r.id and q.status in ('new','ack','in_progress')) as open_requests
         from rooms r join properties p on p.id = r.property_id
-       where ${scopeId ? sql`r.property_id = ${scopeId}` : sql`true`}
+       where ${scopeTo(staff, sql`r.property_id`, selected || null)}
        order by p.name, r.floor nulls last, r.number`,
-    sql<{ id: string; name: string }[]>`select id, name from properties order by name`,
+    sql<{ id: string; name: string }[]>`
+      select id, name from properties where ${scopeTo(staff, sql`id`)} order by name`,
     baseUrl(),
   ])
 
@@ -37,7 +38,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
           </p>
         </div>
         <Link
-          href={scopeId ? `/staff/rooms/print?property=${scopeId}` : '/staff/rooms/print'}
+          href={selected ? `/staff/rooms/print?property=${selected}` : '/staff/rooms/print'}
           className="bg-ink rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
         >
           Print QR cards

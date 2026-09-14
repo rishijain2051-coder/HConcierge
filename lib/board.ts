@@ -2,6 +2,7 @@ import { sql } from './db'
 import { audit } from './audit'
 import { postCharge, voidCharge } from './folio'
 import { canTouchDepartment, canTouchProperty, visibleDepartments, type Staff } from './auth'
+import { propRef, scopeTo } from './scope'
 import { departmentLabel } from './types'
 import type { BoardRequest, ChatMessage, RequestStatus } from './types'
 
@@ -17,9 +18,7 @@ import type { BoardRequest, ChatMessage, RequestStatus } from './types'
 const DONE_WINDOW_HOURS = 4
 
 function propertyScope(staff: Staff, propertyId?: string | null) {
-  // Admins may look at one property or all of them; everyone else is pinned.
-  if (staff.role === 'admin') return propertyId ? sql`r.property_id = ${propertyId}` : sql`true`
-  return sql`r.property_id = ${staff.property_id}`
+  return scopeTo(staff, sql`r.property_id`, propertyId)
 }
 
 function departmentScope(staff: Staff) {
@@ -76,12 +75,7 @@ export type ChatRoom = {
 
 /** Rooms with a conversation, newest first. Drives the Messages panel. */
 export async function loadChatRooms(staff: Staff, propertyId?: string | null): Promise<ChatRoom[]> {
-  const scope =
-    staff.role === 'admin'
-      ? propertyId
-        ? sql`m.property_id = ${propertyId}`
-        : sql`true`
-      : sql`m.property_id = ${staff.property_id}`
+  const scope = scopeTo(staff, sql`m.property_id`, propertyId)
 
   return sql<ChatRoom[]>`
     select distinct on (m.room_id)
@@ -97,8 +91,10 @@ export async function loadChatRooms(staff: Staff, propertyId?: string | null): P
 }
 
 export async function loadRoomThread(staff: Staff, roomId: string): Promise<ChatMessage[]> {
-  const [room] = await sql<{ property_id: string }[]>`select property_id from rooms where id = ${roomId}`
-  if (!room || !canTouchProperty(staff, room.property_id)) return []
+  const [room] = await sql<{ property_id: string; organisation_id: string | null }[]>`
+    select r.property_id, p.organisation_id
+      from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
+  if (!room || !canTouchProperty(staff, propRef(room))) return []
 
   return sql<ChatMessage[]>`
     select m.id, m.sender, s.name as staff_name, m.body, m.created_at
@@ -109,8 +105,10 @@ export async function loadRoomThread(staff: Staff, roomId: string): Promise<Chat
 }
 
 export async function markThreadRead(staff: Staff, roomId: string): Promise<void> {
-  const [room] = await sql<{ property_id: string }[]>`select property_id from rooms where id = ${roomId}`
-  if (!room || !canTouchProperty(staff, room.property_id)) return
+  const [room] = await sql<{ property_id: string; organisation_id: string | null }[]>`
+    select r.property_id, p.organisation_id
+      from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
+  if (!room || !canTouchProperty(staff, propRef(room))) return
   await sql`update messages set read_at = now()
              where room_id = ${roomId} and sender = 'guest' and read_at is null`
 }
@@ -119,10 +117,11 @@ export async function replyToRoom(staff: Staff, roomId: string, body: string): P
   const text = body.trim().slice(0, 1000)
   if (!text) return { ok: false, error: 'Nothing to send.' }
 
-  const [room] = await sql<{ property_id: string; number: string }[]>`
-    select property_id, number from rooms where id = ${roomId}`
+  const [room] = await sql<{ property_id: string; organisation_id: string | null; number: string }[]>`
+    select r.property_id, r.number, p.organisation_id
+      from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
   if (!room) return { ok: false, error: 'Unknown room.' }
-  if (!canTouchProperty(staff, room.property_id)) return { ok: false, error: 'Not your property.' }
+  if (!canTouchProperty(staff, propRef(room))) return { ok: false, error: 'Not your property.' }
 
   await sql`
     insert into messages (property_id, room_id, sender, staff_id, body)
@@ -155,12 +154,13 @@ export async function setRequestStatus(
   reason?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const [current] = await sql<
-    { id: string; property_id: string; room_id: string; department: string; status: RequestStatus; total_paise: number; ref: string; guest_name: string | null }[]
-  >`select id, property_id, room_id, department, status, total_paise, ref::text as ref, guest_name
-      from requests where id = ${requestId}`
+    { id: string; property_id: string; organisation_id: string | null; room_id: string; department: string; status: RequestStatus; total_paise: number; ref: string; guest_name: string | null }[]
+  >`select r.id, r.property_id, r.room_id, r.department, r.status, r.total_paise,
+           r.ref::text as ref, r.guest_name, p.organisation_id
+      from requests r join properties p on p.id = r.property_id where r.id = ${requestId}`
 
   if (!current) return { ok: false, error: 'That request no longer exists.' }
-  if (!canTouchProperty(staff, current.property_id)) return { ok: false, error: 'Not your property.' }
+  if (!canTouchProperty(staff, propRef(current))) return { ok: false, error: 'Not your property.' }
   if (!canTouchDepartment(staff, current.department)) return { ok: false, error: 'Not your department.' }
   if (current.status === next) return { ok: true }
   if (!NEXT_STATUS[current.status].includes(next)) {
@@ -210,10 +210,11 @@ export async function setRequestStatus(
 }
 
 export async function assignRequest(staff: Staff, requestId: string, toStaffId: string | null) {
-  const [current] = await sql<{ property_id: string; department: string }[]>`
-    select property_id, department from requests where id = ${requestId}`
+  const [current] = await sql<{ property_id: string; organisation_id: string | null; department: string }[]>`
+    select r.property_id, r.department, p.organisation_id
+      from requests r join properties p on p.id = r.property_id where r.id = ${requestId}`
   if (!current) return { ok: false, error: 'That request no longer exists.' }
-  if (!canTouchProperty(staff, current.property_id)) return { ok: false, error: 'Not your property.' }
+  if (!canTouchProperty(staff, propRef(current))) return { ok: false, error: 'Not your property.' }
 
   await sql`update requests set assigned_to = ${toStaffId} where id = ${requestId}`
   await audit({
@@ -229,7 +230,9 @@ export async function assignRequest(staff: Staff, requestId: string, toStaffId: 
 }
 
 export async function loadAssignableStaff(staff: Staff, propertyId: string) {
-  if (!canTouchProperty(staff, propertyId)) return []
+  const [prop] = await sql<{ id: string; organisation_id: string | null }[]>`
+    select id, organisation_id from properties where id = ${propertyId}`
+  if (!prop || !canTouchProperty(staff, prop)) return []
   return sql<{ id: string; name: string; department: string }[]>`
     select id, name, department from staff
      where property_id = ${propertyId} and active

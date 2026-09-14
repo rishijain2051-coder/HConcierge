@@ -1,5 +1,40 @@
+export type AppliesTo = 'unaccepted' | 'unfinished' | 'any'
+
+export const APPLIES_TO_LABEL: Record<AppliesTo, string> = {
+  unaccepted: 'Nobody has accepted it',
+  unfinished: 'Accepted but not finished',
+  any: 'Still open, either way',
+}
+
+export type RuleStaff = { id: string; name: string; phone: string | null }
+
+export type EscalationRule = {
+  id: string
+  property_id: string
+  department: string | null
+  step: number
+  after_minutes: number
+  applies_to: AppliesTo
+  notify_managers: boolean
+  notify_admins: boolean
+  active: boolean
+  staff: RuleStaff[]
+}
+
+export type EscalationInput = {
+  id?: string | null
+  department: string | null
+  step: number
+  afterMinutes: number
+  appliesTo: AppliesTo
+  notifyManagers: boolean
+  notifyAdmins: boolean
+  active: boolean
+  staffIds: string[]
+}
+
 export type Department = 'front_desk' | 'housekeeping' | 'fnb' | 'maintenance' | 'all'
-export type Role = 'admin' | 'manager' | 'staff'
+export type Role = 'platform' | 'admin' | 'manager' | 'staff'
 
 export const DEPARTMENTS: { value: Exclude<Department, 'all'>; label: string }[] = [
   { value: 'front_desk', label: 'Front desk' },

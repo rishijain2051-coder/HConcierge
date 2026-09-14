@@ -3,6 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { requireManager, type Department, type Role } from '@/lib/auth'
 import * as admin from '@/lib/admin'
+import * as escalation from '@/lib/escalation'
+import * as orgs from '@/lib/organisations'
+import { requirePlatform } from '@/lib/auth'
 
 /**
  * Thin wrappers: every one re-reads the session server-side, so the panel's
@@ -141,6 +144,50 @@ export async function saveInfoPage(
 export async function deleteInfoPage(id: string) {
   const actor = await requireManager()
   const res = await admin.deleteInfoPage(actor, id)
+  if (res.ok) touched()
+  return res
+}
+
+/* --------------------------------------------------------------- escalation */
+
+export async function saveEscalationRule(propertyId: string, input: escalation.EscalationInput) {
+  const actor = await requireManager()
+  const res = await escalation.saveEscalationRule(actor, propertyId, input)
+  if (res.ok) touched()
+  return res
+}
+
+export async function deleteEscalationRule(id: string) {
+  const actor = await requireManager()
+  const res = await escalation.deleteEscalationRule(actor, id)
+  if (res.ok) touched()
+  return res
+}
+
+export async function setWarnThreshold(propertyId: string, percent: number) {
+  const actor = await requireManager()
+  const res = await escalation.setWarnThreshold(actor, propertyId, percent)
+  if (res.ok) touched()
+  return res
+}
+
+/* ------------------------------------------------------------ organisations */
+
+export async function createOrganisation(input: {
+  name: string
+  slug: string
+  adminName: string
+  adminUsername: string
+}) {
+  const actor = await requirePlatform()
+  const res = await orgs.createOrganisation(actor, input)
+  if (res.ok) touched()
+  return res
+}
+
+export async function updateOrganisation(id: string, name: string) {
+  const actor = await requirePlatform()
+  const res = await orgs.updateOrganisation(actor, id, name)
   if (res.ok) touched()
   return res
 }

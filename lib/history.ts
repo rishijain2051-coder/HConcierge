@@ -1,5 +1,6 @@
 import { sql } from './db'
 import { visibleDepartments, type Staff } from './auth'
+import { scopeTo } from './scope'
 import type { RequestStatus } from './types'
 
 export type HistoryFilters = {
@@ -44,12 +45,7 @@ export type HistoryStats = {
 }
 
 function scopes(staff: Staff, f: HistoryFilters) {
-  const property =
-    staff.role === 'admin'
-      ? f.propertyId
-        ? sql`r.property_id = ${f.propertyId}`
-        : sql`true`
-      : sql`r.property_id = ${staff.property_id}`
+  const property = scopeTo(staff, sql`r.property_id`, f.propertyId)
 
   const visible = visibleDepartments(staff)
   const allowed = visible.length === 0 ? sql`true` : sql`r.department = any(${visible})`

@@ -78,12 +78,40 @@ never sees the biryani. This is the part that stops reception being a switchboar
 
 Departments: `front_desk`, `housekeeping`, `fnb`, `maintenance`.
 
+### Who sees what
+
+Four levels, each scoped by the one above:
+
+| Role | Sees |
+| --- | --- |
+| `platform` | every organisation — HConcierge itself |
+| `admin` | one organisation's properties |
+| `manager` | one property |
+| `staff` | one department at one property |
+
+An **organisation** is a customer. RN Hospitality is one and owns its properties. Every
+scoped query goes through `scopeTo()` in `lib/scope.ts`, so there is one definition of
+"which properties may this person see" rather than a copy per query.
+
+A `platform` account can only be created by `npm run db:platform` — no in-app path
+promotes anyone to it, because that role sees across every customer.
+
 ### The SLA
 
 Every catalogue item carries a target time; a request inherits the slowest item in it.
 Cards turn amber at 60% of the budget and red past it. A request nobody accepted within
 its target, or accepted and then sat on for twice it, is escalated — flagged on the board
 and messaged to duty managers.
+
+Escalation itself is configured per property in **Manage → Escalation**: a ladder of
+rungs, each firing once. `after_minutes` counts from the moment a request misses its
+*own* target, so one rung reads the same for a ten-minute towel and a forty-minute
+biryani — "fifteen minutes late, tell the duty manager". A request that passes two rungs
+unnoticed jumps straight to the higher one rather than trickling up a sweep at a time.
+
+A rung names groups (the property's managers, the organisation's admins) and/or specific
+people. Only staff with a phone number can actually be reached, and the screen says so
+when nobody has one.
 
 The sweep runs opportunistically on every board poll (so it lands within seconds while
 anyone is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at

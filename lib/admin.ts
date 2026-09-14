@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto'
 import { sql } from './db'
 import { audit } from './audit'
+import { scopeTo } from './scope'
 import {
   canTouchProperty,
   generatePassword,
@@ -25,22 +26,44 @@ import {
 
 export type Ok<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 
-const fail = (error: string) => ({ ok: false as const, error })
+export const fail = (error: string) => ({ ok: false as const, error })
 
-function canManageProperty(actor: Staff, propertyId: string | null): boolean {
-  if (actor.role === 'admin') return true
-  return propertyId !== null && canTouchProperty(actor, propertyId)
+export async function canManageProperty(actor: Staff, propertyId: string | null): Promise<boolean> {
+  if (actor.role === 'platform') return true
+  if (propertyId === null) return false
+  const [prop] = await sql<{ id: string; organisation_id: string | null }[]>`
+    select id, organisation_id from properties where id = ${propertyId}`
+  return Boolean(prop) && canTouchProperty(actor, prop)
 }
 
-/** Managers may only ever mint plain staff. */
+/** Nobody may mint a role at or above their own. */
 function canAssignRole(actor: Staff, role: Role): boolean {
-  return actor.role === 'admin' || role === 'staff'
+  if (actor.role === 'platform') return true
+  if (actor.role === 'admin') return role === 'manager' || role === 'staff'
+  if (actor.role === 'manager') return role === 'staff'
+  return false
 }
 
-async function activeAdminCount(excluding?: string): Promise<number> {
+/**
+ * Counted per organisation. A global count would let one customer's last admin
+ * be removed as long as some other customer still had one — which is exactly
+ * the lockout this guard exists to prevent.
+ */
+async function activeAdminCount(organisationId: string | null, excluding?: string): Promise<number> {
   const [row] = await sql<{ n: number }[]>`
     select count(*)::int as n from staff
-     where role = 'admin' and active and id <> coalesce(${excluding ?? null}, '00000000-0000-0000-0000-000000000000'::uuid)`
+     where role = 'admin' and active
+       and organisation_id is not distinct from ${organisationId}
+       and id <> coalesce(${excluding ?? null}, '00000000-0000-0000-0000-000000000000'::uuid)`
+  return row.n
+}
+
+/** Platform accounts are never scoped to an organisation. */
+async function activePlatformCount(excluding?: string): Promise<number> {
+  const [row] = await sql<{ n: number }[]>`
+    select count(*)::int as n from staff
+     where role = 'platform' and active
+       and id <> coalesce(${excluding ?? null}, '00000000-0000-0000-0000-000000000000'::uuid)`
   return row.n
 }
 
@@ -60,20 +83,32 @@ export type StaffRow = {
   last_login_at: string | null
   property_id: string | null
   property_name: string | null
+  organisation_id: string | null
+  organisation_name: string | null
 }
 
 export async function listStaff(actor: Staff): Promise<StaffRow[]> {
   return sql<StaffRow[]>`
     select s.id, s.username, s.name, s.role, s.department, s.phone, s.active,
            s.must_change_password, s.failed_logins, s.locked_until, s.last_login_at,
-           s.property_id, p.name as property_name
-      from staff s left join properties p on p.id = s.property_id
-     where ${actor.role === 'admin' ? sql`true` : sql`s.property_id = ${actor.property_id}`}
-     order by case s.role when 'admin' then 0 when 'manager' then 1 else 2 end, s.name`
+           s.property_id, p.name as property_name,
+           s.organisation_id, o.name as organisation_name
+      from staff s
+      left join properties p on p.id = s.property_id
+      left join organisations o on o.id = s.organisation_id
+     where ${
+       actor.role === 'platform'
+         ? sql`true`
+         : actor.role === 'admin'
+           ? sql`s.organisation_id = ${actor.organisation_id}`
+           : sql`s.property_id = ${actor.property_id}`
+     }
+     order by case s.role when 'platform' then 0 when 'admin' then 1 when 'manager' then 2 else 3 end, s.name`
 }
 
 export type StaffInput = {
   name: string
+  organisationId?: string | null
   username: string
   role: Role
   department: Department
@@ -92,10 +127,20 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   }
   if (!canAssignRole(actor, input.role)) return fail('Only a group admin can create managers or admins.')
 
-  const propertyId = input.role === 'admin' ? null : (input.propertyId ?? actor.property_id)
-  if (input.role !== 'admin') {
+  // platform is org-less by definition; everyone else inherits the actor's
+  // organisation unless HConcierge is explicitly placing them in another.
+  const organisationId =
+    input.role === 'platform'
+      ? null
+      : actor.role === 'platform'
+        ? (input.organisationId ?? null)
+        : actor.organisation_id
+  if (input.role !== 'platform' && !organisationId) return fail('Choose an organisation.')
+
+  const propertyId = input.role === 'admin' || input.role === 'platform' ? null : (input.propertyId ?? actor.property_id)
+  if (input.role === 'manager' || input.role === 'staff') {
     if (!propertyId) return fail('Choose a property.')
-    if (!canManageProperty(actor, propertyId)) return fail('Not your property.')
+    if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
   }
 
   const [clash] = await sql`select 1 from staff where lower(username) = ${username}`
@@ -106,9 +151,9 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   if (problem) return fail(problem)
 
   const [row] = await sql<{ id: string }[]>`
-    insert into staff (property_id, username, name, password_hash, department, role, phone,
-                       must_change_password)
-    values (${propertyId}, ${username}, ${name}, ${hashPassword(password)},
+    insert into staff (organisation_id, property_id, username, name, password_hash, department,
+                       role, phone, must_change_password)
+    values (${organisationId}, ${propertyId}, ${username}, ${name}, ${hashPassword(password)},
             ${input.department}, ${input.role}, ${input.phone?.trim() || null}, true)
     returning id`
 
@@ -131,28 +176,32 @@ export async function updateStaff(
   id: string,
   input: Omit<StaffInput, 'password' | 'username'>,
 ): Promise<Ok> {
-  const [target] = await sql<{ role: Role; property_id: string | null; username: string }[]>`
-    select role, property_id, username from staff where id = ${id}`
+  const [target] = await sql<
+    { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
+  >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
-  if (!canManageProperty(actor, target.property_id) && target.role !== 'admin') return fail('Not your property.')
-  if (target.role === 'admin' && actor.role !== 'admin') return fail('Only a group admin can edit an admin.')
+  if (!(await canManageProperty(actor, target.property_id)) && target.role !== 'admin') return fail('Not your property.')
+  if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can edit that account.')
+  if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can edit an admin.')
   if (!canAssignRole(actor, input.role)) return fail('Only a group admin can grant manager or admin.')
 
   if (id === actor.id && input.role !== actor.role) {
     return fail('You cannot change your own role. Ask another admin.')
   }
-  if (target.role === 'admin' && input.role !== 'admin' && (await activeAdminCount(id)) === 0) {
+  if (target.role === 'admin' && input.role !== 'admin' && (await activeAdminCount(target.organisation_id, id)) === 0) {
     return fail('This is the last admin. Promote someone else first.')
   }
 
-  const propertyId = input.role === 'admin' ? null : (input.propertyId ?? target.property_id)
-  if (input.role !== 'admin' && !propertyId) return fail('Choose a property.')
+  const propertyId = input.role === 'admin' || input.role === 'platform' ? null : (input.propertyId ?? target.property_id)
+  if ((input.role === 'manager' || input.role === 'staff') && !propertyId) return fail('Choose a property.')
+  const organisationId = input.role === 'platform' ? null : (target.organisation_id ?? actor.organisation_id)
 
   await sql`
     update staff
        set name = ${input.name.trim().slice(0, 120)},
            role = ${input.role},
            department = ${input.department},
+           organisation_id = ${organisationId},
            property_id = ${propertyId},
            phone = ${input.phone?.trim() || null}
      where id = ${id}`
@@ -172,12 +221,17 @@ export async function updateStaff(
 export async function setStaffActive(actor: Staff, id: string, active: boolean): Promise<Ok> {
   if (id === actor.id) return fail('You cannot deactivate your own account.')
 
-  const [target] = await sql<{ role: Role; property_id: string | null; username: string }[]>`
-    select role, property_id, username from staff where id = ${id}`
+  const [target] = await sql<
+    { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
+  >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
-  if (target.role === 'admin' && actor.role !== 'admin') return fail('Only a group admin can do that.')
-  if (!canManageProperty(actor, target.property_id) && target.role !== 'admin') return fail('Not your property.')
-  if (!active && target.role === 'admin' && (await activeAdminCount(id)) === 0) {
+  if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can do that.')
+  if (target.role === 'platform' && !active && (await activePlatformCount(id)) === 0) {
+    return fail('This is the last HConcierge account. There would be no way back in.')
+  }
+  if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can do that.')
+  if (!(await canManageProperty(actor, target.property_id)) && target.role !== 'admin') return fail('Not your property.')
+  if (!active && target.role === 'admin' && (await activeAdminCount(target.organisation_id, id)) === 0) {
     return fail('This is the last active admin. There would be no way back in.')
   }
 
@@ -196,11 +250,13 @@ export async function setStaffActive(actor: Staff, id: string, active: boolean):
 
 /** Makes the login screen's "your duty manager can reset it" actually true. */
 export async function resetStaffPassword(actor: Staff, id: string): Promise<Ok<{ password: string }>> {
-  const [target] = await sql<{ role: Role; property_id: string | null; username: string }[]>`
-    select role, property_id, username from staff where id = ${id}`
+  const [target] = await sql<
+    { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
+  >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
-  if (target.role === 'admin' && actor.role !== 'admin') return fail('Only a group admin can reset an admin.')
-  if (!canManageProperty(actor, target.property_id) && target.role !== 'admin') return fail('Not your property.')
+  if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can reset that account.')
+  if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can reset an admin.')
+  if (!(await canManageProperty(actor, target.property_id)) && target.role !== 'admin') return fail('Not your property.')
 
   const password = generatePassword()
   await sql`
@@ -225,7 +281,7 @@ export async function unlockStaff(actor: Staff, id: string): Promise<Ok> {
   const [target] = await sql<{ property_id: string | null; username: string }[]>`
     select property_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
-  if (!canManageProperty(actor, target.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, target.property_id))) return fail('Not your property.')
 
   await sql`update staff set failed_logins = 0, locked_until = null where id = ${id}`
   await audit({
@@ -262,7 +318,7 @@ export async function listProperties(actor: Staff): Promise<PropertyRow[]> {
            (select count(*)::int from staff  where property_id = p.id) as staff,
            (select count(*)::int from items  where property_id = p.id) as items
       from properties p
-     where ${actor.role === 'admin' ? sql`true` : sql`p.id = ${actor.property_id}`}
+     where ${scopeTo(actor, sql`p.id`)}
      order by p.name`
 }
 
@@ -284,8 +340,12 @@ export async function createProperty(
   actor: Staff,
   input: PropertyInput,
   copyCatalogFrom?: string | null,
+  organisationId?: string | null,
 ): Promise<Ok<{ id: string }>> {
-  if (actor.role !== 'admin') return fail('Only a group admin can add a property.')
+  if (actor.role !== 'admin' && actor.role !== 'platform') return fail('Only an admin can add a property.')
+
+  const orgId = actor.role === 'platform' ? (organisationId ?? null) : actor.organisation_id
+  if (!orgId) return fail('Choose an organisation for this property.')
 
   const name = input.name.trim().slice(0, 120)
   const slug = input.slug.trim().toLowerCase().slice(0, 60)
@@ -297,10 +357,14 @@ export async function createProperty(
   if (clash) return fail(`The slug “${slug}” is taken.`)
 
   const [property] = await sql<{ id: string }[]>`
-    insert into properties (slug, name, address, phone, brand_color, timezone)
-    values (${slug}, ${name}, ${input.address?.trim() || null}, ${input.phone?.trim() || null},
+    insert into properties (organisation_id, slug, name, address, phone, brand_color, timezone)
+    values (${orgId}, ${slug}, ${name}, ${input.address?.trim() || null}, ${input.phone?.trim() || null},
             ${input.brandColor}, ${input.timezone || 'Asia/Kolkata'})
     returning id`
+
+  if (copyCatalogFrom && !(await canManageProperty(actor, copyCatalogFrom))) {
+    return fail('That is not a property you can copy from.')
+  }
 
   if (copyCatalogFrom) {
     const categories = await sql<{ id: string; kind: string; name: string; icon: string | null; sort: number }[]>`
@@ -342,7 +406,7 @@ export async function createProperty(
 }
 
 export async function updateProperty(actor: Staff, id: string, input: PropertyInput): Promise<Ok> {
-  if (!canManageProperty(actor, id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, id))) return fail('Not your property.')
   if (!/^#[0-9a-fA-F]{6}$/.test(input.brandColor)) return fail('Brand colour must be a hex value like #0F766E.')
 
   await sql`
@@ -393,7 +457,7 @@ export type AdminCategory = {
 }
 
 export async function listCatalog(actor: Staff, propertyId: string): Promise<AdminCategory[]> {
-  if (!canManageProperty(actor, propertyId)) return []
+  if (!(await canManageProperty(actor, propertyId))) return []
 
   const [categories, items] = await Promise.all([
     sql<Omit<AdminCategory, 'items'>[]>`
@@ -445,7 +509,7 @@ export async function createItem(actor: Staff, categoryId: string, input: ItemIn
   const [category] = await sql<{ property_id: string }[]>`
     select property_id from categories where id = ${categoryId}`
   if (!category) return fail('That section no longer exists.')
-  if (!canManageProperty(actor, category.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, category.property_id))) return fail('Not your property.')
 
   const problem = validateItem(input)
   if (problem) return fail(problem)
@@ -475,7 +539,7 @@ export async function createItem(actor: Staff, categoryId: string, input: ItemIn
 export async function updateItem(actor: Staff, id: string, input: ItemInput): Promise<Ok> {
   const [item] = await sql<{ property_id: string }[]>`select property_id from items where id = ${id}`
   if (!item) return fail('That item no longer exists.')
-  if (!canManageProperty(actor, item.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, item.property_id))) return fail('Not your property.')
 
   const problem = validateItem(input)
   if (problem) return fail(problem)
@@ -509,7 +573,7 @@ export async function deleteItem(actor: Staff, id: string): Promise<Ok> {
   const [item] = await sql<{ property_id: string; name: string }[]>`
     select property_id, name from items where id = ${id}`
   if (!item) return { ok: true }
-  if (!canManageProperty(actor, item.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, item.property_id))) return fail('Not your property.')
 
   // request_items keeps a name and price snapshot, so past orders survive this.
   await sql`delete from items where id = ${id}`
@@ -530,7 +594,7 @@ export async function createCategory(
   propertyId: string,
   input: { kind: string; name: string; icon: string | null },
 ): Promise<Ok> {
-  if (!canManageProperty(actor, propertyId)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
   if (!input.name.trim()) return fail('Enter a name.')
   if (!KINDS.includes(input.kind)) return fail('Choose where this section appears.')
 
@@ -559,7 +623,7 @@ export async function updateCategory(
 ): Promise<Ok> {
   const [category] = await sql<{ property_id: string }[]>`select property_id from categories where id = ${id}`
   if (!category) return fail('That section no longer exists.')
-  if (!canManageProperty(actor, category.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, category.property_id))) return fail('Not your property.')
   if (!KINDS.includes(input.kind)) return fail('Choose where this section appears.')
 
   await sql`
@@ -582,7 +646,7 @@ export async function deleteCategory(actor: Staff, id: string): Promise<Ok> {
   const [category] = await sql<{ property_id: string; name: string }[]>`
     select property_id, name from categories where id = ${id}`
   if (!category) return { ok: true }
-  if (!canManageProperty(actor, category.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, category.property_id))) return fail('Not your property.')
 
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from items where category_id = ${id}`
   if (n > 0) return fail(`Empty “${category.name}” first — it still has ${n} item${n === 1 ? '' : 's'}.`)
@@ -613,7 +677,7 @@ export type AdminInfoPage = {
 }
 
 export async function listAdminInfoPages(actor: Staff, propertyId: string): Promise<AdminInfoPage[]> {
-  if (!canManageProperty(actor, propertyId)) return []
+  if (!(await canManageProperty(actor, propertyId))) return []
   return sql<AdminInfoPage[]>`
     select id, slug, title, body, icon, sort, active from info_pages
      where property_id = ${propertyId} order by sort, title`
@@ -624,7 +688,7 @@ export async function saveInfoPage(
   propertyId: string,
   input: { id?: string | null; slug: string; title: string; body: string; icon: string | null; active: boolean },
 ): Promise<Ok> {
-  if (!canManageProperty(actor, propertyId)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
   const title = input.title.trim().slice(0, 120)
   const slug = (input.slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-')).slice(0, 60)
   if (!title) return fail('Enter a title.')
@@ -663,7 +727,7 @@ export async function deleteInfoPage(actor: Staff, id: string): Promise<Ok> {
   const [page] = await sql<{ property_id: string; title: string }[]>`
     select property_id, title from info_pages where id = ${id}`
   if (!page) return { ok: true }
-  if (!canManageProperty(actor, page.property_id)) return fail('Not your property.')
+  if (!(await canManageProperty(actor, page.property_id))) return fail('Not your property.')
 
   await sql`delete from info_pages where id = ${id}`
   await audit({
@@ -695,7 +759,7 @@ export async function listAudit(actor: Staff, opts: { action?: string | null; da
   return sql<AuditRow[]>`
     select a.id, a.actor, a.action, a.entity, a.entity_id, a.meta, a.created_at, p.name as property_name
       from audit_log a left join properties p on p.id = a.property_id
-     where ${actor.role === 'admin' ? sql`true` : sql`a.property_id = ${actor.property_id}`}
+     where ${scopeTo(actor, sql`a.property_id`)}
        and a.created_at > now() - (${opts.days} || ' days')::interval
        and ${opts.action ? sql`a.action like ${opts.action + '%'}` : sql`true`}
      order by a.created_at desc
@@ -705,28 +769,32 @@ export async function listAudit(actor: Staff, opts: { action?: string | null; da
 export async function listAuditActions(actor: Staff): Promise<string[]> {
   const rows = await sql<{ action: string }[]>`
     select distinct action from audit_log
-     where ${actor.role === 'admin' ? sql`true` : sql`property_id = ${actor.property_id}`}
+     where ${scopeTo(actor, sql`property_id`)}
      order by action`
   return rows.map((r) => r.action)
 }
 
 /** Used by the panel's index to say what is actually there. */
 export async function adminOverview(actor: Staff) {
+  const props = scopeTo(actor, sql`p.id`)
   const [row] = await sql<
     { properties: number; rooms: number; occupied: number; staff: number; items: number; open_requests: number }[]
   >`
-    select (select count(*)::int from properties
-             where ${actor.role === 'admin' ? sql`true` : sql`id = ${actor.property_id}`}) as properties,
-           (select count(*)::int from rooms r
-             where ${actor.role === 'admin' ? sql`true` : sql`r.property_id = ${actor.property_id}`}) as rooms,
-           (select count(*)::int from rooms r where r.occupied
-             and ${actor.role === 'admin' ? sql`true` : sql`r.property_id = ${actor.property_id}`}) as occupied,
-           (select count(*)::int from staff s where s.active
-             and ${actor.role === 'admin' ? sql`true` : sql`s.property_id = ${actor.property_id}`}) as staff,
-           (select count(*)::int from items i
-             where ${actor.role === 'admin' ? sql`true` : sql`i.property_id = ${actor.property_id}`}) as items,
-           (select count(*)::int from requests q where q.status in ('new','ack','in_progress')
-             and ${actor.role === 'admin' ? sql`true` : sql`q.property_id = ${actor.property_id}`}) as open_requests`
+    with mine as (select p.id from properties p where ${props})
+    select (select count(*)::int from mine)                                               as properties,
+           (select count(*)::int from rooms  where property_id in (select id from mine))  as rooms,
+           (select count(*)::int from rooms  where occupied
+                                              and property_id in (select id from mine))   as occupied,
+           (select count(*)::int from items  where property_id in (select id from mine))  as items,
+           (select count(*)::int from requests where status in ('new','ack','in_progress')
+                                              and property_id in (select id from mine))   as open_requests,
+           (select count(*)::int from staff s where s.active and ${
+             actor.role === 'platform'
+               ? sql`true`
+               : actor.role === 'admin'
+                 ? sql`s.organisation_id = ${actor.organisation_id}`
+                 : sql`s.property_id = ${actor.property_id}`
+           })                                                                             as staff`
   return row
 }
 

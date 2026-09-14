@@ -9,6 +9,7 @@ export type { Department, Role } from './types'
 
 export type Staff = {
   id: string
+  organisation_id: string | null
   property_id: string | null
   username: string
   name: string
@@ -18,6 +19,7 @@ export type Staff = {
   must_change_password: boolean
   property_name?: string | null
   property_slug?: string | null
+  organisation_name?: string | null
 }
 
 export const SESSION_COOKIE = 'hc_session'
@@ -114,10 +116,12 @@ export const getStaff = cache(async (): Promise<Staff | null> => {
   if (!payload) return null
 
   const rows = await sql<Staff[]>`
-    select s.id, s.property_id, s.username, s.name, s.department, s.role, s.phone,
-           s.must_change_password, p.name as property_name, p.slug as property_slug
+    select s.id, s.organisation_id, s.property_id, s.username, s.name, s.department,
+           s.role, s.phone, s.must_change_password,
+           p.name as property_name, p.slug as property_slug, o.name as organisation_name
       from staff s
       left join properties p on p.id = s.property_id
+      left join organisations o on o.id = s.organisation_id
      where s.id = ${payload.sid} and s.active
      limit 1`
   return rows[0] ?? null
@@ -135,10 +139,17 @@ export async function requireManager(): Promise<Staff> {
   return staff
 }
 
-/** Group-level only: properties, and creating other admins. */
+/** Organisation-level: properties, and creating other admins. */
 export async function requireAdmin(): Promise<Staff> {
   const staff = await requireStaff()
-  if (staff.role !== 'admin') redirect('/staff/board')
+  if (staff.role !== 'admin' && staff.role !== 'platform') redirect('/staff/board')
+  return staff
+}
+
+/** HConcierge itself. Above every organisation, and held by nobody else. */
+export async function requirePlatform(): Promise<Staff> {
+  const staff = await requireStaff()
+  if (staff.role !== 'platform') redirect('/staff/board')
   return staff
 }
 
@@ -157,8 +168,8 @@ export function generatePassword(): string {
 
 /** Which departments this person's board should show. Empty array = all. */
 export function visibleDepartments(staff: Staff): string[] {
-  if (staff.role === 'admin' || staff.role === 'manager' || staff.department === 'all') return []
-  return [staff.department]
+  if (staff.role === 'staff' && staff.department !== 'all') return [staff.department]
+  return []
 }
 
 export function canTouchDepartment(staff: Staff, department: string): boolean {
@@ -166,9 +177,24 @@ export function canTouchDepartment(staff: Staff, department: string): boolean {
   return visible.length === 0 || visible.includes(department)
 }
 
-/** Admins roam; everyone else is pinned to their own property. */
-export function canTouchProperty(staff: Staff, propertyId: string): boolean {
-  return staff.role === 'admin' || staff.property_id === propertyId
+/**
+ * Platform roams everything; an admin roams their own organisation; everyone
+ * below is pinned to one property.
+ *
+ * This takes the property rather than just its id because an admin's reach is
+ * decided by the PROPERTY's organisation, which the Staff object cannot know.
+ * Call sites already select the row they are checking — widen that select with
+ * a join on properties rather than making this do a second query per check.
+ */
+export function canTouchProperty(
+  staff: Staff,
+  property: { id: string; organisation_id: string | null },
+): boolean {
+  if (staff.role === 'platform') return true
+  if (staff.role === 'admin') {
+    return Boolean(staff.organisation_id) && property.organisation_id === staff.organisation_id
+  }
+  return staff.property_id === property.id
 }
 
 // --------------------------------------------------------------- login limits

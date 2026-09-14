@@ -11,9 +11,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const stats = await adminOverview(staff)
 
   const tabs = [
+    ...(staff.role === 'platform' ? [{ href: '/staff/admin/organisations', label: 'Organisations' }] : []),
     { href: '/staff/admin', label: 'Staff' },
-    ...(staff.role === 'admin' ? [{ href: '/staff/admin/properties', label: 'Properties' }] : []),
+    ...(staff.role === 'staff' ? [] : [{ href: '/staff/admin/properties', label: 'Properties' }]),
     { href: '/staff/admin/catalog', label: 'Directory' },
+    { href: '/staff/admin/escalation', label: 'Escalation' },
     { href: '/staff/admin/info', label: 'Hotel info' },
     { href: '/staff/admin/audit', label: 'Activity' },
   ]
@@ -33,7 +35,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
         <p className="text-faint text-[12px] tabular-nums">
-          {staff.role === 'admin' ? `${stats.properties} propert${stats.properties === 1 ? 'y' : 'ies'} · ` : ''}
+          {staff.role === 'staff' ? '' : `${stats.properties} propert${stats.properties === 1 ? 'y' : 'ies'} · `}
           {stats.rooms} rooms · {stats.occupied} occupied · {stats.staff} staff · {stats.items} directory items
         </p>
       </div>

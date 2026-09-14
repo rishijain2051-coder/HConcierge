@@ -5,14 +5,17 @@ import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
 import { audit } from '@/lib/audit'
 import { canTouchProperty, requireManager, type Staff } from '@/lib/auth'
+import { propRef } from '@/lib/scope'
 import { generateAccessCode } from '@/lib/guest-session'
 
 const newToken = () => randomBytes(8).toString('base64url')
 
 async function roomFor(staff: Staff, roomId: string) {
-  const [room] = await sql<{ id: string; property_id: string; number: string }[]>`
-    select id, property_id, number from rooms where id = ${roomId}`
-  if (!room || !canTouchProperty(staff, room.property_id)) return null
+  const [room] = await sql<
+    { id: string; property_id: string; organisation_id: string | null; number: string }[]
+  >`select r.id, r.property_id, r.number, p.organisation_id
+      from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
+  if (!room || !canTouchProperty(staff, propRef(room))) return null
   return room
 }
 
@@ -156,7 +159,9 @@ export async function rotateToken(roomId: string) {
 
 export async function addRoom(propertyId: string, number: string, floor: string, roomType: string) {
   const staff = await requireManager()
-  if (!canTouchProperty(staff, propertyId)) return { ok: false as const, error: 'Not your property.' }
+  const [prop] = await sql<{ id: string; organisation_id: string | null }[]>`
+    select id, organisation_id from properties where id = ${propertyId}`
+  if (!prop || !canTouchProperty(staff, prop)) return { ok: false as const, error: 'Not your property.' }
 
   const num = number.trim().slice(0, 16)
   if (!num) return { ok: false as const, error: 'Enter a room number.' }

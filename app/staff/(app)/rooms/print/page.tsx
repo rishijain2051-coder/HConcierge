@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireStaff } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { scopeTo } from '@/lib/scope'
 import { baseUrl, qrSvg, roomUrl } from '@/lib/qr'
 import PrintButton from './PrintButton'
 
@@ -20,7 +21,7 @@ type Row = {
 export default async function PrintPage({ searchParams }: PageProps<'/staff/rooms/print'>) {
   const staff = await requireStaff()
   const { property, room, slip } = await searchParams
-  const propertyId = staff.role === 'admin' ? (typeof property === 'string' ? property : null) : staff.property_id
+  const propertyId = typeof property === 'string' ? property : null
   const roomId = typeof room === 'string' ? room : null
   // A welcome card carries the stay's code; a desk card is permanent and does not.
   const isSlip = slip === '1' && Boolean(roomId)
@@ -29,7 +30,7 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
     select r.id, r.number, r.token, r.guest_name, r.access_code,
            p.name as property_name, p.phone as property_phone, p.brand_color
       from rooms r join properties p on p.id = r.property_id
-     where ${propertyId ? sql`r.property_id = ${propertyId}` : sql`true`}
+     where ${scopeTo(staff, sql`r.property_id`, propertyId)}
        and ${roomId ? sql`r.id = ${roomId}` : sql`true`}
      order by p.name, r.number`
 

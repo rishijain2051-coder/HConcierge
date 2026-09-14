@@ -228,3 +228,74 @@ $fn$ language plpgsql;
 drop trigger if exists requests_touch on requests;
 create trigger requests_touch before update on requests
   for each row execute function touch_updated_at();
+
+-- =========================================================================
+-- Tenancy. An organisation is a customer: RN Hospitality is one, and owns
+-- its properties. Without this layer `admin` means "every property row in
+-- the database", which stops being acceptable the moment a second hotel
+-- group exists.
+-- =========================================================================
+
+create table if not exists organisations (
+  id         uuid primary key default gen_random_uuid(),
+  slug       text unique not null,
+  name       text not null,
+  created_at timestamptz not null default now()
+);
+
+alter table properties add column if not exists organisation_id uuid references organisations(id) on delete cascade;
+alter table staff      add column if not exists organisation_id uuid references organisations(id) on delete cascade;
+
+create index if not exists properties_org_idx on properties (organisation_id);
+create index if not exists staff_org_idx      on staff (organisation_id);
+
+-- 'platform' is HConcierge itself: above every organisation, held by nobody
+-- else. It can only be created by db/platform-user.mjs — no in-app path
+-- promotes anyone to it.
+alter table staff drop constraint if exists staff_role_check;
+alter table staff add constraint staff_role_check
+  check (role in ('platform','admin','manager','staff'));
+
+-- platform and admin are property-less; everyone below them is pinned to one.
+-- The organisation columns stay nullable at this level and are enforced in
+-- lib/admin.ts, which is the only writer.
+alter table staff drop constraint if exists staff_property_required;
+alter table staff add constraint staff_property_required
+  check (role in ('platform','admin') or property_id is not null);
+
+-- =========================================================================
+-- Escalation. Replaces the hardcoded "1x target, then 2x target, tell every
+-- manager and admin" rule with a per-property ladder.
+--
+-- after_minutes is minutes PAST the request's own target, so one rule reads
+-- the same for a 10-minute towel and a 40-minute biryani: "fifteen minutes
+-- late, tell the GM".
+-- =========================================================================
+
+alter table properties add column if not exists warn_at_percent int not null default 60;
+
+-- Which rung of the ladder has already fired for this request.
+alter table requests add column if not exists escalation_step int not null default 0;
+
+create table if not exists escalation_rules (
+  id              uuid primary key default gen_random_uuid(),
+  property_id     uuid not null references properties(id) on delete cascade,
+  -- null means every team
+  department      text check (department in ('front_desk','housekeeping','fnb','maintenance')),
+  step            int not null default 1,
+  after_minutes   int not null default 0,
+  applies_to      text not null default 'unaccepted'
+                  check (applies_to in ('unaccepted','unfinished','any')),
+  notify_managers boolean not null default true,
+  notify_admins   boolean not null default false,
+  active          boolean not null default true,
+  created_at      timestamptz not null default now()
+);
+create index if not exists escalation_rules_idx on escalation_rules (property_id, step);
+
+-- Named people on a rung, in addition to (or instead of) the role switches.
+create table if not exists escalation_rule_staff (
+  rule_id  uuid not null references escalation_rules(id) on delete cascade,
+  staff_id uuid not null references staff(id) on delete cascade,
+  primary key (rule_id, staff_id)
+);
