@@ -155,7 +155,33 @@ nothing. They reopen on focus and on every safety poll.
 
 ---
 
-## 6. Session conveniences you may want to remove
+## 6. From the distill pass
+
+`PRODUCT.md` now exists and is the product record: users, purpose, positioning,
+constraints, and — most importantly — an **Evidence on Hand** section that says
+plainly that RN Hospitality has not committed and that every row in the database
+is invented. Read that section before writing a word of marketing copy.
+
+Two things the distill pass could not do, both because the preview and browser
+tools were blocked for that session:
+
+- **No visual inspection round.** The cuts were verified at the source level and
+  with a clean build, type-check, lint and design-detector run — but nobody has
+  looked at the distilled guest app in a browser at 375px and 1600px. That is
+  the first thing to do next session.
+- **The double-bezel reversal is unreviewed.** Commit `88738ac` removed the
+  tray-and-plate surface that `/high-end-visual-design` had introduced. It is a
+  deliberate call — nested cards are the thing distill removes first — but it
+  reverses an earlier explicit instruction, so it deserves a look before it
+  settles. Reverting that one commit restores the previous look.
+
+No `.impeccable/config.json` was written: this harness has no image generation,
+so there is no comp-first/code-first choice to record and code-first is the only
+path available.
+
+---
+
+## 7. Session conveniences you may want to remove
 
 - `.claude/launch.json` gained an `hconcierge-prod` entry (`next start` on
   3100). It is there so production timings can be measured against the dev
