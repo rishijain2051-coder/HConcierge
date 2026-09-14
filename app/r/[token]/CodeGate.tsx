@@ -7,30 +7,23 @@ import { enterRoomCode } from './actions'
 /**
  * Four slots that behave as one object.
  *
- * The row sits on a perspective stage, so a slot can tip through depth instead
- * of sliding flat. Each slot swings about the CENTRE OF THE ROW rather than its
- * own middle, which means the outer two travel further than the inner two and
- * the whole set moves along an arc. A shared translate would read as a slide;
- * this reads as one hinged object opening and closing.
+ * The group beats — opening, closing, rejecting — rotate the WRAPPER about its
+ * own centre rather than moving each slot. That is what makes every slot travel
+ * an arc instead of a line: the outer two sweep further than the inner two,
+ * because they sit further from the pivot. Translating each slot instead leaves
+ * the ring behind, level, with the outer slots breaking out of it top and
+ * bottom — which reads as broken, not hinged.
  *
- * Behind them is a single real input — not four. One input keeps paste, the
- * numeric keypad and the phone's own code autofill working, and avoids the
- * focus-juggling that four boxes always turn into.
+ * Only the per-digit lift animates a single slot, because that is the one beat
+ * that really is about an individual box.
+ *
+ * Behind the slots is one real input, not four. That keeps paste, the numeric
+ * keypad and the phone's own code autofill working, and avoids the
+ * focus-juggling that four separate boxes always turn into.
  */
 
 const SLOTS = [0, 1, 2, 3]
-const GAP = 68 // px between slot centres, matched to the rendered size
-
-/**
- * Rotate a slot about the row's centre by `deg` and return the offset from
- * where it sits at rest. The row is flat, so the slot's own y-offset is zero
- * and this collapses to (r·cosT − r, r·sinT).
- */
-function arc(index: number, deg: number) {
-  const r = (index - (SLOTS.length - 1) / 2) * GAP
-  const t = (deg * Math.PI) / 180
-  return { x: r * Math.cos(t) - r, y: r * Math.sin(t) }
-}
+const EASE = 'cubic-bezier(.22,1,.36,1)'
 
 export default function CodeGate({
   token,
@@ -47,6 +40,7 @@ export default function CodeGate({
   const [wired, setWired] = useState(false)
 
   const input = useRef<HTMLInputElement>(null)
+  const group = useRef<HTMLDivElement>(null)
   const slots = useRef<(HTMLSpanElement | null)[]>([])
   const reduced = useRef(false)
   const lastLen = useRef(0)
@@ -55,94 +49,85 @@ export default function CodeGate({
     reduced.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   }, [])
 
-  const animateSlot = useCallback(
-    (i: number, frames: Keyframe[], duration: number, delay = 0) => {
-      const el = slots.current[i]
-      if (!el) return
-      if (reduced.current) return
-      el.animate(frames, { duration, delay, easing: 'cubic-bezier(.2,.85,.25,1)', fill: 'both' })
-    },
-    [],
-  )
+  /** A group beat: the whole object hinges on its centre. */
+  const swing = useCallback((frames: Keyframe[], duration: number, fill: FillMode = 'none') => {
+    if (reduced.current) return
+    group.current?.animate(frames, { duration, easing: EASE, fill })
+  }, [])
 
-  /** Opening: the set swings in along the arc, outer slots travelling furthest. */
+  /** Opening: the object drops in hinged, while the slots fade up beneath it. */
   useEffect(() => {
     if (reduced.current) return
+    swing(
+      [
+        { transform: 'rotate(6deg) rotateX(-20deg) translateY(-14px)', opacity: 0 },
+        { opacity: 1, offset: 0.45 },
+        { transform: 'rotate(0deg) rotateX(0deg) translateY(0px)', opacity: 1 },
+      ],
+      640,
+      'backwards',
+    )
     SLOTS.forEach((i) => {
-      const from = arc(i, -34)
-      animateSlot(
-        i,
+      slots.current[i]?.animate(
         [
-          {
-            transform: `translate(${from.x}px, ${from.y}px) rotateY(-38deg) rotateX(12deg) scale(.86)`,
-            opacity: 0,
-          },
-          { transform: 'translate(0,0) rotateY(0) rotateX(0) scale(1)', opacity: 1 },
+          { transform: 'scale(.82)', opacity: 0 },
+          { transform: 'scale(1)', opacity: 1 },
         ],
-        620,
-        i * 55,
+        { duration: 420, delay: 90 + i * 55, easing: EASE, fill: 'backwards' },
       )
     })
-  }, [animateSlot])
+  }, [swing])
 
-  /** A digit landing tips that one slot through depth and back. */
+  /** A digit landing lifts that one slot toward the viewer and sets it back. */
   useEffect(() => {
     const len = code.length
     const grew = len > lastLen.current
     lastLen.current = len
     if (!grew) return
 
-    const i = len - 1
-    animateSlot(
-      i,
-      [
-        { transform: 'rotateY(0) scale(1)' },
-        { transform: 'rotateY(34deg) translateZ(26px) scale(1.06)', offset: 0.45 },
-        { transform: 'rotateY(0) translateZ(0) scale(1)' },
-      ],
-      340,
-    )
+    if (!reduced.current) {
+      slots.current[len - 1]?.animate(
+        [
+          { transform: 'translateZ(0px) scale(1)' },
+          { transform: 'translateZ(34px) scale(1.09)', offset: 0.4 },
+          { transform: 'translateZ(0px) scale(1)' },
+        ],
+        { duration: 300, easing: EASE },
+      )
+    }
 
-    // Circuit closed: the four settle together and become one wired object.
+    // Circuit closed. The whole object tips, overshoots and settles — the one
+    // beat on this screen allowed to be big.
     if (len === SLOTS.length) {
       setWired(true)
-      SLOTS.forEach((j) => {
-        const out = arc(j, 7)
-        animateSlot(
-          j,
-          [
-            { transform: 'translate(0,0) rotateX(0)' },
-            { transform: `translate(${out.x}px, ${out.y}px) rotateX(-10deg)`, offset: 0.4 },
-            { transform: 'translate(0,0) rotateX(0)' },
-          ],
-          520,
-          j * 26,
-        )
-      })
+      swing(
+        [
+          { transform: 'rotate(0deg) rotateX(0deg)' },
+          { transform: 'rotate(-4.5deg) rotateX(12deg)', offset: 0.34 },
+          { transform: 'rotate(1.8deg) rotateX(-5deg)', offset: 0.68 },
+          { transform: 'rotate(0deg) rotateX(0deg)' },
+        ],
+        760,
+      )
     } else {
       setWired(false)
     }
-  }, [code, animateSlot])
+  }, [code, swing])
 
-  /** A rejected code throws the set apart along the same arc, then back. */
+  /** Rejected: a short counter-swing, quicker and sharper than the close. */
   const reject = useCallback(() => {
     setWired(false)
-    SLOTS.forEach((i) => {
-      const a = arc(i, 16)
-      const b = arc(i, -11)
-      animateSlot(
-        i,
-        [
-          { transform: 'translate(0,0)' },
-          { transform: `translate(${a.x}px, ${a.y}px) rotateY(18deg)`, offset: 0.3 },
-          { transform: `translate(${b.x}px, ${b.y}px) rotateY(-12deg)`, offset: 0.62 },
-          { transform: 'translate(0,0) rotateY(0)' },
-        ],
-        560,
-        i * 18,
-      )
-    })
-  }, [animateSlot])
+    swing(
+      [
+        { transform: 'rotate(0deg)' },
+        { transform: 'rotate(5deg)', offset: 0.24 },
+        { transform: 'rotate(-3.4deg)', offset: 0.5 },
+        { transform: 'rotate(1.6deg)', offset: 0.76 },
+        { transform: 'rotate(0deg)' },
+      ],
+      460,
+    )
+  }, [swing])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -179,47 +164,47 @@ export default function CodeGate({
         housekeeping, the front desk.
       </p>
 
-      <form onSubmit={submit} className="mt-8">
+      <form onSubmit={submit} className="mt-9">
         <label htmlFor="code" className="sr-only">
           Four-digit room code
         </label>
 
-        {/* The stage. Without perspective the tip below is just a squash. */}
-        <div
-          onClick={() => input.current?.focus()}
-          data-wired={wired || undefined}
-          className="group relative [perspective:1000px]"
-        >
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute -inset-2.5 rounded-[26px] transition-opacity duration-300"
-            style={{ boxShadow: 'inset 0 0 0 1.8px var(--color-ok)', opacity: wired ? 1 : 0 }}
-          />
+        {/* Stage. Without perspective the hinge below is only a squash. */}
+        <div onClick={() => input.current?.focus()} className="relative [perspective:1100px]">
+          {/* The object. Ring and slots rotate together, so the ring stays part
+              of it instead of being a level box the slots escape from. */}
+          <div ref={group} data-wired={wired || undefined} className="relative [transform-style:preserve-3d]">
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -inset-3 rounded-[28px] transition-opacity duration-300"
+              style={{ boxShadow: 'inset 0 0 0 1.8px var(--color-ok)', opacity: wired ? 1 : 0 }}
+            />
 
-          <div className="flex items-center justify-center gap-3 [transform-style:preserve-3d]">
-            {SLOTS.map((i) => {
-              const char = code[i]
-              const isActive = !busy && i === active && code.length < SLOTS.length
-              return (
-                <span
-                  key={i}
-                  ref={(el) => {
-                    slots.current[i] = el
-                  }}
-                  aria-hidden="true"
-                  className="bg-surface border-line grid h-[68px] w-[56px] place-items-center rounded-2xl border text-[30px] font-semibold tabular-nums transition-colors duration-300"
-                  style={{ borderColor: isActive ? 'var(--brand)' : undefined }}
-                >
-                  {char ?? (isActive ? <span className="bg-ink h-7 w-[2px] animate-pulse rounded-full" /> : '')}
-                </span>
-              )
-            })}
+            <div className="flex items-center justify-center gap-3">
+              {SLOTS.map((i) => {
+                const char = code[i]
+                const isActive = !busy && i === active && code.length < SLOTS.length
+                return (
+                  <span
+                    key={i}
+                    ref={(el) => {
+                      slots.current[i] = el
+                    }}
+                    aria-hidden="true"
+                    className="bg-surface border-line grid h-[76px] w-[64px] place-items-center rounded-2xl border text-[32px] font-semibold tabular-nums transition-colors duration-200"
+                    style={{ borderColor: isActive ? 'var(--brand)' : undefined }}
+                  >
+                    {char ?? (isActive ? <span className="bg-ink h-8 w-[2px] animate-pulse rounded-full" /> : '')}
+                  </span>
+                )
+              })}
+            </div>
           </div>
 
           {/* The wire. It only completes once all four slots are filled. */}
           <span
             aria-hidden="true"
-            className="bg-line pointer-events-none absolute inset-x-6 -bottom-1 h-px overflow-hidden rounded-full"
+            className="bg-line pointer-events-none absolute inset-x-8 -bottom-5 h-0.5 overflow-hidden rounded-full"
           >
             <span
               className="bg-ok block h-full origin-left transition-transform duration-500 ease-out"
@@ -238,14 +223,20 @@ export default function CodeGate({
             maxLength={SLOTS.length}
             autoFocus
             aria-describedby={error ? 'code-error' : undefined}
-            // Invisible but genuinely focused: the caret and the value are drawn
-            // by the slots above, and the keyboard still belongs to a real input.
-            className="absolute inset-0 h-full w-full cursor-pointer bg-transparent text-transparent caret-transparent outline-none select-none"
+            // Invisible but genuinely focused: the slots draw the value and the
+            // caret, while the keyboard still belongs to a real input.
+            //
+            // caretColor is set inline, not with `caret-transparent`. The global
+            // `input { caret-color: var(--brand) }` in globals.css is unlayered,
+            // and unlayered rules outrank Tailwind's layered utilities — so the
+            // class silently lost and the real caret showed through the slots.
+            className="absolute inset-0 h-full w-full cursor-pointer bg-transparent text-transparent outline-none select-none"
+            style={{ caretColor: 'transparent' }}
           />
         </div>
 
         {error && (
-          <p id="code-error" role="alert" className="bg-late-soft text-late mt-5 rounded-xl px-3.5 py-2.5 text-[13px]">
+          <p id="code-error" role="alert" className="bg-late-soft text-late mt-9 rounded-xl px-3.5 py-2.5 text-[13px]">
             {error}
           </p>
         )}
@@ -253,7 +244,7 @@ export default function CodeGate({
         <button
           type="submit"
           disabled={code.length !== SLOTS.length || busy}
-          className="mt-6 w-full rounded-2xl bg-[var(--brand)] px-4 py-4 text-[16px] font-semibold text-white transition disabled:opacity-30"
+          className="mt-9 w-full rounded-2xl bg-[var(--brand)] px-4 py-4 text-[16px] font-semibold text-white transition disabled:opacity-30"
         >
           {busy ? 'Checking…' : 'Continue'}
         </button>
