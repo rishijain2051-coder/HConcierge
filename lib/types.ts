@@ -142,10 +142,31 @@ export type ChatMessage = {
 }
 
 /** Everything the guest screen polls for. */
+/** One line on the guest's bill. */
+export type FolioLine = {
+  id: string
+  description: string
+  amount_paise: number
+  created_at: string
+  ref: string | null
+}
+
 export type GuestState = {
   requests: GuestRequest[]
   messages: ChatMessage[]
+  folio: FolioLine[]
   folio_total_paise: number
+  settle_requested_at: string | null
+}
+
+/** The four beats of an order, as the guest is shown them. */
+export const GUEST_STEPS = ['Sent', 'Picked up', 'On the way', 'Delivered'] as const
+
+export function guestStep(status: RequestStatus): number {
+  if (status === 'done') return 3
+  if (status === 'in_progress') return 2
+  if (status === 'ack') return 1
+  return 0
 }
 
 export type BoardRequest = GuestRequest & {

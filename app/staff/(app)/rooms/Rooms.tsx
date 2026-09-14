@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { addRoom, checkIn, checkOut, newAccessCode, rotateToken, unlockRoomCode } from './actions'
+import { rupees } from '@/lib/money'
+import { addRoom, checkIn, checkOut, newAccessCode, rotateToken, settleBill, unlockRoomCode } from './actions'
 
 export type RoomRow = {
   id: string
@@ -21,6 +22,8 @@ export type RoomRow = {
   access_code: string | null
   code_attempts: number
   code_locked_until: string | null
+  settle_requested_at: string | null
+  balance_paise: number
 }
 
 export default function Rooms({
@@ -44,6 +47,8 @@ export default function Rooms({
   const [adding, setAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [issued, setIssued] = useState<{ room: RoomRow; code: string } | null>(null)
+  // Checkout refuses over an unpaid balance rather than writing it off quietly.
+  const [owing, setOwing] = useState<{ room: RoomRow; amount: number } | null>(null)
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null)
@@ -121,6 +126,12 @@ export default function Rooms({
                     <p className="text-faint text-[11px]">
                       In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '—'}
                       {r.open_requests > 0 && ` · ${r.open_requests} open`}
+                      {r.balance_paise > 0 && (
+                        <span className="text-ink font-semibold"> · {rupees(r.balance_paise)}</span>
+                      )}
+                      {r.settle_requested_at && (
+                        <span className="text-warn font-semibold"> · wants to settle</span>
+                      )}
                       {locked && <span className="text-late font-semibold"> · code locked</span>}
                     </p>
                   </>
@@ -167,7 +178,29 @@ export default function Rooms({
                       >
                         New code
                       </Mini>
-                      <Mini onClick={() => run(() => checkOut(r.id))} disabled={pending} tone="late">
+                      {r.balance_paise > 0 && (
+                        <Mini
+                          onClick={() => run(() => settleBill(r.id))}
+                          disabled={pending}
+                          tone={r.settle_requested_at ? 'ink' : undefined}
+                        >
+                          Settle {rupees(r.balance_paise)}
+                        </Mini>
+                      )}
+                      <Mini
+                        onClick={() =>
+                          run(async () => {
+                            const res = await checkOut(r.id)
+                            if (!res.ok && typeof res.outstanding === 'number') {
+                              setOwing({ room: r, amount: res.outstanding })
+                              return { ok: true }
+                            }
+                            return res
+                          })
+                        }
+                        disabled={pending}
+                        tone="late"
+                      >
                         Check out
                       </Mini>
                     </>
@@ -198,6 +231,33 @@ export default function Rooms({
         a photo of the QR from a previous stay is useless without it. Five wrong codes locks the room for fifteen
         minutes.
       </p>
+
+      {owing && (
+        <Modal title={`Room ${owing.room.number} has not settled`} onClose={() => setOwing(null)}>
+          <p className="text-muted text-[14px] leading-relaxed">
+            There is <span className="text-ink font-semibold">{rupees(owing.amount)}</span> outstanding on this room.
+            Take the payment first — checking out now records it as settled and the guest&rsquo;s screen goes with them.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setOwing(null)}
+              className="border-line hover:border-ink flex-1 rounded-xl border px-4 py-2.5 text-[13px] font-semibold"
+            >
+              Not yet
+            </button>
+            <button
+              onClick={() => {
+                const room = owing.room
+                setOwing(null)
+                run(() => checkOut(room.id, true))
+              }}
+              className="bg-ink flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white"
+            >
+              Settled — check out
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {checkingIn && (
         <Modal title={`Check in — Room ${checkingIn.number}`} onClose={() => setCheckingIn(null)}>

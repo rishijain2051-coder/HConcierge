@@ -28,7 +28,7 @@ create table if not exists staff (
   name          text not null,
   password_hash text not null,
   department    text not null check (department in ('front_desk','housekeeping','fnb','maintenance','all')),
-  role          text not null default 'staff' check (role in ('admin','manager','staff')),
+  role          text not null default 'staff' check (role in ('platform','admin','manager','staff')),
   phone         text,
   active        boolean not null default true,
   failed_logins int not null default 0,
@@ -40,10 +40,10 @@ create unique index if not exists staff_username_key on staff (lower(username));
 -- passwords are set and reset by an admin; nothing forces a change at sign-in
 alter table staff drop column if exists must_change_password;
 
--- admins are group-level and have no property; everyone else must have one
+-- HConcierge and group admins have no property; everyone else must have one
 alter table staff drop constraint if exists staff_property_required;
 alter table staff add constraint staff_property_required
-  check (role = 'admin' or property_id is not null);
+  check (role in ('platform','admin') or property_id is not null);
 
 -- -------------------------------------------------------------------- rooms
 -- token is what the printed QR encodes. Rotated at checkout so a previous
@@ -257,12 +257,8 @@ alter table staff drop constraint if exists staff_role_check;
 alter table staff add constraint staff_role_check
   check (role in ('platform','admin','manager','staff'));
 
--- platform and admin are property-less; everyone below them is pinned to one.
 -- The organisation columns stay nullable at this level and are enforced in
 -- lib/admin.ts, which is the only writer.
-alter table staff drop constraint if exists staff_property_required;
-alter table staff add constraint staff_property_required
-  check (role in ('platform','admin') or property_id is not null);
 
 -- =========================================================================
 -- Escalation. Replaces the hardcoded "1x target, then 2x target, tell every
@@ -300,3 +296,63 @@ create table if not exists escalation_rule_staff (
   staff_id uuid not null references staff(id) on delete cascade,
   primary key (rule_id, staff_id)
 );
+
+-- =========================================================================
+-- Settling the bill.
+--
+-- HConcierge does not take payment — a guest asks to settle, the front desk
+-- takes the money the way it always has, and marks the folio settled. What
+-- the app adds is that the guest can see the bill before that conversation
+-- instead of being handed a printout at checkout.
+-- =========================================================================
+
+alter table folio_entries add column if not exists settled_at timestamptz;
+alter table folio_entries add column if not exists settled_by text;
+create index if not exists folio_room_open_idx
+  on folio_entries (room_id) where voided_at is null and settled_at is null;
+
+-- Set when the guest taps "ask to settle", cleared when the desk settles.
+alter table rooms add column if not exists settle_requested_at timestamptz;
+
+-- =========================================================================
+-- Live updates.
+--
+-- One NOTIFY per changed row, on two channels: the guest screen watches its
+-- room, the staff board watches its property. Putting this in a trigger
+-- rather than in the write paths means every writer publishes — guest
+-- actions, staff actions and the escalation cron alike — and there is no
+-- call site to forget when a new one is added.
+-- =========================================================================
+
+create or replace function hc_notify() returns trigger language plpgsql as $$
+declare
+  room_id uuid;
+  prop_id uuid;
+begin
+  if tg_table_name = 'rooms' then
+    room_id := coalesce(new.id, old.id);
+  else
+    room_id := coalesce(new.room_id, old.room_id);
+  end if;
+  prop_id := coalesce(new.property_id, old.property_id);
+
+  if room_id is not null then perform pg_notify('hc_room', room_id::text); end if;
+  if prop_id is not null then perform pg_notify('hc_property', prop_id::text); end if;
+  return null;
+end $$;
+
+drop trigger if exists hc_notify_requests on requests;
+create trigger hc_notify_requests after insert or update or delete on requests
+  for each row execute function hc_notify();
+
+drop trigger if exists hc_notify_messages on messages;
+create trigger hc_notify_messages after insert or update or delete on messages
+  for each row execute function hc_notify();
+
+drop trigger if exists hc_notify_folio on folio_entries;
+create trigger hc_notify_folio after insert or update or delete on folio_entries
+  for each row execute function hc_notify();
+
+drop trigger if exists hc_notify_rooms on rooms;
+create trigger hc_notify_rooms after insert or update or delete on rooms
+  for each row execute function hc_notify();

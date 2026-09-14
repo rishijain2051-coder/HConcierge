@@ -17,9 +17,12 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
     sql<RoomRow[]>`
       select r.id, r.number, r.floor, r.room_type, r.token, r.occupied, r.guest_name,
              r.checked_in_at, r.checkout_at, r.property_id, p.name as property_name,
-             r.access_code, r.code_attempts, r.code_locked_until,
+             r.access_code, r.code_attempts, r.code_locked_until, r.settle_requested_at,
              (select count(*)::int from requests q
-               where q.room_id = r.id and q.status in ('new','ack','in_progress')) as open_requests
+               where q.room_id = r.id and q.status in ('new','ack','in_progress')) as open_requests,
+             coalesce((select sum(f.amount_paise)::int from folio_entries f
+                        where f.room_id = r.id and f.voided_at is null and f.settled_at is null), 0)
+               as balance_paise
         from rooms r join properties p on p.id = r.property_id
        where ${scopeTo(staff, sql`r.property_id`, selected || null)}
        order by p.name, r.floor nulls last, r.number`,

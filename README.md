@@ -113,9 +113,10 @@ A rung names groups (the property's managers, the organisation's admins) and/or 
 people. Only staff with a phone number can actually be reached, and the screen says so
 when nobody has one.
 
-The sweep runs opportunistically on every board poll (so it lands within seconds while
-anyone is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at
-4am when no board is open).
+The sweep runs opportunistically on the board's safety poll (once a minute while anyone
+is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at 4am when
+no board is open). Escalation is the one thing that cannot be pushed: nothing changes in
+the database when a request simply gets older, so something has to keep asking.
 
 Not Vercel Cron: the Hobby plan only permits one cron run per day. `db/cron.sql` schedules
 it in Postgres instead and calls `/api/cron/escalate` over `pg_net` — which also means the
@@ -156,12 +157,17 @@ app/
     rooms/            registry, check-in/out, QR rotation, printable cards
     history/          SLA stats, per-team breakdown, searchable log
   api/
-    guest/[token]/state   guest poll
-    staff/board           board poll (+ opportunistic escalation sweep)
+    guest/[token]/live    guest push channel (SSE)
+    guest/[token]/state   guest fallback poll
+    staff/board/live      board push channel (SSE)
+    staff/board           board fallback poll (+ opportunistic escalation sweep)
     staff/folio.csv       charge export
     cron/escalate         escalation backstop
 lib/
   db.ts        one pooled postgres client
+  realtime.ts  one LISTEN connection per process, fanned out to every stream
+  sse.ts       the push channel both live routes are built from
+  use-live.ts  the client half: stream first, slow poll as a seatbelt
   auth.ts      scrypt hashes, signed cookie, lockout, role scoping
   requests.ts  the guest→database trust boundary
   board.ts     everything reception reads and writes
@@ -178,10 +184,27 @@ db/
 
 ## Decisions worth knowing
 
-**Polling, not websockets.** The guest polls every 5s, the board every 4s. A hotel makes a
-few hundred requests a day; this is two indexed reads. It is also the only option that
-survives serverless and pgbouncer without extra infrastructure. Swap in Supabase Realtime
-if a property ever gets busy enough for it to show in database load.
+**Push over SSE, with polling as a seatbelt.** Triggers on `requests`, `messages`,
+`folio_entries` and `rooms` call `pg_notify`; one listening connection per server process
+fans that out to every open stream. A guest's order moves on their screen the instant the
+kitchen touches it, and a hundred guests watching cost one database connection between
+them.
+
+Server-sent events rather than websockets because the hosting is serverless — there is no
+long-lived server to hold a socket, and `EventSource` reconnects by itself. Streams close
+after four minutes so a function billed by the second is not held open all night.
+
+The listener needs a Postgres *session*; the app's pooled URL is pgbouncer in transaction
+mode, which silently drops `LISTEN`. Supabase serves the same database in session mode on
+5432, so `lib/realtime.ts` connects there (override with `DATABASE_URL_SESSION`). If that
+connection cannot be made, the routes return 503, the client gives up after three tries
+and falls back to its once-a-minute poll. Nothing breaks; it just stops being instant.
+
+**Money is never taken in the app.** Charges accrue to `folio_entries`; the guest can read
+the itemised bill from their phone and tap "ask to settle", which puts the room and its
+balance on the front desk's board. The desk takes payment the way it always has and marks
+it settled. HConcierge asks for a card number nowhere, and checkout refuses to complete
+over an unpaid balance rather than writing it off quietly.
 
 **`prepare: false` is mandatory.** Supabase's pooler on 6543 is pgbouncer in transaction
 mode and cannot carry prepared statements across pooled connections.

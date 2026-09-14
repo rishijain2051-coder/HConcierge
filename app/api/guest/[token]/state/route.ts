@@ -4,13 +4,12 @@ import { hasGuestAccess } from '@/lib/guest-session'
 export const dynamic = 'force-dynamic'
 
 /**
- * Polled by the guest screen every few seconds.
+ * The guest screen's fallback.
  *
- * ponytail: polling rather than SSE or websockets. A hotel produces a few
- * hundred requests a day, this query is two indexed reads, and polling is the
- * only option that survives serverless and pgbouncer without extra
- * infrastructure. Move to Supabase Realtime if a property ever gets busy
- * enough for this to show up in the database load.
+ * Live updates come down /api/guest/[token]/live, which pushes. This is what
+ * the phone falls back to when that stream cannot be held — hotel wifi, a
+ * proxy that buffers, a listener that failed to start — and it is deliberately
+ * slow: once a minute, and never while the screen is in a pocket.
  */
 export async function GET(_req: Request, ctx: RouteContext<'/api/guest/[token]/state'>) {
   const { token } = await ctx.params

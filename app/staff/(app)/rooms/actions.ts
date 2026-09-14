@@ -7,6 +7,7 @@ import { audit } from '@/lib/audit'
 import { canTouchProperty, requireManager, type Staff } from '@/lib/auth'
 import { propRef } from '@/lib/scope'
 import { generateAccessCode } from '@/lib/guest-session'
+import { roomFolioTotal, settleRoom } from '@/lib/folio'
 
 const newToken = () => randomBytes(8).toString('base64url')
 
@@ -56,17 +57,54 @@ export async function checkIn(roomId: string, guestName: string, checkoutAt: str
   return { ok: true as const, code }
 }
 
-export async function checkOut(roomId: string) {
+/**
+ * The desk has taken the money. Close the bill.
+ *
+ * Separate from checkout because guests settle mid-stay too, and because a
+ * checkout that silently wrote off an unpaid balance would be a bug the hotel
+ * only noticed at month end.
+ */
+export async function settleBill(roomId: string) {
   const staff = await requireManager()
   const room = await roomFor(staff, roomId)
   if (!room) return { ok: false as const, error: 'Not your room.' }
+
+  const settled = await settleRoom(roomId, staff.name)
+  if (settled === 0) return { ok: false as const, error: 'There is nothing outstanding on this room.' }
+
+  await audit({
+    propertyId: room.property_id,
+    staffId: staff.id,
+    actor: staff.name,
+    action: 'folio.settled',
+    entity: 'room',
+    entityId: roomId,
+    meta: { room: room.number, amount_paise: settled },
+  })
+  revalidatePath('/staff/rooms')
+  return { ok: true as const, settled }
+}
+
+export async function checkOut(roomId: string, settleOutstanding = false) {
+  const staff = await requireManager()
+  const room = await roomFor(staff, roomId)
+  if (!room) return { ok: false as const, error: 'Not your room.' }
+
+  // Checking out over an unpaid balance is how a hotel loses money quietly.
+  // Refuse, say the number, and let the desk decide.
+  const outstanding = await roomFolioTotal(roomId)
+  if (outstanding > 0 && !settleOutstanding) {
+    return { ok: false as const, error: 'outstanding', outstanding }
+  }
+  if (outstanding > 0) await settleRoom(roomId, staff.name)
 
   // Clearing checked_in_at is what invalidates the guest's device: their cookie
   // is signed against that timestamp, so it stops matching the moment they go.
   await sql`
     update rooms
        set occupied = false, guest_name = null, checked_in_at = null, checkout_at = null,
-           access_code = null, code_set_at = null, code_attempts = 0, code_locked_until = null
+           access_code = null, code_set_at = null, code_attempts = 0, code_locked_until = null,
+           settle_requested_at = null
      where id = ${roomId}`
   await sql`
     update requests set status = 'cancelled', cancel_reason = 'Guest checked out', completed_at = now()
@@ -79,7 +117,7 @@ export async function checkOut(roomId: string) {
     action: 'room.checked_out',
     entity: 'room',
     entityId: roomId,
-    meta: { room: room.number },
+    meta: outstanding > 0 ? { room: room.number, settled_paise: outstanding } : { room: room.number },
   })
   revalidatePath('/staff/rooms')
   return { ok: true as const }

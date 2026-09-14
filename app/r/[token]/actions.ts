@@ -4,6 +4,7 @@ import { sql } from '@/lib/db'
 import { audit } from '@/lib/audit'
 import { loadRoom } from '@/lib/guest'
 import { hasGuestAccess, submitRoomCode } from '@/lib/guest-session'
+import { rupees } from '@/lib/money'
 import { cancelOwnRequest, createFreeformRequest, createRequests, type CartLine } from '@/lib/requests'
 
 /**
@@ -47,6 +48,37 @@ export async function submitFreeform(token: string, note: string) {
   const ctx = await authedRoom(token)
   if (!ctx) return DENIED
   return createFreeformRequest(ctx, note)
+}
+
+/**
+ * "I would like to settle up."
+ *
+ * No card is taken here and none ever will be — this puts the guest on the
+ * front desk's board with their balance attached, so somebody walks up with a
+ * card machine instead of the guest queueing in the lobby.
+ */
+export async function askToSettle(token: string) {
+  const ctx = await authedRoom(token)
+  if (!ctx) return DENIED
+
+  const [row] = await sql<{ total: string | null; asked: Date | null }[]>`
+    select (select sum(amount_paise)::text from folio_entries
+             where room_id = ${ctx.room.id} and voided_at is null and settled_at is null) as total,
+           settle_requested_at as asked
+      from rooms where id = ${ctx.room.id}`
+
+  const total = Number(row?.total ?? 0)
+  if (total <= 0) return { ok: false as const, error: 'There is nothing to settle yet.' }
+  if (row?.asked) return { ok: true as const }
+
+  const res = await createFreeformRequest(
+    ctx,
+    `Would like to settle the room bill — ${rupees(total)}`,
+  )
+  if (!res.ok) return res
+
+  await sql`update rooms set settle_requested_at = now() where id = ${ctx.room.id}`
+  return { ok: true as const }
 }
 
 export async function cancelRequest(token: string, requestId: string) {

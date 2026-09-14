@@ -1,5 +1,5 @@
 import { sql } from './db'
-import type { Category, ChatMessage, GuestRequest, GuestState, InfoPage, Item, Property, Room } from './types'
+import type { Category, ChatMessage, FolioLine, GuestRequest, GuestState, InfoPage, Item, Property, Room } from './types'
 
 export type RoomContext = { room: Room; property: Property }
 
@@ -63,11 +63,11 @@ export async function loadInfoPages(propertyId: string): Promise<InfoPage[]> {
 }
 
 const RECENT_REQUESTS = 30
-const RECENT_MESSAGES = 80
+const RECENT_MESSAGES = 60
 
 /** Everything the guest screen shows and re-polls. */
 export async function loadGuestState(roomId: string): Promise<GuestState> {
-  const [requests, messages, folio] = await Promise.all([
+  const [requests, messages, folio, room] = await Promise.all([
     sql<GuestRequest[]>`
       select id, ref::text as ref, kind, department, status, note, scheduled_for, total_paise,
              sla_minutes, created_at, updated_at, acknowledged_at, completed_at, escalated_at,
@@ -82,9 +82,14 @@ export async function loadGuestState(roomId: string): Promise<GuestState> {
        where m.room_id = ${roomId}
        order by m.created_at desc
        limit ${RECENT_MESSAGES}`,
-    sql<{ total: string | null }[]>`
-      select sum(amount_paise)::text as total from folio_entries
-       where room_id = ${roomId} and voided_at is null`,
+    sql<FolioLine[]>`
+      select f.id, f.description, f.amount_paise, f.created_at, r.ref::text as ref
+        from folio_entries f
+        left join requests r on r.id = f.request_id
+       where f.room_id = ${roomId} and f.voided_at is null and f.settled_at is null
+       order by f.created_at desc`,
+    sql<{ settle_requested_at: string | null }[]>`
+      select settle_requested_at from rooms where id = ${roomId}`,
   ])
 
   const lines = requests.length
@@ -104,6 +109,8 @@ export async function loadGuestState(roomId: string): Promise<GuestState> {
   return {
     requests: requests.map((r) => ({ ...r, items: byRequest.get(r.id) ?? [] })),
     messages: messages.reverse(), // query is newest-first for the LIMIT; UI reads oldest-first
-    folio_total_paise: Number(folio[0]?.total ?? 0),
+    folio,
+    folio_total_paise: folio.reduce((sum, line) => sum + line.amount_paise, 0),
+    settle_requested_at: room[0]?.settle_requested_at ?? null,
   }
 }

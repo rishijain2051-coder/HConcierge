@@ -11,7 +11,11 @@ function connect() {
     prepare: false,
     ssl: 'require',
     max: 10,
-    idle_timeout: 20,
+    // Every reconnect to Supabase costs a TLS handshake and an auth round trip
+    // to ap-south-1 — a quarter of a second before a single row moves. At 20s
+    // a reception screen paid that on almost every navigation. Five minutes
+    // keeps the connection warm across a shift without holding it overnight.
+    idle_timeout: 300,
     connect_timeout: 15,
     connection: {
       // Supabase defaults to 2 minutes. A single slow query holding a pooled

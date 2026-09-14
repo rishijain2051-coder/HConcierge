@@ -8,7 +8,10 @@ import { DEPARTMENTS, departmentLabel, STATUS_LABEL, type BoardRequest, type Cha
 import type { ChatRoom } from '@/lib/board'
 import { assign, openThread, reply, updateStatus } from './actions'
 
-const POLL_MS = 4000
+// The board is pushed, not polled — see /api/staff/board/live. This is the
+// seatbelt: it covers a dropped stream, and it is what knocks on the server to
+// run the escalation sweep, which is time-based and so has nothing to notify it.
+const POLL_MS = 60_000
 
 type Me = { id: string; name: string; role: string; department: string }
 
@@ -47,6 +50,21 @@ export default function Board({
 
   const canFilterDepartment = visibleDepartments.length === 0
 
+  // One landing point for new data, whether it was pushed or fetched.
+  const apply = useCallback(
+    (data: { requests: BoardRequest[]; chats: ChatRoom[] }) => {
+      setRequests(data.requests)
+      setChats(data.chats)
+      setStale(false)
+
+      const arrived = data.requests.filter((r) => !seen.current.has(r.id))
+      for (const r of data.requests) seen.current.add(r.id)
+      if (arrived.length > 0) announce(arrived)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [alerts],
+  )
+
   const refresh = useCallback(async () => {
     if (inFlight.current) return
     inFlight.current = true
@@ -60,14 +78,7 @@ export default function Board({
         return
       }
       if (!res.ok) throw new Error(String(res.status))
-      const data = (await res.json()) as { requests: BoardRequest[]; chats: ChatRoom[] }
-      setRequests(data.requests)
-      setChats(data.chats)
-      setStale(false)
-
-      const arrived = data.requests.filter((r) => !seen.current.has(r.id))
-      for (const r of data.requests) seen.current.add(r.id)
-      if (arrived.length > 0) announce(arrived)
+      apply((await res.json()) as { requests: BoardRequest[]; chats: ChatRoom[] })
     } catch {
       // A reception PC on hotel wifi will drop. Say so rather than showing a
       // frozen board as if it were live.
@@ -75,8 +86,7 @@ export default function Board({
     } finally {
       inFlight.current = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [property, alerts])
+  }, [property, apply])
 
   function announce(arrived: BoardRequest[]) {
     if (!alerts) return
@@ -96,6 +106,32 @@ export default function Board({
     const t = setInterval(refresh, POLL_MS)
     return () => clearInterval(t)
   }, [refresh])
+
+  // The live channel. A guest's order lands on the screen as it is written.
+  useEffect(() => {
+    const url = `/api/staff/board/live${property ? `?property=${property}` : ''}`
+    let source: EventSource | null = new EventSource(url)
+    let failures = 0
+
+    source.onmessage = (e) => {
+      failures = 0
+      try {
+        apply(JSON.parse(e.data))
+      } catch {
+        // A truncated frame is not worth blanking the board for.
+      }
+    }
+    // EventSource retries forever by itself, including against a server with
+    // no listener to give. Three strikes and the poll above carries it.
+    source.onerror = () => {
+      if (++failures >= 3) {
+        source?.close()
+        source = null
+      }
+    }
+
+    return () => source?.close()
+  }, [property, apply])
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15000)

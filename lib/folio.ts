@@ -56,15 +56,35 @@ export async function voidCharge(entryId: string, reason: string): Promise<void>
 export async function roomFolio(roomId: string): Promise<FolioEntry[]> {
   return sql<FolioEntry[]>`
     select * from folio_entries
-     where room_id = ${roomId} and voided_at is null
+     where room_id = ${roomId} and voided_at is null and settled_at is null
      order by created_at desc`
 }
 
 export async function roomFolioTotal(roomId: string): Promise<number> {
   const [row] = await sql<{ total: string | null }[]>`
     select sum(amount_paise)::text as total from folio_entries
-     where room_id = ${roomId} and voided_at is null`
+     where room_id = ${roomId} and voided_at is null and settled_at is null`
   return Number(row?.total ?? 0)
+}
+
+/**
+ * Close out a room's bill.
+ *
+ * HConcierge never takes the money — the desk does, however it always has.
+ * This records that it happened, which is what stops the charges following the
+ * guest into the next stay and what clears their screen.
+ *
+ * Returns the amount closed so the caller can tell the guest and the audit log
+ * what was actually settled, rather than what the screen said a moment ago.
+ */
+export async function settleRoom(roomId: string, by: string): Promise<number> {
+  const rows = await sql<{ amount_paise: number }[]>`
+    update folio_entries
+       set settled_at = now(), settled_by = ${by}
+     where room_id = ${roomId} and voided_at is null and settled_at is null
+    returning amount_paise`
+  await sql`update rooms set settle_requested_at = null where id = ${roomId}`
+  return rows.reduce((sum, r) => sum + r.amount_paise, 0)
 }
 
 /** CSV the front office keys into the PMS until a real integration exists. */

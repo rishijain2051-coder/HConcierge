@@ -147,3 +147,28 @@ export function IconSpark(p: IconProps) {
     </Icon>
   )
 }
+
+export function IconReceipt(p: IconProps) {
+  return (
+    <Icon {...p}>
+      <path d="M6 3.6v16.8l2.4-1.6 2.4 1.6 2.4-1.6 2.4 1.6 2.4-1.6V3.6z" />
+      <path d="M9.2 8.4h5.6M9.2 12h5.6M9.2 15.6h3.2" />
+    </Icon>
+  )
+}
+
+export function IconMinus(p: IconProps) {
+  return (
+    <Icon {...p}>
+      <path d="M6 12h12" />
+    </Icon>
+  )
+}
+
+export function IconPlus(p: IconProps) {
+  return (
+    <Icon {...p}>
+      <path d="M12 6v12M6 12h12" />
+    </Icon>
+  )
+}

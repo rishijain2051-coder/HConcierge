@@ -23,6 +23,16 @@
   --font-display: var(--font-display-stack);
 
   --radius-card: 14px;
+
+  /* One curve for everything that moves: fast out of the gate, long settle.
+     Linear and ease-in-out both read as software; this reads as weight. */
+  --ease-glide: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Diffused ambient light rather than a drop shadow. Three stacked layers,
+     none of them dark enough to see on its own. */
+  --shadow-float:
+    0 1px 1px rgb(28 25 23 / 0.03), 0 10px 26px -14px rgb(28 25 23 / 0.16),
+    0 28px 52px -34px rgb(28 25 23 / 0.2);
 }
 
 :root {
@@ -162,5 +172,113 @@ a {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Guest surfaces.
+
+   A card is not ink on paper — it is a brighter plate sitting in a tray. The
+   outer shell carries the tint and the hairline, the inner core carries the
+   content and a top highlight, and the radii are concentric so the curves
+   stay parallel. Two elements, and cards stop looking printed on.
+   ------------------------------------------------------------------------ */
+
+@utility tray {
+  border-radius: 26px;
+  padding: 6px;
+  background: color-mix(in oklab, var(--brand) 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+@utility plate {
+  border-radius: 20px; /* 26 − 6, so the curves are concentric */
+  background: var(--color-surface);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 1px 2px rgb(28 25 23 / 0.04);
+}
+
+/* Arriving content: heavy, slightly out of focus, settling into place.
+   Stagger with --d rather than a class per index. */
+@keyframes hc-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility rise {
+  animation: hc-rise 620ms var(--ease-glide) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* The step a request is actually sitting on, so the rail reads as live. */
+@keyframes hc-pulse {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+/* The sheet arrives from the edge it is anchored to, with the backdrop a beat
+   ahead of it so the page recedes before the panel lands. */
+@keyframes hc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hc-sheet-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 24px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Loading skeletons. A band of light travelling across the placeholder, done
+   with a transform so it never touches layout. */
+@keyframes hc-sheen {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@utility skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--color-ink) 6%, transparent);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, #ffffff 70%, transparent),
+      transparent
+    );
+    animation: hc-sheen 1.5s var(--ease-glide) infinite;
   }
 }
