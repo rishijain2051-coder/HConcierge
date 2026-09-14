@@ -221,7 +221,20 @@ Indian digit grouping.
 
 ## Not built yet
 
-- Menu and info-page editing from the UI (edit `db/seed.mjs` and re-seed, or edit rows directly)
 - A real PMS integration — the seam is there, the adapter is not
-- In-app payment; everything posts to the room folio
+- In-app payment. A guest can read their bill and ask to settle it; the desk
+  takes the money the way it always has and marks it settled. HConcierge asks
+  for a card number nowhere.
 - Languages other than English, though all guest strings sit in the components ready to lift
+
+---
+
+## Where things stand
+
+[`WHATS-LEFT.md`](WHATS-LEFT.md) is the running list of open items, decisions
+that look like bugs but are not, and what has never been tested. Read it before
+picking the project back up.
+
+[`docs/qa-2026-09-14/`](docs/qa-2026-09-14/) holds the reports from a four-agent
+testing pass — reproductions for everything it found, and a *Verified working*
+list at the end of each, which is what you want when something resurfaces.
