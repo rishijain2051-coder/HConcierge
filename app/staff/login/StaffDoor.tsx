@@ -135,8 +135,8 @@ export default function StaffDoor() {
           </form>
 
           <p className="text-faint mt-7 text-[12px] leading-relaxed">
-            Forgotten your password? Your duty manager can reset it. Five wrong attempts locks the account for
-            fifteen minutes.
+            Forgotten your password? Your duty manager can issue a new one from Manage → Staff. Five wrong
+            attempts locks the account for fifteen minutes.
           </p>
         </div>
       </main>

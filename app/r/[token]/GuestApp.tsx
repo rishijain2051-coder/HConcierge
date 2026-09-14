@@ -48,6 +48,7 @@ export default function GuestApp({
   const [cartOpen, setCartOpen] = useState(false)
   const [toast, setToast] = useState<{ text: string; tone: 'ok' | 'bad' } | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const inFlight = useRef(false)
 
   const dining = useMemo(() => directory.filter((c) => c.kind === 'fnb'), [directory])
   const services = useMemo(() => directory.filter((c) => c.kind !== 'fnb'), [directory])
@@ -57,11 +58,20 @@ export default function GuestApp({
   const unreadFromStaff = state.messages.filter((m) => m.sender === 'staff').length
 
   const refresh = useCallback(async () => {
+    // Overlapping polls are what exhausts the connection pool; skip a tick
+    // rather than stack a second request on top of a slow one.
+    if (inFlight.current) return
+    inFlight.current = true
     try {
-      const res = await fetch(`/api/guest/${token}/state`, { cache: 'no-store' })
+      const res = await fetch(`/api/guest/${token}/state`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(20_000),
+      })
       if (res.ok) setState(await res.json())
     } catch {
       // Hotel wifi drops. Keep the last known state on screen and try again.
+    } finally {
+      inFlight.current = false
     }
   }, [token])
 

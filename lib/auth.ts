@@ -135,6 +135,24 @@ export async function requireManager(): Promise<Staff> {
   return staff
 }
 
+/** Group-level only: properties, and creating other admins. */
+export async function requireAdmin(): Promise<Staff> {
+  const staff = await requireStaff()
+  if (staff.role !== 'admin') redirect('/staff/board')
+  return staff
+}
+
+/** A readable one-time password that satisfies passwordProblem(). */
+export function generatePassword(): string {
+  const letters = 'abcdefghijkmnpqrstuvwxyz' // no l/o, they read as 1/0
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const digits = '23456789'
+  const pick = (set: string, n: number) =>
+    Array.from(randomBytes(n)).map((b) => set[b % set.length]).join('')
+  // Always one uppercase and two digits, so it can never fail the policy.
+  return `${pick(upper, 1)}${pick(letters, 5)}${pick(digits, 2)}${pick(letters, 3)}${pick(digits, 1)}`
+}
+
 // ------------------------------------------------------------------ authorise
 
 /** Which departments this person's board should show. Empty array = all. */

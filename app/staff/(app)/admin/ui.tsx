@@ -1,0 +1,324 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+/** Small shared pieces for the admin screens. Five of them need the same
+ *  modal, the same field and the same destructive-confirm, so they live here. */
+
+export function Panel({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string
+  description?: string
+  action?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <section>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[clamp(1.6rem,3vw,2rem)] leading-[1.1] tracking-[-0.02em]">{title}</h1>
+          {description && <p className="text-muted mt-1.5 max-w-[70ch] text-[14px]">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+export function Button({
+  children,
+  onClick,
+  variant = 'quiet',
+  disabled,
+  type = 'button',
+  full,
+}: {
+  children: React.ReactNode
+  onClick?: () => void
+  variant?: 'primary' | 'quiet' | 'danger'
+  disabled?: boolean
+  type?: 'button' | 'submit'
+  full?: boolean
+}) {
+  const cls =
+    variant === 'primary'
+      ? 'bg-ink border-ink text-white hover:opacity-90'
+      : variant === 'danger'
+        ? 'border-line text-late hover:bg-late-soft'
+        : 'border-line text-muted hover:text-ink'
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-40 ${cls} ${
+        full ? 'w-full py-2.5 text-[14px]' : ''
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+export function Field({
+  label,
+  name,
+  defaultValue,
+  placeholder,
+  type = 'text',
+  hint,
+  required,
+  autoFocus,
+  min,
+  max,
+  step,
+}: {
+  label: string
+  name: string
+  defaultValue?: string | number
+  placeholder?: string
+  type?: string
+  hint?: string
+  required?: boolean
+  autoFocus?: boolean
+  min?: number
+  max?: number
+  step?: string
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-medium">{label}</span>
+      <input
+        name={name}
+        type={type}
+        defaultValue={defaultValue}
+        placeholder={placeholder}
+        required={required}
+        autoFocus={autoFocus}
+        min={min}
+        max={max}
+        step={step}
+        className="border-line bg-surface focus:border-ink placeholder:text-faint w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors"
+      />
+      {hint && <span className="text-faint mt-1 block text-[11px]">{hint}</span>}
+    </label>
+  )
+}
+
+export function TextArea({
+  label,
+  name,
+  defaultValue,
+  rows = 8,
+  hint,
+}: {
+  label: string
+  name: string
+  defaultValue?: string
+  rows?: number
+  hint?: string
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-medium">{label}</span>
+      <textarea
+        name={name}
+        rows={rows}
+        defaultValue={defaultValue}
+        className="border-line bg-surface focus:border-ink w-full resize-y rounded-xl border px-3.5 py-2.5 text-[14px] leading-relaxed outline-none transition-colors"
+      />
+      {hint && <span className="text-faint mt-1 block text-[11px]">{hint}</span>}
+    </label>
+  )
+}
+
+export function Select({
+  label,
+  name,
+  defaultValue,
+  options,
+  hint,
+}: {
+  label: string
+  name: string
+  defaultValue?: string
+  options: { value: string; label: string }[]
+  hint?: string
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[13px] font-medium">{label}</span>
+      <select
+        name={name}
+        defaultValue={defaultValue}
+        className="border-line bg-surface focus:border-ink w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {hint && <span className="text-faint mt-1 block text-[11px]">{hint}</span>}
+    </label>
+  )
+}
+
+export function Check({ label, name, defaultChecked }: { label: string; name: string; defaultChecked?: boolean }) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2.5 py-1">
+      <input
+        type="checkbox"
+        name={name}
+        defaultChecked={defaultChecked}
+        className="accent-ink h-4 w-4 rounded"
+      />
+      <span className="text-[14px]">{label}</span>
+    </label>
+  )
+}
+
+export function Modal({
+  title,
+  onClose,
+  children,
+  wide,
+}: {
+  title: string
+  onClose: () => void
+  children: React.ReactNode
+  wide?: boolean
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [onClose])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/35" onClick={onClose} />
+      <div
+        className={`bg-surface relative max-h-[88dvh] w-full overflow-y-auto rounded-2xl p-5 shadow-2xl ${
+          wide ? 'max-w-xl' : 'max-w-sm'
+        }`}
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <h2 className="text-[17px] font-semibold tracking-tight">{title}</h2>
+          <button onClick={onClose} aria-label="Close" className="text-faint hover:text-ink -mt-1 p-1 text-xl leading-none">
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export function Err({ children }: { children: React.ReactNode }) {
+  if (!children) return null
+  return (
+    <p role="alert" className="bg-late-soft text-late rounded-xl px-3.5 py-2.5 text-[13px]">
+      {children}
+    </p>
+  )
+}
+
+export function Tag({ children, tone }: { children: React.ReactNode; tone?: 'ok' | 'warn' | 'late' }) {
+  const cls =
+    tone === 'ok'
+      ? 'bg-ok-soft text-ok'
+      : tone === 'warn'
+        ? 'bg-warn-soft text-warn'
+        : tone === 'late'
+          ? 'bg-late-soft text-late'
+          : 'bg-paper text-muted'
+  return <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>
+}
+
+/**
+ * Shown once after a create or a reset. The password is never stored in the
+ * clear, so if this is dismissed without copying it the only way forward is
+ * another reset — which the copy says plainly.
+ */
+export function PasswordOnce({ username, password, onClose }: { username: string; password: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <Modal title="One-time password" onClose={onClose}>
+      <p className="text-muted text-[14px] leading-relaxed">
+        Give this to <span className="text-ink font-semibold">{username}</span>. They will be asked to change it the
+        first time they sign in.
+      </p>
+      <div className="border-line bg-paper mt-4 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3">
+        <code className="text-[17px] font-semibold tracking-wide tabular-nums select-all">{password}</code>
+        <Button
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(password)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 2000)
+            } catch {
+              setCopied(false)
+            }
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+      <p className="text-faint mt-3 text-[12px] leading-relaxed">
+        This is the only time it is shown. Nothing stores it in readable form — if you lose it, reset the password
+        again.
+      </p>
+      <div className="mt-4">
+        <Button variant="primary" full onClick={onClose}>
+          Done
+        </Button>
+      </div>
+    </Modal>
+  )
+}
+
+/** A named confirmation, so a misclick cannot delete a section of the menu. */
+export function Confirm({
+  title,
+  body,
+  confirmLabel,
+  onConfirm,
+  onClose,
+}: {
+  title: string
+  body: string
+  confirmLabel: string
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  return (
+    <Modal title={title} onClose={onClose}>
+      <p className="text-muted text-[14px] leading-relaxed">{body}</p>
+      <div className="mt-5 flex gap-2">
+        <Button full onClick={onClose}>
+          Keep it
+        </Button>
+        <Button
+          full
+          variant="danger"
+          onClick={() => {
+            onConfirm()
+            onClose()
+          }}
+        >
+          {confirmLabel}
+        </Button>
+      </div>
+    </Modal>
+  )
+}

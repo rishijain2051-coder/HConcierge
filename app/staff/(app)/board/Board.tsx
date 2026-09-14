@@ -39,13 +39,22 @@ export default function Board({
   const [stale, setStale] = useState(false)
 
   const seen = useRef(new Set(initialRequests.map((r) => r.id)))
+  // setInterval fires whether or not the last request came back. Without this
+  // guard a slow network makes polls overlap, and overlapping polls exhaust the
+  // database pool until the whole app stops responding.
+  const inFlight = useRef(false)
   const chime = useRef<(() => void) | null>(null)
 
   const canFilterDepartment = visibleDepartments.length === 0
 
   const refresh = useCallback(async () => {
+    if (inFlight.current) return
+    inFlight.current = true
     try {
-      const res = await fetch(`/api/staff/board${property ? `?property=${property}` : ''}`, { cache: 'no-store' })
+      const res = await fetch(`/api/staff/board${property ? `?property=${property}` : ''}`, {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(20_000),
+      })
       if (res.status === 401) {
         window.location.href = '/staff/login'
         return
@@ -63,6 +72,8 @@ export default function Board({
       // A reception PC on hotel wifi will drop. Say so rather than showing a
       // frozen board as if it were live.
       setStale(true)
+    } finally {
+      inFlight.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property, alerts])

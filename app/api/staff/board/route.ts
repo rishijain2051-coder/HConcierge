@@ -18,11 +18,15 @@ export async function GET(req: Request) {
 
   // Escalate as a side effect of somebody watching the board, so an overdue
   // request turns red within seconds rather than waiting for the nightly cron.
+  // Awaited, not fire-and-forget: a detached query keeps a pooled connection
+  // past the end of the request, which is exactly how the pool runs dry.
   if (Date.now() - lastSweep > SWEEP_EVERY_MS) {
     lastSweep = Date.now()
-    sweepEscalations(staff.role === 'admin' ? undefined : staff.property_id ?? undefined).catch((err) =>
-      console.error('[board] escalation sweep failed', err),
-    )
+    try {
+      await sweepEscalations(staff.role === 'admin' ? undefined : (staff.property_id ?? undefined))
+    } catch (err) {
+      console.error('[board] escalation sweep failed', err)
+    }
   }
 
   const [requests, chats] = await Promise.all([

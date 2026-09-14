@@ -10,9 +10,16 @@ function connect() {
   return postgres(url!, {
     prepare: false,
     ssl: 'require',
-    max: 5,
+    max: 10,
     idle_timeout: 20,
     connect_timeout: 15,
+    connection: {
+      // Supabase defaults to 2 minutes. A single slow query holding a pooled
+      // connection for that long is how a polling board takes the whole app
+      // down: the polls overlap, every connection ends up waiting, and nothing
+      // drains. 15s is far longer than any query here legitimately needs.
+      statement_timeout: 15_000,
+    },
   })
 }
 
