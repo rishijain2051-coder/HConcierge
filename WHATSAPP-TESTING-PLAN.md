@@ -131,6 +131,26 @@ reason to hand it out.
 
 ## 2. Exposure — Tailscale Funnel
 
+> **Measured 2026-09-15: Funnel does not serve this tailnet, and the rest of this section
+> is therefore aspirational.** Everything on the node is correct — the `funnel` and `https`
+> capabilities are granted, `funnel-ports` allows 443/8443/10000, `CertDomains` lists the
+> host, `tailscale cert` provisions a real certificate, the node is online and `netcheck`
+> reports UDP up with DERP Bengaluru at 113ms. `tailscale funnel status` reports
+> `Funnel on`. And yet nothing outside can connect: Vercel gets `ConnectTimeoutError` to
+> both ingress addresses (103.84.155.153, 103.84.155.217) on every attempt, and an
+> independent third-party proxy gets `522` after 20s. Both 443 and 8443 behave the same.
+>
+> **The trap that hid this for an hour:** on a machine running Tailscale, `curl` to the
+> Funnel hostname connects in ~20ms and succeeds. That is the local client short-circuiting
+> its own ingress IPs through the tunnel — it never touches the public path. A Funnel is
+> only proven by a request from a machine that is *not* on the tailnet.
+>
+> Until Tailscale's side works, production cannot reach the gateway. Messages are sent from
+> the laptop with `NEXT_PUBLIC_BASE_URL` pointed at production, so the links in them open
+> the deployed app — which is enough to test the staff journey on a real handset, and is not
+> enough to call the integration done.
+
+
 Vercel has to reach port 2785 on the laptop. Tailscale is already installed, and the
 pattern is already working in another project on this machine:
 `D:\OSWAL HANDICRAFTS - ERP\Start-Oswal-ERP.bat` funnels its client port, checks whether

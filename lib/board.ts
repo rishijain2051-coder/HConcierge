@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import { sql } from './db'
 import { audit } from './audit'
 import { postCharge, voidCharge } from './folio'
@@ -211,10 +212,13 @@ export async function setRequestStatus(
     meta: reason ? { reason } : {},
   })
 
-  // Fire-and-forget, same as the guest's order in lib/requests.ts: a gateway
-  // hiccup must not fail a transition that has already been written and charged.
+  // after() rather than a bare promise. The transition is already written and
+  // charged, so a gateway hiccup must not fail it — but on serverless the
+  // function can be frozen the moment its response is sent, and an un-awaited
+  // fetch is simply abandoned. That is invisible: the status changes, the charge
+  // posts, and the message never leaves. after() holds the function open for it.
   if (next === 'done') {
-    notifyRequestDone(requestId).catch((err) => console.error('[notify] done notice failed', err))
+    after(() => notifyRequestDone(requestId).catch((err) => console.error('[notify] done notice failed', err)))
   }
 
   return { ok: true }

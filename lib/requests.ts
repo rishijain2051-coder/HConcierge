@@ -1,3 +1,4 @@
+import { after } from 'next/server'
 import { sql } from './db'
 import { audit } from './audit'
 import { isUuid } from './scope'
@@ -185,9 +186,11 @@ export async function createRequests(
     })
   }
 
-  // Fire-and-forget: a Twilio hiccup must not fail the guest's order.
+  // after(), not a bare promise: a messaging hiccup must not fail the guest's
+  // order, but on serverless an un-awaited fetch is abandoned when the function
+  // freezes at response time — so the order would be placed and nobody told.
   for (const id of created) {
-    notifyNewRequest(id).catch((err) => console.error('[notify] new request failed', err))
+    after(() => notifyNewRequest(id).catch((err) => console.error('[notify] new request failed', err)))
   }
 
   return { ok: true, refs }
@@ -223,7 +226,7 @@ export async function createFreeformRequest(
     entityId: request.id,
     meta: { kind: 'other', note: text },
   })
-  notifyNewRequest(request.id).catch((err) => console.error('[notify] new request failed', err))
+  after(() => notifyNewRequest(request.id).catch((err) => console.error('[notify] new request failed', err)))
 
   return { ok: true, refs: [request.ref] }
 }
