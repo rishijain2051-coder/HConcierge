@@ -11,7 +11,9 @@ Verified against the live gateway: the escalation sweep delivered, a verified nu
 received a 42-character job link, an unverified number received the same words with no
 link, the link opened the job list with no session, Accept and Mark done both wrote through
 `setRequestStatus` with the correct actor in the audit log, and a completion notice reached
-both numbers. Not yet exercised by a human on a real handset — see §7.
+both numbers. A person then worked a job from a real handset against production, and a cold
+start was tested by stopping everything and running the Startup entry as logon does. The
+full table, and what is still open, is in §7.
 
 This is a throwaway-grade experiment with a real question behind it: **when a request is
 late and nobody has the board open, does a WhatsApp message get it picked up?**
@@ -84,13 +86,19 @@ The clone at `D:\OPENWA` is a WhatsApp HTTP gateway wrapping two engines:
 whatsapp-web.js `1.34.7` (Puppeteer driving real WhatsApp Web) and Baileys `7.0.0-rc14`
 (a direct websocket client, no browser).
 
-**The session in use is running whatsapp-web.js, not Baileys** — it was already paired that
-way, and switching engines means re-scanning the QR. That cost a real outage during setup:
-stopping the gateway left its Chromium alive holding a lock on
+**Running Baileys, switched mid-session.** It started on whatsapp-web.js and that cost a
+real outage: stopping the gateway left its Chromium alive holding a lock on
 `data/sessions/session-<name>`, and the session came back `failed` with *"The browser is
 already running … use a different userDataDir or stop the running browser first"* until the
-orphaned browser tree was killed by hand. A websocket client cannot fail that way. Treat the
-recommendation below as still open.
+orphaned browser tree was killed by hand. A websocket client cannot fail that way.
+
+Two things learned in the switch. **Stop the session before the process** — a graceful
+`POST /sessions/{id}/stop` closes the browser within a few seconds, and that is what avoids
+the orphan. And **the session is bound to the number that first paired it**: re-scanning
+from a different phone is refused outright (*"this session is bound to 918875379000, but a
+different WhatsApp number … scanned its QR"*), which is a guard, not a bug. Changing engines
+needs a fresh pair — the wwebjs login does not transfer — so it is cheapest to do while
+somebody is at the laptop.
 
 **Use the Baileys engine** — `ENGINE_TYPE=baileys`. We send one line of text; a Chromium
 process is ~400MB of extra failure surface for that, and `scripts/patch-wwebjs-*`, six
