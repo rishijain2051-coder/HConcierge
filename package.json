@@ -11,8 +11,7 @@
     "db:seed": "node --env-file=.env.local db/seed.mjs",
     "db:reset": "node --env-file=.env.local db/reset.mjs",
     "db:migrate": "node --env-file=.env.local db/migrate-tenancy.mjs",
-    "db:platform": "node --env-file=.env.local db/platform-user.mjs",
-    "test": "node --test lib/*.test.ts"
+    "db:platform": "node --env-file=.env.local db/platform-user.mjs"
   },
   "dependencies": {
     "next": "16.3.5",

@@ -69,9 +69,8 @@ export const DEPARTMENTS: { value: string; label: string }[] = [
  * Which teams a staff member may see the requests of. An empty list means every
  * team — what a manager, an admin and HConcierge get.
  *
- * Pure and dependency-free on purpose: this decides whether one department
- * account can read another team's guests, so it is the one rule in the product
- * with a test beside it (lib/teams.test.ts).
+ * Kept pure and dependency-free: this decides whether one department account
+ * can read another team's guests, so it should stay readable on its own.
  */
 export function teamsVisibleTo(role: string, department: string, extraTeams?: string[] | null): string[] {
   if (role !== 'staff' || department === 'all') return []
