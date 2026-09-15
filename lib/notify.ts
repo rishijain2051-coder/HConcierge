@@ -192,6 +192,23 @@ function actionLine(base: string | null, who: Recipient, ref: string): string {
 }
 
 /**
+ * Who the message is from, and about which hotel.
+ *
+ * The property has to be in the text because it is not in the sender. Today the
+ * sender is an unknown number, so "HConcierge" is what makes the message
+ * trustworthy; on Meta's Cloud API it becomes one verified HConcierge business
+ * account serving every hotel, at which point the sender says the brand and
+ * still not the building. Either way the room number alone is ambiguous the
+ * moment one person covers two properties — and an organisation's admin already
+ * receives escalations from every property in it.
+ *
+ * Drop the "HConcierge ·" half once the sender carries the brand itself.
+ */
+function sender(property: string): string {
+  return `HConcierge · ${property}:`
+}
+
+/**
  * The hotel's own name for a team, when it has one.
  *
  * Teams became rows on main, so an organisation can rename "Spa & wellness" or
@@ -241,6 +258,7 @@ type FiredRow = {
   room_number: string
   summary: string | null
   team: string | null
+  property: string
   rule_id: string
   step: number
   notify_managers: boolean
@@ -269,6 +287,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
       select distinct on (r.id)
              r.id, r.ref::text as ref, r.property_id, p.organisation_id, r.department, r.status,
              r.sla_minutes, rm.number as room_number, r.note as summary, d.name as team,
+             p.name as property,
              e.id as rule_id, e.step, e.notify_managers, e.notify_admins,
              extract(epoch from (now() - r.created_at)) / 60 as minutes_waiting
         from requests r
@@ -334,7 +353,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
 
     const waited = Math.round(r.minutes_waiting)
     const text =
-      `HConcierge: Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} ` +
+      `${sender(r.property)} Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} ` +
       `(#${r.ref}) is ${waited} min old, past its ${r.sla_minutes} min target and still ${r.status}.`
     const base = await linkBase()
     await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
@@ -347,8 +366,9 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
 export async function notifyNewRequest(requestId: string): Promise<void> {
   if (process.env.NOTIFY_ON_NEW !== '1') return
   const [r] = await sql<
-    { property_id: string; department: string; ref: string; room_number: string; note: string | null; team: string | null }[]
-  >`select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.note, d.name as team
+    { property_id: string; department: string; ref: string; room_number: string; note: string | null; team: string | null; property: string }[]
+  >`select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.note, d.name as team,
+           p.name as property
       from requests r
       join rooms rm on rm.id = r.room_id
       join properties p on p.id = r.property_id
@@ -359,7 +379,7 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
 
   const targets = await teamRecipients(r.property_id, r.department)
 
-  const text = `HConcierge: new ${teamName(r.team, r.department)} request from Room ${r.room_number} (#${r.ref}). ${r.note ?? ''}`.trim()
+  const text = `${sender(r.property)} new ${teamName(r.team, r.department)} request from Room ${r.room_number} (#${r.ref}). ${r.note ?? ''}`.trim()
   const base = await linkBase()
   await Promise.all(targets.map((t) => sendMessage(t.phone, `${text}\n${actionLine(base, t, r.ref)}`)))
 }
@@ -388,10 +408,11 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
       finished_by: string | null
       summary: string | null
       team: string | null
+      property: string
     }[]
   >`
     select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.total_paise,
-           s.name as finished_by, d.name as team,
+           s.name as finished_by, d.name as team, p.name as property,
            (select string_agg(case when ri.qty > 1 then ri.qty || '× ' || ri.name else ri.name end,
                               ', ' order by ri.name)
               from request_items ri where ri.request_id = r.id) as summary
@@ -408,7 +429,7 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
 
   const money = r.total_paise > 0 ? ` ${rupees(r.total_paise)} to the room folio.` : ''
   const text =
-    `HConcierge: Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} (#${r.ref}) ` +
+    `${sender(r.property)} Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} (#${r.ref}) ` +
     `is done${r.finished_by ? `, by ${r.finished_by}` : ''}.${money}`
   await Promise.all(targets.map((t) => sendMessage(t.phone, text)))
 }
