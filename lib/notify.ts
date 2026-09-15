@@ -163,6 +163,30 @@ function teamName(team: string | null, department: string): string {
   return team ?? departmentLabel(department)
 }
 
+/**
+ * Who hears about a request on this team, at this property.
+ *
+ * One definition because this predicate has now drifted twice behind a schema
+ * change — teams became rows, then one person could cover several — and it is
+ * read by both the new-request ping and the completion notice. A miss here is
+ * silent: the board scoping stays correct, so the person still sees the request
+ * and simply never gets told about it.
+ *
+ * `extra_teams` is the second team a department account covers. `department`
+ * still holds their main one, so a housekeeper also covering the spa is reached
+ * by either.
+ */
+function teamRecipients(propertyId: string, department: string) {
+  return sql<Recipient[]>`
+    select id, name, phone, phone_verified_at from staff
+     where active and phone is not null and phone <> ''
+       and property_id = ${propertyId}
+       and (department = ${department}
+            or ${department} = any(extra_teams)
+            or department = 'all'
+            or role in ('manager','admin'))`
+}
+
 type FiredRow = {
   id: string
   ref: string
@@ -290,11 +314,7 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
      where r.id = ${requestId} limit 1`
   if (!r) return
 
-  const targets = await sql<Recipient[]>`
-    select id, name, phone, phone_verified_at from staff
-     where active and phone is not null and phone <> ''
-       and property_id = ${r.property_id}
-       and (department = ${r.department} or department = 'all' or role in ('manager','admin'))`
+  const targets = await teamRecipients(r.property_id, r.department)
 
   const text = `HConcierge: new ${teamName(r.team, r.department)} request from Room ${r.room_number} (#${r.ref}). ${r.note ?? ''}`.trim()
   const base = await linkBase()
@@ -341,11 +361,7 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
      where r.id = ${requestId} limit 1`
   if (!r) return
 
-  const targets = await sql<Recipient[]>`
-    select id, name, phone, phone_verified_at from staff
-     where active and phone is not null and phone <> ''
-       and property_id = ${r.property_id}
-       and (department = ${r.department} or department = 'all' or role in ('manager','admin'))`
+  const targets = await teamRecipients(r.property_id, r.department)
 
   const money = r.total_paise > 0 ? ` ${rupees(r.total_paise)} to the room folio.` : ''
   const text =

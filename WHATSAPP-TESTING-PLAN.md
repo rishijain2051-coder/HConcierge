@@ -80,6 +80,14 @@ The clone at `D:\OPENWA` is a WhatsApp HTTP gateway wrapping two engines:
 whatsapp-web.js `1.34.7` (Puppeteer driving real WhatsApp Web) and Baileys `7.0.0-rc14`
 (a direct websocket client, no browser).
 
+**The session in use is running whatsapp-web.js, not Baileys** — it was already paired that
+way, and switching engines means re-scanning the QR. That cost a real outage during setup:
+stopping the gateway left its Chromium alive holding a lock on
+`data/sessions/session-<name>`, and the session came back `failed` with *"The browser is
+already running … use a different userDataDir or stop the running browser first"* until the
+orphaned browser tree was killed by hand. A websocket client cannot fail that way. Treat the
+recommendation below as still open.
+
 **Use the Baileys engine** — `ENGINE_TYPE=baileys`. We send one line of text; a Chromium
 process is ~400MB of extra failure surface for that, and `scripts/patch-wwebjs-*`, six
 patch files against upstream breakage, is a fair summary of the whatsapp-web.js
@@ -147,6 +155,12 @@ again.
 - The gateway serves its **control dashboard on the same port** — the screen where
   sessions are managed and the QR is scanned. Hence `SERVE_DASHBOARD=false` on the
   funneled instance. If the dashboard is wanted, run it separately and don't funnel it.
+  Confirmed by measurement before the tunnel was opened: `/` answered **200** and
+  `/api/docs` answered **200**, both with no API key, while `/api/sessions` answered 401.
+  Swagger is not behind the key guard and publishes the schema and exact running version.
+  `D:\OPENWA\.env` now sets `SERVE_DASHBOARD=false` and `ENABLE_SWAGGER=false`; both
+  surfaces answer 404 through the Funnel, and the API still answers 401 without a key and
+  200 with one.
 
 Funnel only accepts public traffic on 443, 8443 and 10000. No Funnel config is currently
 active on this machine, so all three are free; the Oswal launcher claims one when it next
@@ -456,7 +470,7 @@ Verified on 2026-09-15 against the live gateway and the dev database:
 | Accept writes through | One submit → `ack`, assignee set, `request.ack` filed against the right name. |
 | Mark done writes through | `done`, `completed_at` set, `request.done` filed. |
 | Completion notice | Reached both test numbers with who closed it. |
-| Token self-check | `SESSION_SECRET=… node lib/staff-link.check.mjs` — forgery, tampering, expiry, junk input, wrong token family. |
+| Token tests | `npm test` — forgery, tampering, expiry, junk input, wrong token family. Seven cases in `lib/staff-link.test.ts`, all negative but one. |
 | 375px | Checked at 375×812; buttons meet the 44px touch target. |
 | Verification round trip | A person signed in, asked for a code, received it on a real handset and typed it back: `staff.phone_code_sent` 08:57:56 → `staff.phone_verified` 08:58:49. That number then received a link instead of the text-only fallback, with its own distinct token. |
 | A hotel's own team name | A request on the custom `spa_wellness` team read "Spa & wellness" — the name the hotel typed — rather than the humanised "Spa wellness". |
