@@ -54,28 +54,47 @@ export default function GuestChat({
             </p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.sender === 'guest' ? 'justify-end' : 'justify-start'}`}>
-                <div className="max-w-[82%]">
-                  {m.sender === 'staff' && m.staff_name && (
-                    <p className="text-faint mb-1 ml-3 text-[11px] font-medium">{m.staff_name}</p>
-                  )}
-                  <div
-                    className={`rounded-2xl px-3.5 py-2.5 text-[15px] leading-snug break-words whitespace-pre-line ${
-                      m.sender === 'guest'
-                        ? 'brand-bg rounded-br-md text-white'
-                        : 'bg-surface border-line rounded-bl-md border'
-                    }`}
-                  >
-                    {m.body}
+          <div>
+            {/* Grouped. Two replies typed a minute apart by the same person do
+                not each need her name above them and the same time below them
+                — that is four lines of furniture around two sentences. The
+                name opens a run, the clock closes it, and the squared-off
+                corner marks the end of the run rather than every bubble. */}
+            {messages.map((m, i) => {
+              const prev = messages[i - 1]
+              const next = messages[i + 1]
+              const sameAs = (o?: ChatMessage) => o && o.sender === m.sender && o.staff_name === m.staff_name
+              const opens = !sameAs(prev)
+              const closes =
+                !sameAs(next) ||
+                new Date(next!.created_at).getTime() - new Date(m.created_at).getTime() > 5 * 60_000
+              const mine = m.sender === 'guest'
+
+              return (
+                <div
+                  key={m.id}
+                  className={`flex ${mine ? 'justify-end' : 'justify-start'} ${opens ? 'mt-3 first:mt-0' : 'mt-1'}`}
+                >
+                  <div className="max-w-[82%]">
+                    {opens && !mine && m.staff_name && (
+                      <p className="text-faint mb-1 ml-3 text-[11px] font-medium">{m.staff_name}</p>
+                    )}
+                    <div
+                      className={`rounded-2xl px-3.5 py-2.5 text-[15px] leading-snug break-words whitespace-pre-line ${
+                        mine ? 'brand-bg text-white' : 'bg-surface border-line border'
+                      } ${closes ? (mine ? 'rounded-br-md' : 'rounded-bl-md') : ''}`}
+                    >
+                      {m.body}
+                    </div>
+                    {closes && (
+                      <p className={`text-faint mt-1 text-[11px] ${mine ? 'mr-1 text-right' : 'ml-1'}`}>
+                        {new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </p>
+                    )}
                   </div>
-                  <p className={`text-faint mt-1 text-[11px] ${m.sender === 'guest' ? 'mr-1 text-right' : 'ml-1'}`}>
-                    {new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                  </p>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
         <div ref={bottom} />
@@ -94,6 +113,7 @@ export default function GuestChat({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={1000}
+          aria-label="Message the front desk"
           placeholder="Type a message…"
           className="border-line bg-surface placeholder:text-faint flex-1 rounded-full border px-4 py-3 text-[15px] outline-none focus:border-[var(--brand)]"
         />

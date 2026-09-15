@@ -44,6 +44,18 @@ const entryUnit = (e: CartEntry) => e.item.price_paise + e.modifiers.reduce((s, 
 /** A plain item can be counted from the row. One with choices has to be opened. */
 const isSimple = (item: Item) => !item.modifier_groups?.length && !item.needs_time
 
+/**
+ * The example note, in the language of the team who will read it. One
+ * placeholder read "No onion, extra napkins, leave outside the door" on every
+ * item in the hotel — including the wake-up call.
+ */
+const NOTE_HINT: Record<string, string> = {
+  fnb: 'No onion, extra spicy, no ice…',
+  housekeeping: 'Leave it outside the door, knock twice…',
+  maintenance: 'It only happens in the evening…',
+  front_desk: 'Anything we should know…',
+}
+
 function greeting(d = new Date()) {
   const h = d.getHours()
   if (h < 12) return 'Good morning'
@@ -969,10 +981,16 @@ function ItemSheet({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           maxLength={200}
-          placeholder="No onion, extra napkins, leave outside the door…"
+          placeholder={NOTE_HINT[item.department] ?? 'Anything we should know…'}
           className="bg-surface placeholder:text-faint focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full rounded-[16px] px-3.5 py-2.5 text-[15px] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)] transition duration-300 outline-none"
         />
       </div>
+
+      {item.needs_time && (
+        <p className="text-muted mb-4 text-[13px] leading-relaxed">
+          We will ask what time when you send this.
+        </p>
+      )}
 
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-full p-1 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_10%,transparent)]">
@@ -1046,7 +1064,14 @@ function CartSheet({
   const [note, setNote] = useState('')
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
-  const needsTime = cart.some((e) => e.item.needs_time)
+  const timed = cart.filter((e) => e.item.needs_time)
+  const needsTime = timed.length > 0
+  // A wake-up call for yesterday is a typo the server already refuses. The
+  // picker should not offer it in the first place. Read once when the basket
+  // opens — a clock read during render is not a function of the props.
+  const [earliest] = useState(() =>
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16),
+  )
 
   function setQty(key: string, qty: number) {
     onChange(qty <= 0 ? cart.filter((e) => e.key !== key) : cart.map((e) => (e.key === key ? { ...e, qty } : e)))
@@ -1111,15 +1136,19 @@ function CartSheet({
 
           {needsTime && (
             <div className="mt-4">
-              <label className="mb-1.5 block text-[13px] font-semibold">
-                What time? <span className="text-late">*</span>
-              </label>
+              <label className="mb-1.5 block text-[13px] font-semibold">What time?</label>
               <input
                 type="datetime-local"
                 value={when}
+                min={earliest}
                 onChange={(e) => setWhen(e.target.value)}
                 className="bg-surface focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full rounded-[16px] px-3.5 py-2.5 text-[15px] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)] transition duration-300 outline-none"
               />
+              {/* An asterisk is a form convention, not an explanation. Name
+                  what the time is for and the requirement explains itself. */}
+              <p className="text-faint mt-1.5 text-[12px]">
+                Needed for {timed.map((e) => e.item.name.toLowerCase()).join(' and ')}.
+              </p>
             </div>
           )}
 
@@ -1146,7 +1175,7 @@ function CartSheet({
             disabled={busy || (needsTime && !when)}
             className="brand-bg ease-glide mt-4 w-full rounded-full px-4 py-3.5 text-[15px] font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] transition duration-300 active:scale-[0.98] disabled:opacity-40"
           >
-            {busy ? 'Sending…' : 'Send to the team'}
+            {busy ? 'Sending…' : needsTime && !when ? 'Choose a time first' : 'Send to the team'}
           </button>
           <p className="text-faint mt-2.5 text-center text-xs">
             Nothing is charged now — it goes on your room bill and settles at checkout.
