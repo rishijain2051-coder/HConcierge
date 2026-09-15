@@ -42,3 +42,6 @@ next-env.d.ts
 
 # keep the template, never the real one
 !.env.example
+
+# local bridge logs
+.logs/
