@@ -1,7 +1,11 @@
 # WhatsApp escalation — testing plan
 
-**Status: built and verified end to end on real WhatsApp, 2026-09-15.** On branch
-`whatsapp-links`. What is proven, and what is not, is recorded in §7.
+**Status: running unattended in production, 2026-09-15.** On branch `whatsapp-links`, not
+merged.
+
+Production sends WhatsApp by itself: Supabase pg_cron every ten minutes → the deployed app
+→ a queue in Postgres → a supervised drainer beside the gateway on the laptop → Baileys. No
+tunnel, nothing exposed, nothing installed. What is proven, and what is not, is recorded in §7.
 
 Verified against the live gateway: the escalation sweep delivered, a verified number
 received a 42-character job link, an unverified number received the same words with no
@@ -501,7 +505,7 @@ decide to tap; everything else is on the page.
 
 ---
 
-## 7. What was run, and what is still untested
+## 7. What was run, and what is still open
 
 Verified on 2026-09-15 against the live gateway and the dev database:
 
@@ -514,23 +518,29 @@ Verified on 2026-09-15 against the live gateway and the dev database:
 | Accept writes through | One submit → `ack`, assignee set, `request.ack` filed against the right name. |
 | Mark done writes through | `done`, `completed_at` set, `request.done` filed. |
 | Completion notice | Reached both test numbers with who closed it. |
-| Token tests | `npm test` — forgery, tampering, expiry, junk input, wrong token family. Seven cases in `lib/staff-link.test.ts`, all negative but one. |
+| Token checks | `node lib/staff-link.check.mjs` — forgery, tampering, expiry, junk input, wrong token family. Seven cases, all negative but one. Standalone, since `ad5bbd7` removed the test runner. |
 | 375px | Checked at 375×812; buttons meet the 44px touch target. |
 | Verification round trip | A person signed in, asked for a code, received it on a real handset and typed it back: `staff.phone_code_sent` 08:57:56 → `staff.phone_verified` 08:58:49. That number then received a link instead of the text-only fallback, with its own distinct token. |
 | A hotel's own team name | A request on the custom `spa_wellness` team read "Spa & wellness" — the name the hotel typed — rather than the humanised "Spa wellness". |
+| Worked from a real handset | Accept then Mark done from a phone against production: `request.ack` 09:34:37 then `request.done` 09:37:01, both filed against Duty Manager, and the completion notice went out. |
+| Baileys engine | Switched and re-linked on the throwaway SIM. Sends confirmed, and no Chromium process exists at all. Stopping the session *before* the process is what avoids the orphaned browser that broke it on wwebjs. |
+| Runs unattended | pg_cron fired the sweep at 10:10:00 with nobody watching: `cron.job_run_details` succeeded, `net._http_response` 200 `{"escalated":1}`, production queued, the supervised drainer sent within 5s. Twelve messages across the session, one attempt each, none failed. |
 
-Still untested, and each needs a human or a deploy:
+Still open:
 
-1. **Working a job from the handset.** The verification round trip was done on a real phone,
-   but every Accept and Mark done so far was driven against localhost from this machine.
-   Nobody has received a job alert on a phone, tapped through and finished the work.
-2. **Tailscale Funnel and Vercel.** Everything above ran with the gateway and the app both
-   on localhost, so the gateway was reached directly. The Funnel hop in §2 has not been
-   opened, and no message has been sent from a deployed build.
-4. **The lock and throttle paths.** Five wrong codes, the fifteen-minute lock, and the
+1. **Tailscale Funnel.** Does not serve this tailnet (§2), so Vercel cannot call the gateway
+   directly. Nothing depends on it any more — the queue in §2a replaced it — but it is a
+   Tailscale-side failure rather than a configuration one, and only they can fix it.
+2. **Surviving a logout, as opposed to a reboot.** The bridge starts from the per-user
+   Startup folder, so it returns at logon. `scripts\Register-Bridge-Task.ps1` moves it to
+   Task Scheduler, which also covers a logged-out machine, but registering a task needs an
+   elevated shell. No actual reboot was tested — only the supervisor's restart path.
+3. **The lock and throttle paths.** Five wrong codes, the fifteen-minute lock and the
    sixty-second resend refusal are written and typechecked but never tripped.
 4. **Expiry in the wild.** A token past `exp` renders the expired page in principle; no
    token has actually aged out.
+5. **Volume.** Everything so far is single messages minutes apart. An unofficial gateway is
+   how numbers get banned, and nothing here has been near a real hotel's traffic.
 
 ## Not building, on purpose
 
