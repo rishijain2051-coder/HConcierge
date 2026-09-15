@@ -46,8 +46,12 @@ alter table staff add constraint staff_property_required
   check (role in ('platform','admin') or property_id is not null);
 
 -- -------------------------------------------------------------------- rooms
--- token is what the printed QR encodes. Rotated at checkout so a previous
--- guest's photo of the QR stops working.
+-- token is what the printed QR encodes, and it is permanent: the card is
+-- printed once and lives on the desk. Checkout does NOT rotate it — an earlier
+-- comment here claimed it did, which is the kind of sentence a later change
+-- ends up trusting. What checkout clears is access_code below, and that is the
+-- gate. Rotating the token is a deliberate act from the Rooms screen, for a
+-- card that has been damaged or photographed, and it means reprinting.
 create table if not exists rooms (
   id            uuid primary key default gen_random_uuid(),
   property_id   uuid not null references properties(id) on delete cascade,
@@ -375,3 +379,20 @@ end $$;
 drop trigger if exists hc_notify_request_items on request_items;
 create trigger hc_notify_request_items after insert or update or delete on request_items
   for each row execute function hc_notify_request_item();
+
+-- ------------------------------------------------------------- audit scope
+-- Every organisation-scoped view filters the log on property_id, and the most
+-- auditable event in the panel — an admin being created — is filed with
+-- property_id null, because an admin belongs to no single property. The result
+-- was that granting someone the run of an organisation was invisible to that
+-- organisation. The log now carries the organisation too.
+alter table audit_log add column if not exists organisation_id uuid
+  references organisations(id) on delete set null;
+
+-- Backfill: every row already written can be placed from its property.
+update audit_log a
+   set organisation_id = p.organisation_id
+  from properties p
+ where a.property_id = p.id and a.organisation_id is null;
+
+create index if not exists audit_log_org_idx on audit_log (organisation_id, created_at desc);

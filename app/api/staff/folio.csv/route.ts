@@ -18,10 +18,7 @@ export async function GET(req: Request) {
   const propertyId = url.searchParams.get('property') || staff.property_id
 
   const days = Math.min(Math.max(Number(url.searchParams.get('days') ?? 7) || 7, 1), 365)
-  const to = new Date()
-  const from = new Date(to.getTime() - days * 86400_000)
-
-  const csv = await exportCsv(staff, propertyId, from, to)
+  const csv = await exportCsv(staff, propertyId, days)
   await audit({
     propertyId: propertyId ?? staff.property_id,
     staffId: staff.id,
@@ -30,7 +27,7 @@ export async function GET(req: Request) {
     meta: { days },
   })
 
-  const stamp = to.toISOString().slice(0, 10)
+  const stamp = new Date().toISOString().slice(0, 10)
   return new Response(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',

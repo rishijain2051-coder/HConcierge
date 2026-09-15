@@ -67,6 +67,10 @@ export default function GuestApp({
   initialState: GuestState
 }) {
   const [tab, setTab] = useState<Tab>('home')
+  // Which section of each catalogue is open. Held here rather than inside
+  // Catalog, which unmounts on every tab change — so a guest reading the
+  // desserts went to check a message and came back to the starters.
+  const [section, setSection] = useState<Record<string, string>>({})
   const [cart, setCart] = useState<CartEntry[]>([])
   const [sheetItem, setSheetItem] = useState<Item | null>(null)
   const [cartOpen, setCartOpen] = useState(false)
@@ -128,6 +132,11 @@ export default function GuestApp({
   // A plain item counts up in place; one with choices has to be configured.
   const tapItem = useCallback((item: Item) => (isSimple(item) ? bump(item, 1) : setSheetItem(item)), [bump])
 
+  const chooseSection = useCallback(
+    (kind: string, id: string) => setSection((prev) => ({ ...prev, [kind]: id })),
+    [],
+  )
+
   if (gone) {
     return (
       <div
@@ -173,7 +182,7 @@ export default function GuestApp({
         </div>
       </header>
 
-      <main className="flex-1 pb-40">
+      <main className={`flex-1 ${cartCount > 0 ? 'pb-40' : 'pb-24'}`}>
         {tab === 'home' && (
           <Home
             room={room}
@@ -190,7 +199,10 @@ export default function GuestApp({
         )}
         {tab === 'dining' && (
           <Catalog
+            kind="dining"
             categories={dining}
+            active={section.dining ?? ''}
+            onActive={chooseSection}
             counts={counts}
             onTap={tapItem}
             onBump={bump}
@@ -199,7 +211,10 @@ export default function GuestApp({
         )}
         {tab === 'services' && (
           <Catalog
+            kind="services"
             categories={services}
+            active={section.services ?? ''}
+            onActive={chooseSection}
             counts={counts}
             onTap={tapItem}
             onBump={bump}
@@ -523,6 +538,7 @@ function OrderTracker({
   onToast: (t: Toast) => void
 }) {
   const [busy, setBusy] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const step = guestStep(request.status)
   const left = minutesRemaining(request, new Date(now))
   const title = request.items.length
@@ -601,15 +617,29 @@ function OrderTracker({
               ? `About ${left} min to go`
               : 'Taking longer than usual — we have flagged it'}
         </p>
-        {(request.status === 'new' || request.status === 'ack') && (
-          <button
-            onClick={cancel}
-            disabled={busy}
-            className="text-faint hover:text-late ease-glide shrink-0 text-[12px] font-medium underline transition duration-200 disabled:opacity-40"
-          >
-            Cancel
-          </button>
-        )}
+        {(request.status === 'new' || request.status === 'ack') &&
+          (confirming ? (
+            <span className="flex shrink-0 items-center gap-2.5 text-[12px] font-medium">
+              <span className="text-muted">Withdraw it?</span>
+              <button
+                onClick={cancel}
+                disabled={busy}
+                className="text-late ease-glide underline transition duration-200 disabled:opacity-40"
+              >
+                Yes
+              </button>
+              <button onClick={() => setConfirming(false)} className="text-faint ease-glide underline transition">
+                Keep
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              className="text-faint hover:text-late ease-glide shrink-0 text-[12px] font-medium underline transition duration-200"
+            >
+              Cancel
+            </button>
+          ))}
       </div>
     </article>
   )
@@ -633,19 +663,24 @@ function ClosedCard({ request, now }: { request: GuestRequest; now: number }) {
 /* --------------------------------------------------------------- catalog */
 
 const Catalog = memo(function Catalog({
+  kind,
   categories,
+  active,
+  onActive,
   counts,
   onTap,
   onBump,
   emptyHint,
 }: {
+  kind: string
   categories: Category[]
+  active: string
+  onActive: (kind: string, id: string) => void
   counts: Map<string, number>
   onTap: (i: Item) => void
   onBump: (i: Item, by: number) => void
   emptyHint: string
 }) {
-  const [active, setActive] = useState(categories[0]?.id ?? '')
   const current = categories.find((c) => c.id === active) ?? categories[0]
 
   if (!current) return <p className="text-muted px-4 pt-10 text-center text-sm">{emptyHint}</p>
@@ -657,7 +692,7 @@ const Catalog = memo(function Catalog({
           {categories.map((c) => (
             <button
               key={c.id}
-              onClick={() => setActive(c.id)}
+              onClick={() => onActive(kind, c.id)}
               className={`ease-glide shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-medium whitespace-nowrap transition duration-300 ${
                 c.id === current.id
                   ? 'bg-ink text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.16)]'
@@ -670,9 +705,8 @@ const Catalog = memo(function Catalog({
         </div>
       </div>
 
-      <div className="px-4 pt-5">
-        <h2 className="text-[21px] leading-tight font-semibold tracking-[-0.02em]">{current.name}</h2>
-        <div className="divide-line mt-1 divide-y">
+      <div className="px-4 pt-2">
+        <div className="divide-line divide-y">
           {current.items.map((item) => (
             <ItemRow key={item.id} item={item} qty={counts.get(item.id) ?? 0} onTap={onTap} onBump={onBump} />
           ))}
@@ -694,7 +728,7 @@ function ItemRow({
   onBump: (i: Item, by: number) => void
 }) {
   return (
-    <div className={`flex items-start justify-between gap-4 py-3.5 ${item.available ? '' : 'opacity-40'}`}>
+    <div className={`flex items-start justify-between gap-4 py-4 ${item.available ? '' : 'opacity-40'}`}>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           {item.veg !== null && (
@@ -709,8 +743,8 @@ function ItemRow({
           )}
           <p className="text-[15px] leading-snug font-medium">{item.name}</p>
         </div>
-        {item.description && <p className="text-muted mt-0.5 line-clamp-2 text-[13px]">{item.description}</p>}
-        <p className="text-faint mt-1 text-xs">
+        {item.description && <p className="text-muted mt-1 line-clamp-1 text-[13px]">{item.description}</p>}
+        <p className="text-faint mt-1.5 text-xs">
           {item.price_paise > 0 ? (
             <span className="text-ink font-semibold tabular-nums">
               {rupees(item.price_paise)}
@@ -733,7 +767,7 @@ function ItemRow({
             onClick={() => onTap(item)}
             className="brand-text brand-border ease-glide rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition duration-300 active:scale-[0.96]"
           >
-            {qty > 0 ? `Add · ${qty} in basket` : 'Choose'}
+            {qty > 0 ? `Add · ${qty} in basket` : item.modifier_groups?.length ? 'Choose' : 'Add'}
           </button>
         )}
       </div>
@@ -811,8 +845,16 @@ function QuickTile({
           {item.price_paise > 0 ? rupees(item.price_paise) : `about ${item.sla_minutes} min`}
         </p>
       </button>
-      {isSimple(item) && (
+      {isSimple(item) ? (
         <Stepper qty={qty} onAdd={() => onBump(item, 1)} onSub={() => onBump(item, -1)} label={item.name} />
+      ) : (
+        <button
+          onClick={() => onTap(item)}
+          aria-label={`Open ${item.name}`}
+          className="brand-border brand-text ease-glide grid h-9 w-9 shrink-0 place-items-center rounded-full border transition duration-300 active:scale-[0.92]"
+        >
+          <IconPlus size={16} />
+        </button>
       )}
     </div>
   )
@@ -870,16 +912,24 @@ function ItemSheet({
         <div key={g.name} className="mb-5">
           <div className="mb-2 flex items-baseline justify-between">
             <p className="text-[13px] font-semibold">{g.name}</p>
-            <p className="text-faint text-[12px]">{(g.min ?? 0) > 0 ? 'Required' : `Up to ${g.max ?? 1}`}</p>
+            <p className="text-faint text-[12px]">
+              {picked.filter((p) => p.group === g.name).length >= (g.max ?? 1) && (g.max ?? 1) > 1
+                ? `That is all ${g.max} — tap one off to swap`
+                : (g.min ?? 0) > 0
+                  ? 'Required'
+                  : `Up to ${g.max ?? 1}`}
+            </p>
           </div>
           <div className="space-y-1.5">
             {g.options.map((o) => {
               const on = picked.some((p) => p.group === g.name && p.name === o.name)
+              const full = !on && picked.filter((p) => p.group === g.name).length >= (g.max ?? 1) && (g.max ?? 1) > 1
               return (
                 <button
                   key={o.name}
                   onClick={() => toggle(g, o)}
-                  className={`ease-glide flex w-full items-center justify-between rounded-[16px] px-3.5 py-2.5 text-left text-[15px] transition duration-300 ${
+                  disabled={full}
+                  className={`ease-glide flex w-full items-center justify-between rounded-[16px] px-3.5 py-2.5 text-left text-[15px] transition duration-300 disabled:opacity-35 ${
                     on
                       ? 'brand-soft-bg shadow-[inset_0_0_0_1.5px_var(--brand)]'
                       : 'bg-surface shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)]'

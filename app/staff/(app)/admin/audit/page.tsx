@@ -100,7 +100,10 @@ export default async function AdminAuditPage({ searchParams }: PageProps<'/staff
       </div>
 
       {rows.length >= 300 && (
-        <p className="text-faint mt-3 text-[12px]">Showing the most recent 300. Narrow the period to see further back.</p>
+        <p className="text-faint mt-3 text-[12px]">
+          Showing the most recent 300 of this period. Pick a single kind above to see further back within it —
+          narrowing the period only ever removes older entries.
+        </p>
       )}
     </section>
   )

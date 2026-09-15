@@ -293,12 +293,13 @@ export default function Board({
           <button
             onClick={() => (alerts ? setAlerts(false) : enableAlerts())}
             aria-pressed={alerts}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold transition ${
+            aria-label={alerts ? 'Alerts on' : 'Turn on alerts'}
+            className={`flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold transition sm:min-h-0 ${
               alerts ? 'border-ok text-ok' : 'border-line hover:border-ink'
             }`}
           >
             <IconAlarm size={15} on={alerts} />
-            {alerts ? 'Alerts on' : 'Turn on alerts'}
+            <span className="hidden sm:inline">{alerts ? 'Alerts on' : 'Turn on alerts'}</span>
           </button>
         </div>
       </div>
@@ -352,6 +353,17 @@ export default function Board({
 }
 
 /* --------------------------------------------------------------- pieces */
+
+/**
+ * "Sunita R." rather than "Sunita", because a card that only ever showed the
+ * first word made two people called Sunita the same person until you opened
+ * the drawer to find out which one.
+ */
+function shortName(full: string) {
+  const [first, ...rest] = full.trim().split(/\s+/)
+  const last = rest[rest.length - 1]
+  return last ? `${first} ${last[0]}.` : first
+}
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -462,7 +474,7 @@ function Card({
             </Tag>
           )}
           {r.status !== 'new' && r.status !== 'done' && r.status !== 'cancelled' && (
-            <Tag>{r.assigned_name ? r.assigned_name.split(' ')[0] : STATUS_LABEL[r.status]}</Tag>
+            <Tag>{r.assigned_name ? shortName(r.assigned_name) : STATUS_LABEL[r.status]}</Tag>
           )}
           {r.status === 'cancelled' && <Tag>Cancelled</Tag>}
         </span>

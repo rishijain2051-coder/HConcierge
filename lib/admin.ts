@@ -157,12 +157,17 @@ export type StaffInput = {
 
 export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{ password: string }>> {
   const name = input.name.trim().slice(0, 120)
-  const username = input.username.trim().toLowerCase().slice(0, 60)
+  // Not truncated: a 61-character username silently became a different one
+  // from the one that was typed, and the person was handed the wrong login.
+  const username = input.username.trim().toLowerCase()
 
   if (!name) return fail('Enter a name.')
   if (!/^[a-z0-9._-]{3,60}$/.test(username)) {
     return fail('Usernames use 3–60 lowercase letters, numbers, dot, dash or underscore.')
   }
+  // The pattern above accepts "..." and "---". A username has to contain
+  // something someone can say out loud.
+  if (!/[a-z0-9]/.test(username)) return fail('A username needs at least one letter or number.')
   // A forged form field used to reach the CHECK constraint and come back as a
   // 500. The database is the backstop, not the validation.
   if (!DEPARTMENTS_WITH_ALL.includes(input.department)) return fail('Choose a team.')
@@ -185,7 +190,7 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   }
 
   const [clash] = await sql`select 1 from staff where lower(username) = ${username}`
-  if (clash) return fail(`The username “${username}” is taken.`)
+  if (clash) return fail(`“${username}” is not available. Try another.`)
 
   const password = input.password?.trim() || generatePassword()
   const problem = passwordProblem(password)
@@ -664,15 +669,20 @@ export async function createCategory(
   input: { kind: string; name: string; icon: string | null },
 ): Promise<Ok> {
   if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
-  if (!input.name.trim()) return fail('Enter a name.')
+  const name = input.name.trim().slice(0, 80)
+  if (!name) return fail('Enter a name.')
   if (!KINDS.includes(input.kind)) return fail('Choose where this section appears.')
+
+  // Two sections of the same name are two identical tabs on the guest's rail.
+  const [twin] = await sql`
+    select 1 from categories where property_id = ${propertyId} and lower(name) = ${name.toLowerCase()}`
+  if (twin) return fail(`This directory already has a section called “${name}”.`)
 
   const [{ next }] = await sql<{ next: number }[]>`
     select coalesce(max(sort), -1) + 1 as next from categories where property_id = ${propertyId}`
   await sql`
     insert into categories (property_id, kind, name, icon, sort)
-    values (${propertyId}, ${input.kind}, ${input.name.trim().slice(0, 80)},
-            ${input.icon?.trim() || null}, ${next})`
+    values (${propertyId}, ${input.kind}, ${name}, ${input.icon?.trim() || null}, ${next})`
 
   await audit({
     propertyId,
@@ -693,11 +703,18 @@ export async function updateCategory(
   const [category] = await sql<{ property_id: string }[]>`select property_id from categories where id = ${id}`
   if (!category) return fail('That section no longer exists.')
   if (!(await canManageProperty(actor, category.property_id))) return fail('Not your property.')
+  const name = input.name.trim().slice(0, 80)
+  if (!name) return fail('Enter a name.')
   if (!KINDS.includes(input.kind)) return fail('Choose where this section appears.')
+
+  const [twin] = await sql`
+    select 1 from categories
+     where property_id = ${category.property_id} and lower(name) = ${name.toLowerCase()} and id <> ${id}`
+  if (twin) return fail(`This directory already has a section called “${name}”.`)
 
   await sql`
     update categories
-       set kind = ${input.kind}, name = ${input.name.trim().slice(0, 80)},
+       set kind = ${input.kind}, name = ${name},
            icon = ${input.icon?.trim() || null}, active = ${input.active}
      where id = ${id}`
   await audit({
@@ -760,8 +777,13 @@ export async function saveInfoPage(
 ): Promise<Ok> {
   if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
   const title = input.title.trim().slice(0, 120)
-  const slug = (input.slug.trim() || title.toLowerCase().replace(/[^a-z0-9]+/g, '-')).slice(0, 60)
+  const slug = (input.slug.trim() || title)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
   if (!title) return fail('Enter a title.')
+  if (!slug) return fail('That title needs at least one letter or number in it.')
   if (!input.body.trim()) return fail('Enter something for the guest to read.')
 
   if (input.id) {
@@ -831,11 +853,24 @@ export type AuditRow = {
   property_name: string | null
 }
 
+/**
+ * The half of the log that belongs to an organisation rather than to one of its
+ * properties: creating an admin, renaming the company. `scopeTo` filters on
+ * property_id, which is null on all of them.
+ */
+function orgScope(actor: Staff, column: ReturnType<typeof sql>) {
+  if (actor.role === 'platform' && !actor.organisation_id) return sql`${column} is not null`
+  if (!actor.organisation_id) return sql`false`
+  // A manager runs one property; an organisation-wide event is not theirs.
+  if (actor.role === 'manager' || actor.role === 'staff') return sql`false`
+  return sql`${column} = ${actor.organisation_id}`
+}
+
 export async function listAudit(actor: Staff, opts: { action?: string | null; days: number } = { days: 7 }) {
   return sql<AuditRow[]>`
     select a.id, a.actor, a.action, a.entity, a.entity_id, a.meta, a.created_at, p.name as property_name
       from audit_log a left join properties p on p.id = a.property_id
-     where ${scopeTo(actor, sql`a.property_id`)}
+     where (${scopeTo(actor, sql`a.property_id`)} or ${orgScope(actor, sql`a.organisation_id`)})
        and a.created_at > now() - (${opts.days} || ' days')::interval
        and ${opts.action ? sql`a.action like ${opts.action + '%'}` : sql`true`}
      order by a.created_at desc
@@ -845,7 +880,7 @@ export async function listAudit(actor: Staff, opts: { action?: string | null; da
 export async function listAuditActions(actor: Staff): Promise<string[]> {
   const rows = await sql<{ action: string }[]>`
     select distinct action from audit_log
-     where ${scopeTo(actor, sql`property_id`)}
+     where (${scopeTo(actor, sql`property_id`)} or ${orgScope(actor, sql`organisation_id`)})
      order by action`
   return rows.map((r) => r.action)
 }

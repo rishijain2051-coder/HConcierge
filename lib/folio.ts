@@ -98,12 +98,7 @@ export async function settleRoom(roomId: string, by: string): Promise<number> {
  * in their own picker, so nothing had to be guessed. The scope is enforced
  * here, where it cannot be skipped.
  */
-export async function exportCsv(
-  actor: Staff,
-  propertyId: string | null,
-  from: Date,
-  to: Date,
-): Promise<string> {
+export async function exportCsv(actor: Staff, propertyId: string | null, days: number): Promise<string> {
   const rows = await sql<
     { number: string; guest_name: string | null; description: string; amount_paise: number; created_at: Date }[]
   >`
@@ -112,7 +107,10 @@ export async function exportCsv(
       join rooms r on r.id = f.room_id
      where ${scopeTo(actor, sql`f.property_id`, propertyId)}
        and f.voided_at is null
-       and f.created_at >= ${from} and f.created_at < ${to}
+       -- The window is built here, not from the app server's clock. created_at
+       -- is written by Postgres now(); the two machines measured 291ms apart,
+       -- and a charge posted immediately before an export fell outside it.
+       and f.created_at >= now() - (${days} || ' days')::interval
      order by r.number, f.created_at`
 
   const esc = (v: unknown) => {

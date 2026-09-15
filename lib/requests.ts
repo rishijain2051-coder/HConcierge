@@ -1,5 +1,6 @@
 import { sql } from './db'
 import { audit } from './audit'
+import { isUuid } from './scope'
 import { notifyNewRequest } from './notify'
 import type { Item, ModifierGroup, RequestKind } from './types'
 import type { RoomContext } from './guest'
@@ -80,7 +81,11 @@ export async function createRequests(
     return { ok: false, error: 'You have sent a lot of requests just now. Please give the team a few minutes.' }
   }
 
-  const ids = [...new Set(cart.map((l) => l.itemId))]
+  // Postgres rejects a malformed uuid with 22P02, which surfaces as a 500 and
+  // a stack trace in the log. A phone sending a bad id is a bad request, and
+  // there is nothing to look up for one.
+  const ids = [...new Set(cart.map((l) => l.itemId))].filter(isUuid)
+  if (ids.length === 0) return { ok: false, error: 'We could not read that order. Please try again.' }
   const items = await sql<ItemRow[]>`
     select i.id, i.category_id, i.name, i.description, i.price_paise, i.unit, i.department,
            i.sla_minutes, i.veg, i.needs_time, i.modifier_groups, i.available, c.kind as category_kind
@@ -225,6 +230,8 @@ export async function createFreeformRequest(
 
 /** Guests may withdraw their own request while nobody has started on it. */
 export async function cancelOwnRequest(ctx: RoomContext, requestId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isUuid(requestId)) return { ok: false, error: 'We could not find that request.' }
+
   const rows = await sql<{ id: string }[]>`
     update requests
        set status = 'cancelled', cancel_reason = 'Cancelled by guest', completed_at = now()
