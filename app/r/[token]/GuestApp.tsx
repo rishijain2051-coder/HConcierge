@@ -456,7 +456,7 @@ function Home({
         <textarea
           value={freeform}
           onChange={(e) => setFreeform(e.target.value)}
-          rows={3}
+          rows={2}
           maxLength={500}
           placeholder="Or ask for anything else, in your own words."
           className="placeholder:text-faint focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full resize-none rounded-[18px] bg-transparent px-3.5 py-3 text-[15px] leading-relaxed shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_9%,transparent)] transition duration-300 outline-none"
@@ -838,24 +838,26 @@ function QuickTile({
   onBump: (i: Item, by: number) => void
 }) {
   return (
-    <div className="bg-surface ease-glide flex items-start justify-between gap-2 rounded-[18px] p-3 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_6%,transparent)] transition duration-300">
-      <button onClick={() => onTap(item)} className="min-w-0 flex-1 text-left">
-        <p className="text-[14.5px] leading-snug font-medium">{item.name}</p>
-        <p className="text-faint mt-0.5 text-[11.5px]">
-          {item.price_paise > 0 ? rupees(item.price_paise) : `about ${item.sla_minutes} min`}
-        </p>
+    <div className="bg-surface ease-glide flex flex-col rounded-[18px] p-3.5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_6%,transparent)] transition duration-300">
+      <button onClick={() => onTap(item)} className="flex-1 text-left">
+        <span className="block text-[14.5px] leading-snug font-medium text-balance">{item.name}</span>
       </button>
-      {isSimple(item) ? (
-        <Stepper qty={qty} onAdd={() => onBump(item, 1)} onSub={() => onBump(item, -1)} label={item.name} />
-      ) : (
-        <button
-          onClick={() => onTap(item)}
-          aria-label={`Open ${item.name}`}
-          className="brand-border brand-text ease-glide grid h-9 w-9 shrink-0 place-items-center rounded-full border transition duration-300 active:scale-[0.92]"
-        >
-          <IconPlus size={16} />
-        </button>
-      )}
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <span className="text-faint text-[11.5px]">
+          {item.price_paise > 0 ? rupees(item.price_paise) : `about ${item.sla_minutes} min`}
+        </span>
+        {isSimple(item) ? (
+          <Stepper qty={qty} onAdd={() => onBump(item, 1)} onSub={() => onBump(item, -1)} label={item.name} />
+        ) : (
+          <button
+            onClick={() => onTap(item)}
+            aria-label={`Open ${item.name}`}
+            className="brand-border brand-text ease-glide grid h-9 w-9 shrink-0 place-items-center rounded-full border transition duration-300 active:scale-[0.92]"
+          >
+            <IconPlus size={16} />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

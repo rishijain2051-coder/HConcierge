@@ -154,10 +154,10 @@ Two things the distill pass could not do, both because the preview and browser
 tools were blocked for that session:
 
 - **No visual inspection round.** The cuts were verified at the source level and
-  with a clean build, type-check, lint and design-detector run. The *staff*
-  screens have since been walked in a browser (§8); the **distilled guest app
-  still has not been looked at** at 375px or 1600px. That is the first thing to
-  do next session.
+  with a clean build, type-check, lint and design-detector run. Both halves have
+  since been walked at 375px in a browser — the staff screens in §8, the guest
+  screens in §9. Neither has been seen at 1600px, and the guest app has never
+  been seen on real glass.
 - **The double-bezel reversal is unreviewed.** Commit `88738ac` removed the
   tray-and-plate surface that `/high-end-visual-design` had introduced. It is a
   deliberate call — nested cards are the thing distill removes first — but it
@@ -205,7 +205,7 @@ Still open from this pass:
 | POLISH | `app/staff/(app)/board/Board.tsx` `Card` | The 6px coloured left stripe is the pattern the craft floor refuses. It is kept deliberately: it is the only thing that separates on-time from amber at a glance across a lobby, which is what principle 2 asks for. Revisit only if the card surface starts carrying that state instead. |
 | POLISH | `app/staff/(app)/board/Board.tsx` toolbar | At 375px the overdue count and the alerts button wrap to their own right-aligned line once the Requests tab carries a number. Ragged, not broken. |
 | MINOR | `lib/admin.ts`, `lib/guest.ts` | The `icon` column is written by nothing and read by nothing. The two admin fields were removed and existing values ride along untouched on save. Deliberately not dropped in the 15 September migration: dropping it destroys the seeded values for no gain. Drop it when something else needs a migration anyway. |
-| CHECK | `app/r/[token]/GuestApp.tsx` | The guest breathability pass was verified at source level, type-check, lint and detector — but the four-digit gate means I cannot open the guest app myself, so nobody has seen these particular changes rendered. First thing to look at. |
+| DONE | `app/r/[token]/GuestApp.tsx` | Walked at 375px on 15 September through a throwaway development-only harness that rendered the components against the real directory with an invented stay — the four-digit gate cannot be typed into, and it was not bypassed. Home, Dining, Hotel info and the bill sheet were all seen. The harness has been deleted. |
 
 Three `react-hooks/set-state-in-effect` errors that §2 used to list are gone.
 Two were restructured — the chat poll also stopped letting the previous room's
@@ -229,3 +229,11 @@ basket. All three are gone. The rest of the guest changes were the open
 findings — a tile with no control on it, a button that said "Choose" over a
 sheet with nothing to choose, a modifier group that went silent at its maximum,
 and a one-tap cancel with nothing between it and gone.
+
+The guest screens were walked at 375px before this was pushed, through a
+development-only harness that rendered the same components against the real
+directory with an invented stay. It has been deleted; nothing of it remains in
+the tree. Three things were confirmed on screen rather than assumed: the
+catalogue rows breathe without the duplicate heading, the Home tiles are even
+now that the name has the tile's full width instead of 55% of it, and the bill
+sheet needed nothing. The four-digit gate was not typed into and not bypassed.
