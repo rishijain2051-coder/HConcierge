@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { teamLabel } from '@/lib/types'
 import type { StaffRow } from '@/lib/admin'
-import { createStaff, resetStaffPassword, setStaffActive, unlockStaff, updateStaff } from './actions'
+import { createStaff, resetStaffPassword, sendPhoneCode, setStaffActive, unlockStaff, updateStaff } from './actions'
 import { Button, Check, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from '../ui'
 
 type Me = { id: string; role: string; propertyId: string | null }
@@ -126,6 +126,10 @@ export default function StaffManager({
                 {!s.active && <Tag tone="late">Deactivated</Tag>}
                 {locked && <Tag tone="late">Locked</Tag>}
                 {!s.last_login_at && s.active && <Tag>Never signed in</Tag>}
+                {/* Why one person gets tappable job links and another does not.
+                    Without this on the row, an unverified number looks like a
+                    broken feature rather than a step nobody has done yet. */}
+                {s.phone && (s.phone_verified_at ? <Tag tone="ok">Phone verified</Tag> : <Tag tone="warn">Phone unverified</Tag>)}
               </div>
 
               <div className="flex shrink-0 flex-wrap gap-1.5">
@@ -152,6 +156,11 @@ export default function StaffManager({
                 {locked && (
                   <Button onClick={() => run(() => unlockStaff(s.id))} disabled={pending}>
                     Unlock
+                  </Button>
+                )}
+                {s.phone && !s.phone_verified_at && (
+                  <Button onClick={() => run(() => sendPhoneCode(s.id))} disabled={pending}>
+                    Send phone code
                   </Button>
                 )}
                 {s.active ? (
@@ -265,7 +274,7 @@ export default function StaffManager({
               name="phone"
               defaultValue={editing?.phone ?? ''}
               placeholder="+91 98765 43210"
-              hint="Managers and admins with a number here receive the WhatsApp escalations."
+              hint="Managers and admins with a number here receive the WhatsApp escalations. A number has to be verified before its messages carry one-tap job links — changing it here clears that."
             />
 
             <Button type="submit" variant="primary" full disabled={pending}>

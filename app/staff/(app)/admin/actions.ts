@@ -75,6 +75,13 @@ export async function unlockStaff(id: string) {
   return res
 }
 
+export async function sendPhoneCode(id: string) {
+  const actor = await requireManager()
+  const res = await admin.requestPhoneVerification(actor, id)
+  if (res.ok) touched()
+  return res
+}
+
 /* --------------------------------------------------------------- properties */
 
 export async function createProperty(input: admin.PropertyInput, copyCatalogFrom: string | null) {

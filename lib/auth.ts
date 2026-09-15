@@ -3,6 +3,7 @@ import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { sql } from './db'
+import { readStaffLink } from './staff-link'
 import { teamsVisibleTo, type Department, type Role } from './types'
 export { DEPARTMENTS, departmentLabel } from './types'
 export type { Department, Role } from './types'
@@ -155,6 +156,37 @@ export async function staffFromToken(token?: string, enteredOrg?: string): Promi
         on o.id = coalesce(s.organisation_id,
                            case when s.role = 'platform' then ${orgId}::uuid end)
      where s.id = ${payload.sid} and s.active
+     limit 1`
+  return rows[0] ?? null
+}
+
+/**
+ * The staff member a WhatsApp job-list link names.
+ *
+ * Deliberately stricter than `staffFromToken`, because this capability lives in
+ * a chat log rather than an httpOnly cookie: the row is re-read on every render
+ * and the phone must still be verified. So revocation needs no token state —
+ * deactivate someone, or change their number (which the `staff_phone_reset`
+ * trigger un-verifies), and the link in their chat dies on the next tap.
+ *
+ * Fails closed on purpose. The cost of being wrong is one more message carrying
+ * a fresh link; the cost of failing open is a live capability in a chat nobody
+ * controls any more. See WHATSAPP-TESTING-PLAN.md §4.
+ */
+export async function staffFromLinkToken(token: string): Promise<Staff | null> {
+  const link = readStaffLink(token)
+  if (!link) return null
+
+  const rows = await sql<Staff[]>`
+    select s.id, coalesce(s.organisation_id, o.id) as organisation_id, s.property_id,
+           s.username, s.name, s.department, s.role, s.phone,
+           p.name as property_name, p.slug as property_slug, o.name as organisation_name
+      from staff s
+      left join properties p on p.id = s.property_id
+      left join organisations o on o.id = s.organisation_id
+     where s.id = ${link.staffId}
+       and s.active
+       and s.phone_verified_at is not null
      limit 1`
   return rows[0] ?? null
 }

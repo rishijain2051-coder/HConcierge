@@ -1,6 +1,7 @@
 import { sql } from './db'
 import { audit } from './audit'
 import { postCharge, voidCharge } from './folio'
+import { notifyRequestDone } from './notify'
 import { canTouchDepartment, canTouchProperty, visibleDepartments, type Staff } from './auth'
 import { propRef, scopeTo } from './scope'
 import { departmentLabel } from './types'
@@ -209,6 +210,12 @@ export async function setRequestStatus(
     entityId: requestId,
     meta: reason ? { reason } : {},
   })
+
+  // Fire-and-forget, same as the guest's order in lib/requests.ts: a gateway
+  // hiccup must not fail a transition that has already been written and charged.
+  if (next === 'done') {
+    notifyRequestDone(requestId).catch((err) => console.error('[notify] done notice failed', err))
+  }
 
   return { ok: true }
 }

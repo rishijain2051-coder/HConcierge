@@ -454,3 +454,38 @@ alter table staff add constraint staff_department_present check (length(departme
 -- already hold slugs rather than ids. `department` stays the person's main
 -- team — it is what the header shows, and what lib/notify.ts matches on.
 alter table staff add column if not exists extra_teams text[] not null default '{}';
+-- ------------------------------------------------- staff phone verification
+-- A staff phone number used to be write-only: the app sent to it and a wrong
+-- number meant a missed message. WhatsApp action links change the stakes —
+-- the link IS the credential, so one mistyped digit hands a stranger a working
+-- job list. The number now has to prove itself before it earns a link.
+--
+-- Unverified is not silent: lib/notify.ts still sends, without the link. See
+-- WHATSAPP-TESTING-PLAN.md §5.
+alter table staff add column if not exists phone_verified_at       timestamptz;
+alter table staff add column if not exists phone_code              text;
+alter table staff add column if not exists phone_code_expires      timestamptz;
+alter table staff add column if not exists phone_code_sent_at      timestamptz;
+alter table staff add column if not exists phone_code_attempts     int not null default 0;
+alter table staff add column if not exists phone_code_locked_until timestamptz;
+
+-- Verification follows the number, not the row. A trigger rather than a line in
+-- updateStaff, because updateStaff is not the only writer — createStaff,
+-- db/seed.mjs and a hand-run update all change phones, and a verification flag
+-- that outlives the number it verified is worse than no flag at all. One guard
+-- where every path already converges.
+create or replace function staff_phone_changed() returns trigger language plpgsql as $$
+begin
+  new.phone_verified_at       := null;
+  new.phone_code              := null;
+  new.phone_code_expires      := null;
+  new.phone_code_sent_at      := null;
+  new.phone_code_attempts     := 0;
+  new.phone_code_locked_until := null;
+  return new;
+end $$;
+
+drop trigger if exists staff_phone_reset on staff;
+create trigger staff_phone_reset before update of phone on staff
+  for each row when (old.phone is distinct from new.phone)
+  execute function staff_phone_changed();

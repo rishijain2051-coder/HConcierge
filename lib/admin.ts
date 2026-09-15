@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { randomBytes } from 'node:crypto'
 import { sql } from './db'
 import { audit } from './audit'
+import { sendPhoneCode } from './staff-phone'
 import { scopeTo } from './scope'
 import { listTeams } from './departments'
 import {
@@ -117,6 +118,7 @@ export type StaffRow = {
   department: Department
   extra_teams: string[]
   phone: string | null
+  phone_verified_at: string | null
   active: boolean
   failed_logins: number
   locked_until: string | null
@@ -129,7 +131,8 @@ export type StaffRow = {
 
 export async function listStaff(actor: Staff): Promise<StaffRow[]> {
   return sql<StaffRow[]>`
-    select s.id, s.username, s.name, s.role, s.department, s.extra_teams, s.phone, s.active,
+    select s.id, s.username, s.name, s.role, s.department, s.extra_teams,
+           s.phone, s.phone_verified_at, s.active,
            s.failed_logins, s.locked_until, s.last_login_at,
            s.property_id, p.name as property_name,
            s.organisation_id, o.name as organisation_name
@@ -962,3 +965,21 @@ export async function adminOverview(actor: Staff) {
 }
 
 export const newSlug = () => randomBytes(4).toString('hex')
+
+/**
+ * Send a verification code to a staff member's phone.
+ *
+ * Authorisation matches unlockStaff — a manager or admin who can already manage
+ * this account. The code itself, its throttle and its lock live in
+ * lib/staff-phone.ts; this only decides who is allowed to press the button.
+ */
+export async function requestPhoneVerification(actor: Staff, id: string): Promise<Ok> {
+  const [target] = await sql<
+    { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
+  >`select role, property_id, organisation_id, username from staff where id = ${id}`
+  if (!target) return fail('That account no longer exists.')
+  if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
+
+  const res = await sendPhoneCode(id)
+  return res.ok ? { ok: true } : fail(res.error)
+}
