@@ -1,8 +1,9 @@
 # What's left
 
-Written 14 September 2026, at the end of the session that added bill viewing and
-settling, live order tracking, in-place quantity steppers, and a speed pass —
-and that ran four testing agents over the whole app.
+Written 14 September 2026 and updated 15 September 2026. The first session added
+bill viewing and settling, live order tracking, in-place quantity steppers and a
+speed pass, and ran four testing agents over the whole app. The second made the
+staff screens work at 375px, audited them, and ran a polish pass — see §8.
 
 Everything the testing pass classified as **blocker** or **major** is fixed.
 What follows is what it found and I did not fix, what I decided deliberately,
@@ -74,13 +75,6 @@ Severity is the testing pass's own. File references are to current `main`.
 | POLISH | `app/api/staff/folio.csv/route.ts` | The export window is built from the app server's clock and compared against `created_at`, written by Postgres `now()`. Measured skew here was 291ms, and a charge posted immediately before an export was missed from it. Build the window in SQL. |
 | POLISH | `db/schema.sql` (rooms comment) | The comment says the QR token is "rotated at checkout so a previous guest's photo of the QR stops working". It is not — `checkOut` leaves `token` untouched. No live exposure, because the 4-digit code is the real gate and that *is* cleared. But a comment describing a defence that does not exist is how a later change ends up relying on it. Either implement it or delete the sentence. |
 
-### Pre-existing lint
-
-Three `react-hooks` errors that predate this session and are not regressions:
-`app/DemoStage.tsx`, `app/staff/(app)/board/Board.tsx` (the chat-thread effect),
-`app/staff/login/StaffDoor.tsx` — all `set-state-in-effect`. They are real
-smells; none is a bug today.
-
 ---
 
 ## 3. Decisions that look like bugs
@@ -121,8 +115,9 @@ nothing. They reopen on focus and on every safety poll.
 
 ## 4. Not tested
 
-- **Responsive admin tables at 768px and 375px.** The agent covering the admin
-  panel had its browser access refused and worked entirely over HTTP.
+- **768px.** The staff screens were walked at 375px and 1440px on 15 September.
+  The tablet middle — a reception iPad in portrait — is still unseen, and it is
+  the width where the board's single column is at its least convincing.
 - **An unavailable item.** No row in the seed has `available = false`, so the
   guest app's unavailable branch has never been exercised.
 - **A modifier group at its maximum.** The only multi-select group has `max: 3`
@@ -140,10 +135,15 @@ nothing. They reopen on focus and on every safety poll.
 
 - One organisation (RN Hospitality), one property (RN Grand, Pune), 113 items,
   7 info pages, 2 escalation rungs.
-- Two staff: `rn.admin` (admin) and `hc.ops` (platform). Passwords are scrypt
-  hashes and cannot be read back; I know neither.
-- Room 401 is checked in to **Rishabh Jain**. That is not test data of mine, so
-  I left it.
+- Two staff: `rn.admin` (admin) and `hc.ops` (platform). `hc.ops` was reset on
+  15 September with `npm run db:platform` to get into the staff screens, and
+  both passwords have since been typed into a chat transcript. They are trial
+  credentials on a demo database, but rotate them before this is in front of
+  anyone: `npm run db:platform` for the platform account, Manage → Staff →
+  Reset password for `rn.admin`.
+- Room 401 is checked in to **Naman**. That is not test data of mine, so I left
+  it. Three QA requests were created against it on 15 September to exercise the
+  three SLA states and the live push, and all three were deleted afterwards.
 - Every QA fixture — three test accounts, three checked-in rooms, a throwaway
   second tenant, and all the requests, messages and charges they created — has
   been removed.
@@ -166,9 +166,10 @@ Two things the distill pass could not do, both because the preview and browser
 tools were blocked for that session:
 
 - **No visual inspection round.** The cuts were verified at the source level and
-  with a clean build, type-check, lint and design-detector run — but nobody has
-  looked at the distilled guest app in a browser at 375px and 1600px. That is
-  the first thing to do next session.
+  with a clean build, type-check, lint and design-detector run. The *staff*
+  screens have since been walked in a browser (§8); the **distilled guest app
+  still has not been looked at** at 375px or 1600px. That is the first thing to
+  do next session.
 - **The double-bezel reversal is unreviewed.** Commit `88738ac` removed the
   tray-and-plate surface that `/high-end-visual-design` had introduced. It is a
   deliberate call — nested cards are the thing distill removes first — but it
@@ -186,3 +187,31 @@ path available.
 - `.claude/launch.json` gained an `hconcierge-prod` entry (`next start` on
   3100). It is there so production timings can be measured against the dev
   server without stopping it. Harmless; delete it if it is clutter.
+
+---
+
+## 8. From the mobile and audit pass, 15 September
+
+Commit `c228f71`. The staff screens were walked in a browser at 375px and
+1440px, signed in as `rn.admin`, with three seeded requests covering the on
+time, amber and overdue states. The live push, the escalation sweep, the
+drawer, the thread view and the room list were all seen working.
+
+Fixed and verified: the app no longer scrolls sideways on a phone; touch
+targets clear 44px; the room access code is readable on a phone; alerts no
+longer restart the live stream; reissuing a QR asks first; the board card
+announces itself to a screen reader; `npm run lint` is green.
+
+Still open from this pass:
+
+| | Where | What |
+|---|---|---|
+| POLISH | `app/staff/(app)/rooms/Rooms.tsx` | Twenty-two rooms at ~75px a row is a long scroll on a phone to reach 415, and the front desk mostly wants the occupied ones. A room filter, or occupied-first ordering on narrow screens, would earn its keep. Not done because it changes desktop scanning order too. |
+| POLISH | `app/staff/(app)/board/Board.tsx` `Card` | The 6px coloured left stripe is the pattern the craft floor refuses. It is kept deliberately: it is the only thing that separates on-time from amber at a glance across a lobby, which is what principle 2 asks for. Revisit only if the card surface starts carrying that state instead. |
+| POLISH | `app/staff/(app)/board/Board.tsx` toolbar | At 375px the overdue count and the alerts button wrap to their own right-aligned line once the Requests tab carries a number. Ragged, not broken. |
+| MINOR | `lib/admin.ts`, `lib/guest.ts` | The `icon` column is now written by nothing and read by nothing. The two admin fields were removed and existing values ride along untouched on save. Drop the column when the schema is next migrated. |
+
+Three `react-hooks/set-state-in-effect` errors that §2 used to list are gone.
+Two were restructured — the chat poll also stopped letting the previous room's
+reply land in the open thread — and one, the sign-in clock, carries a documented
+`eslint-disable` because a clock has to start empty on the server.
