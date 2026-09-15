@@ -24,6 +24,9 @@ export default function StaffDoor() {
   // Rendered only after mount: a server-rendered clock is a hydration mismatch
   // waiting to happen, and this one ticks anyway.
   useEffect(() => {
+    // The whole point: the clock has to start empty on the server and fill in
+    // after mount, which is the one shape this rule cannot express.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setNow(new Date())
     const t = setInterval(() => setNow(new Date()), 30_000)
     return () => clearInterval(t)

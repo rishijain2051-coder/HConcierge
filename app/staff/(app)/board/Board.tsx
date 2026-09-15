@@ -1,12 +1,13 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { rupees } from '@/lib/money'
 import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
 import { DEPARTMENTS, departmentLabel, STATUS_LABEL, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
-import { IconAlarm } from '@/components/icons'
+import { IconAlarm, IconChat, IconClose } from '@/components/icons'
 import { assign, openThread, reply, updateStatus } from './actions'
 
 // The board is pushed, not polled — see /api/staff/board/live. This is the
@@ -31,6 +32,7 @@ export default function Board({
   initialRequests: BoardRequest[]
   initialChats: ChatRoom[]
 }) {
+  const router = useRouter()
   const [requests, setRequests] = useState(initialRequests)
   const [chats, setChats] = useState(initialChats)
   const [property, setProperty] = useState<string>('')
@@ -43,6 +45,12 @@ export default function Board({
   const [stale, setStale] = useState(false)
 
   const seen = useRef(new Set(initialRequests.map((r) => r.id)))
+  // Which cards get the arrival animation. Emptied a beat later so a card that
+  // arrived earlier does not replay it when it moves between columns.
+  const [landing, setLanding] = useState<ReadonlySet<string>>(new Set())
+  // A status change is a round trip. Without this, Done on a phone takes two
+  // taps before the card visibly moves and both of them are sent.
+  const [acting, setActing] = useState<ReadonlySet<string>>(new Set())
   // setInterval fires whether or not the last request came back. Without this
   // guard a slow network makes polls overlap, and overlapping polls exhaust the
   // database pool until the whole app stops responding.
@@ -51,11 +59,19 @@ export default function Board({
 
   const canFilterDepartment = visibleDepartments.length === 0
 
+  // Read through a ref, not a dependency. `announce` feeds `apply`, which the
+  // live stream and the poll both depend on — so with `alerts` in the closure,
+  // hitting the alerts button closed the EventSource and opened a new one,
+  // losing whatever was pushed in between.
+  const alertsOn = useRef(alerts)
+  useEffect(() => {
+    alertsOn.current = alerts
+  }, [alerts])
 
   // Declared above `apply`, which calls it: read the other way round it
   // captured a stale `alerts` and could chime after the toggle was off.
   const announce = useCallback((arrived: BoardRequest[]) => {
-    if (!alerts) return
+    if (!alertsOn.current) return
     chime.current?.()
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       for (const r of arrived.slice(0, 3)) {
@@ -66,7 +82,7 @@ export default function Board({
         })
       }
     }
-  }, [alerts])
+  }, [])
 
   // One landing point for new data, whether it was pushed or fetched.
   const apply = useCallback(
@@ -77,7 +93,12 @@ export default function Board({
 
       const arrived = data.requests.filter((r) => !seen.current.has(r.id))
       for (const r of data.requests) seen.current.add(r.id)
-      if (arrived.length > 0) announce(arrived)
+      if (arrived.length > 0) {
+        announce(arrived)
+        const ids = arrived.map((r) => r.id)
+        setLanding(new Set(ids))
+        setTimeout(() => setLanding(new Set()), 1000)
+      }
     },
     [announce],
   )
@@ -91,7 +112,9 @@ export default function Board({
         signal: AbortSignal.timeout(20_000),
       })
       if (res.status === 401) {
-        window.location.href = '/staff/login'
+        // A shift can outlive a session. Route rather than assigning location:
+        // the drawer, the stream and the poll all unmount on the way out.
+        router.push('/staff/login')
         return
       }
       if (!res.ok) throw new Error(String(res.status))
@@ -103,8 +126,7 @@ export default function Board({
     } finally {
       inFlight.current = false
     }
-  }, [property, apply])
-
+  }, [property, apply, router])
 
   useEffect(() => {
     const t = setInterval(refresh, POLL_MS)
@@ -190,17 +212,27 @@ export default function Board({
   const openRequest = requests.find((r) => r.id === openId) ?? null
 
   async function act(id: string, status: RequestStatus, reason?: string) {
+    if (acting.has(id)) return
     // Move the card immediately; the next poll is the source of truth.
+    setActing((prev) => new Set(prev).add(id))
     setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)))
     const res = await updateStatus(id, status, reason)
     if (!res.ok) alert(res.error)
-    refresh()
+    await refresh()
+    setActing((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
   }
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-4">
+      {/* Four groups that sit on one line on a monitor. On a phone the order
+          is rewritten rather than left to wrap where it falls: view and alerts
+          together on top, then the property, then the teams as a rail. */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="border-line flex rounded-xl border p-0.5">
+        <div className="border-line order-1 flex rounded-xl border p-0.5">
           {(
             [
               ['requests', `Requests${columns.new.length ? ` · ${columns.new.length}` : ''}`],
@@ -210,7 +242,7 @@ export default function Board({
             <button
               key={id}
               onClick={() => setView(id)}
-              className={`rounded-[9px] px-3 py-1.5 text-[13px] font-semibold transition ${
+              className={`rounded-[9px] px-3 py-2 text-[13px] font-semibold whitespace-nowrap transition sm:py-1.5 ${
                 view === id ? 'bg-ink text-white' : 'text-muted hover:text-ink'
               }`}
             >
@@ -219,11 +251,11 @@ export default function Board({
           ))}
         </div>
 
-        {properties.length > 0 && (
+        {properties.length > 1 && (
           <select
             value={property}
             onChange={(e) => setProperty(e.target.value)}
-            className="border-line bg-surface rounded-xl border px-3 py-2 text-[13px] font-medium"
+            className="border-line bg-surface order-3 w-full rounded-xl border px-3 py-2 text-[13px] font-medium sm:order-2 sm:w-auto"
           >
             <option value="">All properties</option>
             {properties.map((p) => (
@@ -235,7 +267,7 @@ export default function Board({
         )}
 
         {canFilterDepartment && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="no-scrollbar order-4 -mx-4 flex w-full gap-1.5 overflow-x-auto px-4 sm:order-3 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0">
             <Chip on={dept === ''} onClick={() => setDept('')}>
               All teams
             </Chip>
@@ -251,7 +283,7 @@ export default function Board({
           </div>
         )}
 
-        <div className="ml-auto flex items-center gap-2.5">
+        <div className="order-2 ml-auto flex items-center gap-2.5 sm:order-4">
           {overdue > 0 && (
             <span className="bg-late-soft text-late rounded-full px-2.5 py-1 text-[12px] font-semibold">
               {overdue} overdue
@@ -261,7 +293,6 @@ export default function Board({
           <button
             onClick={() => (alerts ? setAlerts(false) : enableAlerts())}
             aria-pressed={alerts}
-            title={alerts ? 'Stop the chime and the notifications' : 'Chime and notify when a request arrives'}
             className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold transition ${
               alerts ? 'border-ok text-ok' : 'border-line hover:border-ink'
             }`}
@@ -276,17 +307,17 @@ export default function Board({
         <div className="grid gap-3 lg:grid-cols-3">
           <Column title="New" tone="late" count={columns.new.length} empty="Nothing waiting. Good.">
             {columns.new.map((r) => (
-              <Card key={r.id} r={r} now={now} onOpen={setOpenId} onAct={act} />
+              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} onOpen={setOpenId} onAct={act} />
             ))}
           </Column>
           <Column title="Working" tone="warn" count={columns.working.length} empty="Nothing in progress.">
             {columns.working.map((r) => (
-              <Card key={r.id} r={r} now={now} onOpen={setOpenId} onAct={act} />
+              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} onOpen={setOpenId} onAct={act} />
             ))}
           </Column>
           <Column title="Finished · last 4h" tone="ok" count={columns.done.length} empty="Nothing finished yet.">
             {columns.done.map((r) => (
-              <Card key={r.id} r={r} now={now} onOpen={setOpenId} onAct={act} />
+              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} onOpen={setOpenId} onAct={act} />
             ))}
           </Column>
         </div>
@@ -326,7 +357,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   return (
     <button
       onClick={onClick}
-      className={`rounded-xl border px-3 py-2 text-[13px] font-medium transition ${
+      className={`shrink-0 rounded-xl border px-3 py-2 text-[13px] font-medium whitespace-nowrap transition ${
         on ? 'bg-ink border-ink text-white' : 'border-line bg-surface text-muted hover:text-ink'
       }`}
     >
@@ -366,11 +397,15 @@ function Column({
 function Card({
   r,
   now,
+  landing,
+  busy,
   onOpen,
   onAct,
 }: {
   r: BoardRequest
   now: number
+  landing: boolean
+  busy: boolean
   onOpen: (id: string) => void
   onAct: (id: string, s: RequestStatus) => void
 }) {
@@ -386,24 +421,32 @@ function Card({
       className={`border-line relative overflow-hidden rounded-xl border pl-2.5 transition ${
         state === 'late' ? 'bg-late-soft' : 'bg-surface'
       }`}
+      style={landing ? { animation: 'hc-card-in 420ms var(--ease-glide) both' } : undefined}
     >
       <span className={`absolute inset-y-0 left-0 w-1.5 ${stripe}`} />
-      <button onClick={() => onOpen(r.id)} className="w-full px-2.5 py-2.5 text-left">
-        <div className="flex items-baseline justify-between gap-2">
+      {/* Spans, not divs and paragraphs: a button may only contain phrasing
+          content, and the invalid nesting left this — the card's whole purpose
+          — announcing itself as an unlabelled button. */}
+      <button
+        onClick={() => onOpen(r.id)}
+        aria-label={`Room ${r.room_number}, request ${r.ref}: ${summary}`}
+        className="w-full px-2.5 py-2.5 text-left"
+      >
+        <span className="flex items-baseline justify-between gap-2">
           <span className="text-[17px] leading-none font-semibold tabular-nums">{r.room_number}</span>
           <span className="text-faint text-[11px] font-medium">
             #{r.ref} · {formatAge(r.created_at, new Date(now))}
           </span>
-        </div>
+        </span>
         {/* A guest can type 500 characters without a space. Below lg the grid
             has no explicit columns, so one such note sized the whole board to
             max-content and gave it 4,800px of sideways scroll. */}
-        <p className="mt-1.5 text-[13px] leading-snug break-words">{summary}</p>
+        <span className="mt-1.5 block text-[13px] leading-snug break-words">{summary}</span>
         {r.note && r.items.length > 0 && (
-          <p className="text-muted mt-1 text-[12px] break-words italic">“{r.note}”</p>
+          <span className="text-muted mt-1 block text-[12px] break-words italic">“{r.note}”</span>
         )}
 
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <span className="mt-2 flex flex-wrap items-center gap-1.5">
           <Tag>{departmentLabel(r.department)}</Tag>
           {r.total_paise > 0 && <Tag>{rupees(r.total_paise)}</Tag>}
           {r.scheduled_for && (
@@ -412,25 +455,38 @@ function Card({
             </Tag>
           )}
           {r.escalated_at && <Tag tone="late">Escalated</Tag>}
-          {r.unread_messages > 0 && <Tag tone="warn">💬 {r.unread_messages}</Tag>}
+          {r.unread_messages > 0 && (
+            <Tag tone="warn">
+              <IconChat size={11} className="mr-1 inline align-[-1px]" />
+              {r.unread_messages}
+            </Tag>
+          )}
           {r.status !== 'new' && r.status !== 'done' && r.status !== 'cancelled' && (
             <Tag>{r.assigned_name ? r.assigned_name.split(' ')[0] : STATUS_LABEL[r.status]}</Tag>
           )}
           {r.status === 'cancelled' && <Tag>Cancelled</Tag>}
-        </div>
+        </span>
 
         {state !== 'done' && (
-          <p className={`mt-1.5 text-[11px] font-medium ${state === 'late' ? 'text-late' : 'text-muted'}`}>
+          <span className={`mt-1.5 block text-[11px] font-medium ${state === 'late' ? 'text-late' : 'text-muted'}`}>
             {left > 0 ? `${left} min left of ${r.sla_minutes}` : `${Math.abs(left)} min over`}
-          </p>
+          </span>
         )}
       </button>
 
       {r.status !== 'done' && r.status !== 'cancelled' && (
         <div className="border-line flex gap-1.5 border-t px-2.5 py-2">
-          {r.status === 'new' && <Action onClick={() => onAct(r.id, 'ack')}>Accept</Action>}
-          {r.status === 'ack' && <Action onClick={() => onAct(r.id, 'in_progress')}>Start</Action>}
-          <Action primary onClick={() => onAct(r.id, 'done')}>
+          {r.status === 'new' && (
+            <Action busy={busy} onClick={() => onAct(r.id, 'ack')}>
+              Accept
+            </Action>
+          )}
+          {r.status === 'ack' && (
+            <Action busy={busy} onClick={() => onAct(r.id, 'in_progress')}>
+              Start
+            </Action>
+          )}
+          <Action primary busy={busy} onClick={() => onAct(r.id, 'done')}>
             Done
           </Action>
         </div>
@@ -445,11 +501,24 @@ function Tag({ children, tone }: { children: React.ReactNode; tone?: 'warn' | 'l
   return <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>
 }
 
-function Action({ children, onClick, primary }: { children: React.ReactNode; onClick: () => void; primary?: boolean }) {
+/** Housekeeping taps these in a corridor: 44px is the floor on a touch screen,
+ *  and it is wasted height on a reception monitor. */
+function Action({
+  children,
+  onClick,
+  primary,
+  busy,
+}: {
+  children: React.ReactNode
+  onClick: () => void
+  primary?: boolean
+  busy?: boolean
+}) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-lg px-2 py-1.5 text-[12px] font-semibold transition ${
+      disabled={busy}
+      className={`min-h-11 flex-1 rounded-lg px-2 py-1.5 text-[12px] font-semibold transition disabled:opacity-40 sm:min-h-0 ${
         primary ? 'bg-ink text-white hover:opacity-90' : 'border-line text-muted hover:text-ink border'
       }`}
     >
@@ -464,20 +533,37 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    // On a phone this fills the screen, and without the lock the board went on
+    // scrolling underneath it — you closed the drawer somewhere else entirely.
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
   }, [onClose])
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="bg-surface relative flex h-full w-full max-w-md flex-col shadow-2xl">
+      <div
+        className="bg-scrim absolute inset-0"
+        style={{ animation: 'hc-fade-in 240ms var(--ease-glide) both' }}
+        onClick={onClose}
+      />
+      <div
+        className="bg-surface relative flex h-full w-full max-w-md flex-col shadow-[var(--shadow-lift)]"
+        style={{ animation: 'hc-drawer-in 380ms var(--ease-glide) both' }}
+      >
         <div className="border-line flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-[17px] font-semibold tracking-tight">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="text-faint hover:text-ink p-1 text-xl leading-none">
-            ×
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-faint hover:text-ink -mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-full transition active:scale-90"
+          >
+            <IconClose size={16} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
       </div>
     </div>
   )
@@ -549,10 +635,12 @@ function RequestDetail({
         </div>
       )}
 
+      {/* The guest's own words, quoted and attributed — not a tracked
+          all-caps label sitting on top of them. */}
       {r.note && (
-        <div className="bg-warn-soft rounded-xl px-3 py-2.5">
-          <p className="text-warn text-[11px] font-semibold tracking-wide uppercase">Note from the guest</p>
-          <p className="mt-1 text-[14px]">{r.note}</p>
+        <div className="bg-warn-soft rounded-xl px-3.5 py-3">
+          <p className="text-[14px] leading-relaxed">“{r.note}”</p>
+          <p className="text-warn mt-1.5 text-[12px] font-medium">— {r.guest_name ?? 'the guest'}</p>
         </div>
       )}
 
@@ -598,8 +686,12 @@ function RequestDetail({
         </>
       )}
 
-      <button onClick={onChat} className="border-line hover:border-ink w-full rounded-xl border px-3 py-2.5 text-[14px] font-semibold">
-        💬 Message Room {r.room_number}
+      <button
+        onClick={onChat}
+        className="border-line hover:border-ink flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-3 text-[14px] font-semibold"
+      >
+        <IconChat size={15} />
+        Message Room {r.room_number}
       </button>
 
       {live &&
@@ -629,7 +721,7 @@ function RequestDetail({
         ) : (
           <button
             onClick={() => setCancelling(true)}
-            className="text-faint hover:text-late w-full text-center text-[12px] font-medium underline"
+            className="text-faint hover:text-late w-full py-2 text-center text-[12px] font-medium underline"
           >
             Cancel this request
           </button>
@@ -692,10 +784,21 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
   }, [roomId])
 
   useEffect(() => {
-    load()
-    const t = setInterval(load, 6000)
-    return () => clearInterval(t)
-  }, [load])
+    // `load` sets state after an await, not synchronously; the rule reads the
+    // call, not the await. The guard is the part that matters: switching rooms
+    // quickly used to let the previous room's reply land in this thread.
+    let live = true
+    const poll = async () => {
+      const next = await openThread(roomId)
+      if (live) setMessages(next)
+    }
+    poll()
+    const t = setInterval(poll, 6000)
+    return () => {
+      live = false
+      clearInterval(t)
+    }
+  }, [roomId])
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ block: 'end' })
@@ -718,7 +821,7 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-full flex-1 flex-col">
       <div className="flex-1 space-y-2.5 p-4">
         {messages === null ? (
           <p className="text-faint text-center text-[13px]">Loading…</p>
@@ -746,7 +849,9 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
         <div ref={bottom} />
       </div>
 
-      <form onSubmit={send} className="border-line flex gap-2 border-t p-3">
+      {/* Pinned: on a thread long enough to scroll, the reply box used to
+          scroll away with the messages. */}
+      <form onSubmit={send} className="border-line bg-surface sticky bottom-0 flex gap-2 border-t p-3">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -757,7 +862,7 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
         <button
           type="submit"
           disabled={!draft.trim() || busy}
-          className="bg-ink shrink-0 rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white disabled:opacity-30"
+          className="bg-ink min-h-11 shrink-0 rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white disabled:opacity-30"
         >
           Send
         </button>

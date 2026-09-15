@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { requireOperational } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { isUuid, scopeTo } from '@/lib/scope'
-import { baseUrl } from '@/lib/qr'
 import Rooms, { type RoomRow } from './Rooms'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +14,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
   const selected = typeof property === 'string' && isUuid(property) ? property : ''
 
 
-  const [rooms, properties, base] = await Promise.all([
+  const [rooms, properties] = await Promise.all([
     sql<RoomRow[]>`
       select r.id, r.number, r.floor, r.room_type, r.token, r.occupied, r.guest_name,
              r.checked_in_at, r.checkout_at, r.property_id, p.name as property_name,
@@ -30,7 +29,6 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
        order by p.name, r.floor nulls last, r.number`,
     sql<{ id: string; name: string }[]>`
       select id, name from properties where ${scopeTo(staff, sql`id`)} order by name`,
-    baseUrl(),
   ])
 
   // Hiding the code in the markup is not hiding it: props to a client
@@ -51,7 +49,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
         </div>
         <Link
           href={selected ? `/staff/rooms/print?property=${selected}` : '/staff/rooms/print'}
-          className="bg-ink rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
+          className="bg-ink inline-flex min-h-11 items-center rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white transition hover:opacity-90"
         >
           Print QR cards
         </Link>
@@ -59,7 +57,6 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
 
       <Rooms
         rooms={visible}
-        base={base}
         canEdit={canEdit}
         properties={staff.role === 'admin' ? properties : []}
         selectedProperty={selected}

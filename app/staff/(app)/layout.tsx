@@ -21,24 +21,27 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="bg-surface border-line sticky top-0 z-40 border-b no-print">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-5 px-4 py-2.5">
-          <Link href={homeFor(staff)} className="text-[15px] font-semibold tracking-tight">
+        {/* One row on a monitor. On a phone the same three groups do not fit
+            across 375px, so the nav drops to its own scrolling rail underneath
+            rather than pushing the whole app into sideways scroll. */}
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-4 px-4 py-2 sm:gap-x-5 sm:py-2.5">
+          <Link href={homeFor(staff)} className="order-1 text-[15px] font-semibold tracking-tight">
             HConcierge
           </Link>
 
-          <nav className="flex items-center gap-1">
+          <nav className="no-scrollbar order-3 -mx-4 flex w-full items-center gap-1 overflow-x-auto px-4 pb-0.5 sm:order-2 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 sm:pb-0">
             {nav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
-                className="text-muted hover:bg-paper hover:text-ink rounded-lg px-3 py-1.5 text-[13px] font-medium transition"
+                className="text-muted hover:bg-paper hover:text-ink rounded-lg px-3 py-2 text-[13px] font-medium whitespace-nowrap transition sm:py-1.5"
               >
                 {n.label}
               </Link>
             ))}
           </nav>
 
-          <div className="ml-auto flex items-center gap-3">
+          <div className="order-2 ml-auto flex items-center gap-3 sm:order-3">
             <div className="hidden text-right sm:block">
               <p className="text-[13px] leading-tight font-medium">{staff.name}</p>
               <p className="text-faint text-[11px] leading-tight">
@@ -49,10 +52,11 @@ export default async function StaffLayout({ children }: { children: React.ReactN
                   : `${staff.property_name ?? staff.organisation_name ?? ''} · ${departmentLabel(staff.department)}`}
               </p>
             </div>
+            {/* No `title` here: it replaced the visible word as the accessible
+                name, so "Password" was not what anything announced or matched. */}
             <Link
               href="/staff/password"
-              className="text-faint hover:text-ink text-[12px] font-medium"
-              title="Change password"
+              className="text-faint hover:text-ink -mx-1.5 rounded-lg px-1.5 py-2 text-[12px] font-medium"
             >
               Password
             </Link>

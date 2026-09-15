@@ -44,14 +44,19 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
             Every request, how fast it was answered, and what it billed.
           </p>
         </div>
-        <a href={csvHref} className="border-line hover:border-ink rounded-xl border px-4 py-2.5 text-[13px] font-semibold">
+        <a
+          href={csvHref}
+          className="border-line hover:border-ink inline-flex min-h-11 items-center rounded-xl border px-4 py-2.5 text-[13px] font-semibold"
+        >
           Export charges (CSV)
         </a>
       </div>
 
-      {/* A plain GET form: no client JS, and every view is a shareable URL. */}
-      <form className="bg-surface border-line mb-5 flex flex-wrap items-end gap-2 rounded-2xl border p-3">
-        {properties.length > 0 && (
+      {/* A plain GET form: no client JS, and every view is a shareable URL.
+          Five controls of five different widths wrapped into a ragged block on
+          a phone; two even columns until there is room for the row. */}
+      <form className="bg-surface border-line mb-5 grid grid-cols-2 items-end gap-2 rounded-2xl border p-3 sm:flex sm:flex-wrap">
+        {properties.length > 1 && (
           <Select name="property" label="Property" defaultValue={filters.propertyId ?? ''}>
             <option value="">All</option>
             {properties.map((p) => (
@@ -92,10 +97,12 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
             name="room"
             defaultValue={filters.room ?? ''}
             placeholder="Any"
-            className="border-line bg-surface w-24 rounded-lg border px-2.5 py-1.5 text-[13px] outline-none"
+            className="border-line bg-surface w-full rounded-lg border px-2.5 py-1.5 text-[13px] outline-none sm:w-24"
           />
         </div>
-        <button className="bg-ink rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-white">Apply</button>
+        <button className="bg-ink col-span-2 min-h-11 rounded-lg px-3.5 py-1.5 text-[13px] font-semibold text-white sm:col-span-1 sm:min-h-0">
+          Apply
+        </button>
       </form>
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -247,7 +254,7 @@ function Select({
         id={name}
         name={name}
         defaultValue={defaultValue}
-        className="border-line bg-surface rounded-lg border px-2.5 py-1.5 text-[13px]"
+        className="border-line bg-surface w-full rounded-lg border px-2.5 py-1.5 text-[13px] sm:w-auto"
       >
         {children}
       </select>

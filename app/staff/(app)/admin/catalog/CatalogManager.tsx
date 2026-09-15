@@ -13,7 +13,7 @@ import {
   updateCategory,
   updateItem,
 } from '../actions'
-import { Button, Check, Confirm, Err, Field, Modal, Panel, Select, Tag } from '../ui'
+import { Button, Check, Confirm, Err, Field, Modal, Panel, Select, Tag } from '../../ui'
 
 const KINDS = [
   { value: 'amenity', label: 'Ask for something — free housekeeping items' },
@@ -89,7 +89,7 @@ export default function CatalogManager({
       title="Directory"
       description="Everything a guest can ask for, what it costs, which team it goes to, and how long it is allowed to take. Editing a price never rewrites an old order — past requests keep the name and price they were placed at."
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (
             <select
               value={propertyId}
@@ -113,7 +113,8 @@ export default function CatalogManager({
       {error && <div className="mb-3">{<Err>{error}</Err>}</div>}
 
       <div className="grid gap-4 lg:grid-cols-[17rem_1fr]">
-        <nav className="bg-surface border-line divide-line h-fit divide-y overflow-hidden rounded-2xl border">
+        {/* Capped on a phone: ten sections pushed every item below the fold. */}
+        <nav className="bg-surface border-line divide-line h-fit max-h-64 divide-y overflow-y-auto rounded-2xl border lg:max-h-none lg:overflow-hidden">
           {categories.map((c) => (
             <button
               key={c.id}
@@ -295,7 +296,10 @@ export default function CatalogManager({
               const input = {
                 kind: String(form.get('kind') ?? 'amenity'),
                 name: String(form.get('name') ?? ''),
-                icon: String(form.get('icon') ?? '') || null,
+                // The guest's category rail stopped rendering these when the
+                // emoji came off it. Keep whatever is stored rather than
+                // wiping it on the next save.
+                icon: editingCategory?.icon ?? null,
               }
               if (editingCategory) {
                 run(
@@ -320,13 +324,6 @@ export default function CatalogManager({
               name="kind"
               defaultValue={editingCategory?.kind ?? 'amenity'}
               options={KINDS}
-            />
-            <Field
-              label="Icon (optional)"
-              name="icon"
-              defaultValue={editingCategory?.icon ?? ''}
-              placeholder="🛏️"
-              hint="A single character shown beside the section name on the guest's phone."
             />
             {editingCategory && (
               <div className="border-line rounded-xl border px-3.5 py-2">

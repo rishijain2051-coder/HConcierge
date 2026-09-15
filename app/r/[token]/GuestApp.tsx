@@ -5,7 +5,6 @@ import { rupees } from '@/lib/money'
 import { minutesRemaining, since } from '@/lib/sla'
 import { useLive } from '@/lib/use-live'
 import {
-  GUEST_STATUS_LABEL,
   GUEST_STEPS,
   guestStep,
   type Category,
@@ -1290,7 +1289,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
       <div
-        className="absolute inset-0 bg-[rgb(28_25_23/0.32)] backdrop-blur-[2px]"
+        className="bg-scrim absolute inset-0 backdrop-blur-[2px]"
         style={{ animation: 'hc-fade-in 300ms var(--ease-glide) both' }}
         onClick={onClose}
       />

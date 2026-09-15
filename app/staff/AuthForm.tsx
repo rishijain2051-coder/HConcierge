@@ -25,7 +25,7 @@ export default function AuthForm({
   subtitle: string
   submitLabel: string
   fields: Field[]
-  footer?: string
+  footer?: React.ReactNode
 }) {
   const [state, formAction, pending] = useActionState(action, {})
   // Controlled on purpose. React empties an uncontrolled form when its action

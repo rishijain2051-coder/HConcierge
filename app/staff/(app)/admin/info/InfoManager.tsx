@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { AdminInfoPage } from '@/lib/admin'
 import { deleteInfoPage, saveInfoPage } from '../actions'
-import { Button, Check, Confirm, Err, Field, Modal, Panel, Tag, TextArea } from '../ui'
+import { Button, Check, Confirm, Err, Field, Modal, Panel, Tag, TextArea } from '../../ui'
 
 export default function InfoManager({
   propertyId,
@@ -39,7 +39,7 @@ export default function InfoManager({
       title="Hotel info"
       description="The read-only pages under Hotel on the guest's phone. This is where the wifi password, the checkout time and the pool hours live — the questions that generate the most calls and need no request at all."
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (
             <select
               value={propertyId}
@@ -65,10 +65,7 @@ export default function InfoManager({
         {pages.map((p) => (
           <article key={p.id} className="bg-surface border-line flex flex-col rounded-2xl border p-4">
             <div className="mb-2 flex items-start justify-between gap-3">
-              <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-                {p.icon && <span className="text-lg leading-none">{p.icon}</span>}
-                {p.title}
-              </h2>
+              <h2 className="text-[15px] font-semibold">{p.title}</h2>
               {!p.active && <Tag tone="late">Hidden</Tag>}
             </div>
             <p className="text-muted line-clamp-4 flex-1 text-[13px] leading-relaxed whitespace-pre-line">{p.body}</p>
@@ -101,16 +98,16 @@ export default function InfoManager({
                 slug: String(form.get('slug') ?? ''),
                 title: String(form.get('title') ?? ''),
                 body: String(form.get('body') ?? ''),
-                icon: String(form.get('icon') ?? '') || null,
+                // Guests stopped seeing these when the emoji came off the
+                // hotel-info list; the field went with them. Existing values
+                // ride along rather than being wiped on the next save.
+                icon: editing?.icon ?? null,
                 active: form.get('active') === 'on',
               }
               run(() => saveInfoPage(propertyId, input), () => (setAdding(false), setEditing(null)))
             }}
           >
-            <div className="grid gap-3.5 sm:grid-cols-[1fr_7rem]">
-              <Field label="Title" name="title" defaultValue={editing?.title} required autoFocus placeholder="Wi-Fi" />
-              <Field label="Icon" name="icon" defaultValue={editing?.icon ?? ''} placeholder="📶" />
-            </div>
+            <Field label="Title" name="title" defaultValue={editing?.title} required autoFocus placeholder="Wi-Fi" />
             <Field
               label="Address in links"
               name="slug"

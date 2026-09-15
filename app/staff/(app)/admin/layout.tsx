@@ -50,12 +50,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       )}
 
       <div className="border-line mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-        <nav className="flex flex-wrap gap-1">
+        {/* Six tabs wrap to three cramped rows on a phone. A rail keeps them on
+            one line and keeps the panel's own content above the fold. */}
+        <nav className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {tabs.map((t) => (
             <Link
               key={t.href}
               href={t.href}
-              className="text-muted hover:bg-paper hover:text-ink rounded-lg px-3 py-1.5 text-[13px] font-medium transition"
+              className="text-muted hover:bg-paper hover:text-ink rounded-lg px-3 py-2 text-[13px] font-medium whitespace-nowrap transition sm:py-1.5"
             >
               {t.label}
             </Link>

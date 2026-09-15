@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react'
 import { DEPARTMENTS, departmentLabel } from '@/lib/types'
 import type { StaffRow } from '@/lib/admin'
 import { createStaff, resetStaffPassword, setStaffActive, unlockStaff, updateStaff } from './actions'
-import { Button, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from './ui'
+import { Button, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from '../ui'
 
 type Me = { id: string; role: string; propertyId: string | null }
 type Property = { id: string; name: string }

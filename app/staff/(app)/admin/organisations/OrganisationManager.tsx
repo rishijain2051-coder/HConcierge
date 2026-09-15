@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { OrganisationRow } from '@/lib/organisations'
 import { createOrganisation, enterOrganisation, updateOrganisation } from '../actions'
-import { Button, Err, Field, Modal, Panel, PasswordOnce } from '../ui'
+import { Button, Err, Field, Modal, Panel, PasswordOnce } from '../../ui'
 
 const slugify = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)

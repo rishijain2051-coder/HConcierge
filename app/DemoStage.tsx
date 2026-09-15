@@ -113,6 +113,9 @@ export default function DemoStage() {
   // Escalation is emergent, not scripted: anything still unaccepted past its
   // own target trips, exactly as lib/notify.ts does in the real product.
   useEffect(() => {
+    // Driven by the minute timer above — an external clock, which is exactly
+    // what an effect is for, even though the rule sees only the setState.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTickets((prev) => {
       let changed = false
       const next = prev.map((t) => {

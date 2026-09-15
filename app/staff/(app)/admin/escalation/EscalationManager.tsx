@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { DEPARTMENTS, departmentLabel, type AppliesTo, type EscalationRule } from '@/lib/types'
 import { deleteEscalationRule, saveEscalationRule, setWarnThreshold } from '../actions'
-import { Button, Check, Confirm, Err, Modal, Panel, Select } from '../ui'
+import { Button, Check, Confirm, Err, Modal, Panel, Select } from '../../ui'
 
 type Candidate = { id: string; name: string; role: string; department: string; phone: string | null }
 
@@ -69,7 +69,7 @@ export default function EscalationManager({
       title="When something runs late"
       description="Every request promises a time — ten minutes for towels, forty for a biryani. If it passes that, HConcierge tells someone. Set up who, and how long it waits first."
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (
             <select
               value={propertyId}

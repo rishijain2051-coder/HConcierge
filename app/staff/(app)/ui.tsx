@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react'
 
-/** Small shared pieces for the admin screens. Five of them need the same
- *  modal, the same field and the same destructive-confirm, so they live here. */
+import { IconClose } from '@/components/icons'
+
+/** Small shared pieces for the staff screens. Six of them need the same modal,
+ *  the same field and the same destructive-confirm, so they live here rather
+ *  than being reimplemented per screen — which is how Rooms ended up with a
+ *  modal that did not lock the page behind it. */
 
 export function Panel({
   title,
@@ -56,7 +60,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-40 ${cls} ${
+      className={`min-h-11 rounded-lg border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-40 sm:min-h-0 ${cls} ${
         full ? 'w-full py-2.5 text-[14px]' : ''
       }`}
     >
@@ -206,16 +210,25 @@ export function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/35" onClick={onClose} />
       <div
-        className={`bg-surface relative max-h-[88dvh] w-full overflow-y-auto rounded-2xl p-5 shadow-2xl ${
+        className="bg-scrim absolute inset-0"
+        style={{ animation: 'hc-fade-in 240ms var(--ease-glide) both' }}
+        onClick={onClose}
+      />
+      <div
+        className={`bg-surface relative max-h-[88dvh] w-full overflow-y-auto rounded-2xl p-5 shadow-[var(--shadow-lift)] ${
           wide ? 'max-w-xl' : 'max-w-sm'
         }`}
+        style={{ animation: 'hc-sheet-in 380ms var(--ease-glide) both' }}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <h2 className="text-[17px] font-semibold tracking-tight">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="text-faint hover:text-ink -mt-1 p-1 text-xl leading-none">
-            ×
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-faint hover:text-ink -mt-1.5 -mr-1.5 grid h-10 w-10 shrink-0 place-items-center rounded-full transition active:scale-90"
+          >
+            <IconClose size={16} />
           </button>
         </div>
         {children}

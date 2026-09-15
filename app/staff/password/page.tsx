@@ -1,11 +1,12 @@
-import { requireStaff } from '@/lib/auth'
+import Link from 'next/link'
+import { homeFor, requireStaff } from '@/lib/auth'
 import AuthForm from '../AuthForm'
 import { changePassword } from '../login/actions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PasswordPage() {
-  await requireStaff()
+  const staff = await requireStaff()
 
   return (
     <AuthForm
@@ -13,6 +14,13 @@ export default async function PasswordPage() {
       title="Choose a new password"
       subtitle="Update the password on your account."
       submitLabel="Save password"
+      // This screen sits outside the app shell, so it has no header to go back
+      // through — and without this the only way out was the browser button.
+      footer={
+        <Link href={homeFor(staff)} className="hover:text-ink underline">
+          Back to work
+        </Link>
+      }
       fields={[
         { name: 'current', label: 'Current password', type: 'password', autoComplete: 'current-password', autoFocus: true },
         {

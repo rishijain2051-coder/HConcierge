@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { rupees } from '@/lib/money'
+import { Confirm, Field, Modal } from '../ui'
 import { addRoom, checkIn, checkOut, newAccessCode, rotateToken, settleBill, unlockRoomCode } from './actions'
 
 export type RoomRow = {
@@ -28,14 +29,12 @@ export type RoomRow = {
 
 export default function Rooms({
   rooms,
-  base,
   canEdit,
   properties,
   selectedProperty,
   defaultPropertyId,
 }: {
   rooms: RoomRow[]
-  base: string
   canEdit: boolean
   properties: { id: string; name: string }[]
   selectedProperty: string
@@ -49,6 +48,9 @@ export default function Rooms({
   const [issued, setIssued] = useState<{ room: RoomRow; code: string } | null>(null)
   // Checkout refuses over an unpaid balance rather than writing it off quietly.
   const [owing, setOwing] = useState<{ room: RoomRow; amount: number } | null>(null)
+  // The only action here that cannot be undone and cannot be seen until
+  // somebody walks to the room. It was a single tap on a grid of room numbers.
+  const [rotating, setRotating] = useState<RoomRow | null>(null)
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null)
@@ -64,11 +66,11 @@ export default function Rooms({
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {properties.length > 0 && (
+        {properties.length > 1 && (
           <select
             value={selectedProperty}
             onChange={(e) => router.push(e.target.value ? `/staff/rooms?property=${e.target.value}` : '/staff/rooms')}
-            className="border-line bg-surface rounded-xl border px-3 py-2 text-[13px] font-medium"
+            className="border-line bg-surface w-full rounded-xl border px-3 py-2 text-[13px] font-medium sm:w-auto"
           >
             <option value="">All properties</option>
             {properties.map((p) => (
@@ -84,7 +86,7 @@ export default function Rooms({
         {canEdit && (
           <button
             onClick={() => setAdding(true)}
-            className="border-line hover:border-ink ml-auto rounded-xl border px-3 py-2 text-[13px] font-semibold"
+            className="border-line hover:border-ink ml-auto min-h-11 rounded-xl border px-3 py-2 text-[13px] font-semibold sm:min-h-0"
           >
             + Add a room
           </button>
@@ -114,7 +116,7 @@ export default function Rooms({
             >
               <div>
                 <p className="text-[15px] font-semibold tabular-nums">{r.number}</p>
-                {properties.length > 0 && <p className="text-faint text-[11px]">{r.property_name}</p>}
+                {properties.length > 1 && <p className="text-faint text-[11px]">{r.property_name}</p>}
               </div>
 
               <p className="text-muted hidden text-[13px] sm:block">
@@ -147,8 +149,16 @@ export default function Rooms({
               {/* The code plus the QR token IS the guest's login — it opens
                   their bill, their private thread with the desk, and the
                   ability to charge the room. Only the people who issue it see
-                  it; everyone else gets the same dash as an empty room. */}
-              <div className="hidden text-center sm:block">
+                  it; everyone else gets the same dash as an empty room.
+
+                  It used to be hidden below sm, which meant a front desk
+                  working from a phone could not read the one thing this row
+                  exists to hand over. The dash is what stays hidden now. */}
+              <div
+                className={`shrink-0 text-center ${
+                  canEdit && r.occupied && r.access_code ? '' : 'hidden sm:block'
+                }`}
+              >
                 {canEdit && r.occupied && r.access_code ? (
                   <span className="bg-paper rounded-lg px-2 py-1 text-[15px] font-semibold tracking-[0.14em] tabular-nums">
                     {r.access_code}
@@ -165,7 +175,7 @@ export default function Rooms({
                       <Link
                         href={`/staff/rooms/print?room=${r.id}&slip=1`}
                         target="_blank"
-                        className="border-line text-muted hover:text-ink rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition"
+                        className="border-line text-muted hover:text-ink inline-flex min-h-11 items-center rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition sm:min-h-0"
                       >
                         Welcome card
                       </Link>
@@ -217,7 +227,7 @@ export default function Rooms({
                       <Link
                         href={`/staff/rooms/print?room=${r.id}`}
                         target="_blank"
-                        className="border-line text-muted hover:text-ink rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition"
+                        className="border-line text-muted hover:text-ink inline-flex min-h-11 items-center rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition sm:min-h-0"
                       >
                         QR
                       </Link>
@@ -249,7 +259,7 @@ export default function Rooms({
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => setOwing(null)}
-              className="border-line hover:border-ink flex-1 rounded-xl border px-4 py-2.5 text-[13px] font-semibold"
+              className="border-line hover:border-ink flex-1 rounded-xl border px-4 py-3 text-[13px] font-semibold"
             >
               Not yet
             </button>
@@ -259,7 +269,7 @@ export default function Rooms({
                 setOwing(null)
                 run(() => checkOut(room.id, true))
               }}
-              className="bg-ink flex-1 rounded-xl px-4 py-2.5 text-[13px] font-semibold text-white"
+              className="bg-ink flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white"
             >
               Settled — check out
             </button>
@@ -292,7 +302,7 @@ export default function Rooms({
             <button
               type="submit"
               disabled={pending}
-              className="bg-ink w-full rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
+              className="bg-ink w-full rounded-xl px-4 py-3 text-[14px] font-semibold text-white disabled:opacity-50"
             >
               {pending ? 'Saving…' : 'Check in'}
             </button>
@@ -312,14 +322,14 @@ export default function Rooms({
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => setIssued(null)}
-              className="border-line hover:border-ink flex-1 rounded-xl border px-4 py-2.5 text-[14px] font-semibold"
+              className="border-line hover:border-ink flex-1 rounded-xl border px-4 py-3 text-[14px] font-semibold"
             >
               Done
             </button>
             <Link
               href={`/staff/rooms/print?room=${issued.room.id}&slip=1`}
               target="_blank"
-              className="bg-ink flex-1 rounded-xl px-4 py-2.5 text-center text-[14px] font-semibold text-white"
+              className="bg-ink flex-1 rounded-xl px-4 py-3 text-center text-[14px] font-semibold text-white"
             >
               Print welcome card
             </Link>
@@ -366,7 +376,7 @@ export default function Rooms({
             <button
               type="submit"
               disabled={pending}
-              className="bg-ink w-full rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white disabled:opacity-50"
+              className="bg-ink w-full rounded-xl px-4 py-3 text-[14px] font-semibold text-white disabled:opacity-50"
             >
               {pending ? 'Saving…' : 'Add room'}
             </button>
@@ -388,9 +398,9 @@ export default function Rooms({
               {rooms.map((r) => (
                 <button
                   key={r.id}
-                  onClick={() => run(() => rotateToken(r.id))}
+                  onClick={() => setRotating(r)}
                   disabled={pending}
-                  className="border-line hover:text-late rounded-lg border px-2 py-1 text-[11px] font-semibold tabular-nums disabled:opacity-40"
+                  className="border-line hover:text-late min-h-10 min-w-10 rounded-lg border px-2 py-1 text-[11px] font-semibold tabular-nums disabled:opacity-40 sm:min-h-0 sm:min-w-0"
                 >
                   {r.number}
                 </button>
@@ -398,6 +408,16 @@ export default function Rooms({
             </div>
           </div>
         </details>
+      )}
+
+      {rotating && (
+        <Confirm
+          title={`Reissue the QR for Room ${rotating.number}?`}
+          body="The printed card in that room stops working the moment you do this, and a guest already using it is signed out. You will have to print the new card and walk it up. If they have only lost their welcome slip, issue a new code instead."
+          confirmLabel="Reissue the QR"
+          onConfirm={() => run(() => rotateToken(rotating.id))}
+          onClose={() => setRotating(null)}
+        />
       )}
     </div>
   )
@@ -424,66 +444,10 @@ function Mini({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-40 ${cls}`}
+      className={`min-h-11 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition disabled:opacity-40 sm:min-h-0 ${cls}`}
     >
       {children}
     </button>
   )
 }
 
-function Field({
-  name,
-  label,
-  type = 'text',
-  placeholder,
-  autoFocus,
-  required,
-}: {
-  name: string
-  label: string
-  type?: string
-  placeholder?: string
-  autoFocus?: boolean
-  required?: boolean
-}) {
-  return (
-    <div>
-      <label htmlFor={name} className="mb-1.5 block text-[13px] font-medium">
-        {label}
-      </label>
-      <input
-        id={name}
-        name={name}
-        type={type}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        required={required}
-        className="border-line bg-surface focus:border-ink placeholder:text-faint w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none"
-      />
-    </div>
-  )
-}
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  // Every other dialog in the app closes on Escape; these did not.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="bg-surface relative w-full max-w-sm rounded-2xl p-5 shadow-2xl">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 className="text-[17px] font-semibold tracking-tight">{title}</h2>
-          <button onClick={onClose} aria-label="Close" className="text-faint hover:text-ink -mt-1 p-1 text-xl leading-none">
-            ×
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}

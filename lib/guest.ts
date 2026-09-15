@@ -1,6 +1,6 @@
 import { cache } from 'react'
 import { sql } from './db'
-import type { Category, ChatMessage, FolioLine, GuestRequest, GuestState, InfoPage, Item, Property, Room } from './types'
+import type { Category, ChatMessage, FolioLine, GuestRequest, GuestState, InfoPage, Property, Room } from './types'
 
 export type RoomContext = { room: Room; property: Property }
 

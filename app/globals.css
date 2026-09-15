@@ -31,6 +31,16 @@
   /* One layer, with an offset and a long blur. Two more underneath it were
      invisible on paper and cost a repaint each. */
   --shadow-float: 0 12px 32px -16px rgb(28 25 23 / 0.22);
+
+  /* What sits *over* the page — a drawer, a dialog. Deeper than --shadow-float
+     because it has to read as a separate plane, and tinted with the ink rather
+     than pure black, which went grey against warm paper. Tailwind's shadow-2xl
+     was doing this job in three places and belonged to no palette. */
+  --shadow-lift: 0 24px 64px -16px rgb(28 25 23 / 0.34);
+
+  /* The page behind an overlay. Black at 30% and black at 35% were competing
+     in two files; this is the one value, and it is warm. */
+  --color-scrim: rgb(28 25 23 / 0.36);
 }
 
 :root {
@@ -54,6 +64,18 @@ button,
 [role="button"],
 a.tap {
   touch-action: manipulation;
+}
+
+/* Safari zooms the page in when a field smaller than 16px takes focus, and it
+   does not zoom back out. The staff screens are deliberately dense at 13–14px,
+   which is right on a monitor and a trap on a phone — so the floor is raised
+   only where a touch keyboard is what opens. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
 }
 
 @utility brand-bg {
@@ -136,7 +158,11 @@ a {
   text-decoration-thickness: from-font;
 }
 
-/* The one authored entrance: a request card arriving on the board. */
+/* The one authored entrance on the staff side, and it is the product's whole
+   claim in one gesture: a request the guest just made, landing on the board as
+   it is written. It fires for arrivals only — the cards already sitting there
+   when the page loads do not flutter, because that is a page transition
+   wearing an arrival's clothes. */
 @keyframes hc-card-in {
   from {
     opacity: 0;
@@ -223,6 +249,20 @@ a {
   from {
     opacity: 0;
     transform: translate3d(0, 24px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The same arrival, from the edge the staff drawer is anchored to. It used to
+   appear with no transition at all, which read as a page swap next to the
+   guest sheet that eases in. */
+@keyframes hc-drawer-in {
+  from {
+    opacity: 0;
+    transform: translate3d(3%, 0, 0);
   }
   to {
     opacity: 1;

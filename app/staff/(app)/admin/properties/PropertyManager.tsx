@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { PropertyRow } from '@/lib/admin'
 import { createProperty, updateProperty } from '../actions'
-import { Button, Err, Field, Modal, Panel, Select } from '../ui'
+import { Button, Err, Field, Modal, Panel, Select } from '../../ui'
 
 const TIMEZONES = [
   'Asia/Kolkata',
