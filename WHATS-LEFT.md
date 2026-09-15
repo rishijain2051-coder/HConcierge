@@ -1,9 +1,12 @@
 # What's left
 
-Written 14 September 2026 and updated 15 September 2026. The first session added
-bill viewing and settling, live order tracking, in-place quantity steppers and a
-speed pass, and ran four testing agents over the whole app. The second made the
-staff screens work at 375px, audited them, and ran a polish pass — see §8.
+Written 14 September 2026 and updated through 15 September 2026.
+
+The first session added bill viewing and settling, live order tracking, in-place
+quantity steppers and a speed pass, and ran four testing agents over the whole
+app. The second made both halves work at 375px, cleared every open finding, and
+turned two things that were structure into data. Sections §8–§10 are that day,
+in order.
 
 Everything the testing pass classified as **blocker** or **major** is fixed.
 What follows is what it found and I did not fix, what I decided deliberately,
@@ -36,8 +39,18 @@ project and it cannot be verified from a development machine.
 and serving a build from before that day's work. The code on disk is current;
 the process is not.
 
-~~Run `npm run db:push`~~ — done. Verified on 15 September: the three
-settlement columns and all five `hc_notify` triggers are live.
+**Run `npm run db:push` wherever this deploys.** Already applied to the shared
+development database, so it is a no-op there — but the schema moved four times
+on 15 September and a fresh environment needs all of it: the settlement columns
+and `hc_notify` triggers, `audit_log.organisation_id`, the `departments` table
+with its seed and the four dropped CHECK constraints, and `staff.extra_teams`.
+It is idempotent.
+
+**A production build has not been run since any of this.** `tsc`, `eslint` and
+the design detector are clean, and every screen was exercised against a running
+dev server — but `next build` was deliberately not run, because a second agent
+was working in the same tree and a build writes to the `.next` the dev server
+is using. Run it before deploying.
 
 ---
 
@@ -123,7 +136,15 @@ nothing. They reopen on focus and on every safety poll.
 
 - One organisation (RN Hospitality), one property (RN Grand, Pune), 113 items,
   7 info pages, 2 escalation rungs.
-- Two staff: `rn.admin` (admin) and `hc.ops` (platform). `hc.ops` was reset on
+- **Five teams**, since teams became rows: the four that were hardcoded plus
+  **Spa & wellness**, created on 15 September to prove a fifth one is possible.
+  Nothing is routed to it. Close it from Manage → Teams if it is noise.
+- **Five staff**, not two. `qa.multiteam` (Sunita Rao) is mine — Housekeeping,
+  also covering Spa & wellness, the demo of a person on two teams. Its one-time
+  password was never recorded, so nobody can sign in as it. `rn.duty` and
+  `wa.test` belong to the WhatsApp work in the other session, and `rn.duty` was
+  verified on a real handset.
+- Two staff carry the real access: `rn.admin` (admin) and `hc.ops` (platform). `hc.ops` was reset on
   15 September with `npm run db:platform` to get into the staff screens, and
   both passwords have since been typed into a chat transcript. They are trial
   credentials on a demo database, but rotate them before this is in front of
@@ -237,3 +258,60 @@ the tree. Three things were confirmed on screen rather than assumed: the
 catalogue rows breathe without the duplicate heading, the Home tiles are even
 now that the name has the tile's full width instead of 55% of it, and the bill
 sheet needed nothing. The four-digit gate was not typed into and not bypassed.
+
+---
+
+## 10. Teams became data, 15 September
+
+Two commits, `2ec893d` and `1efbb14`, and they change the shape of the product
+rather than its surface.
+
+**A hotel can have a fifth team.** The four were a CHECK constraint repeated on
+five tables and a constant in `lib/types.ts`, so a customer with a spa, a valet
+desk or a business centre could not have one without a migration and a release.
+They are rows in `departments` now, owned by the organisation. Manage → Teams,
+admin and above. The routed columns still hold the slug — an FK rewrite across
+requests, items, staff and escalation rules buys referential integrity the
+application already enforces, at the cost of touching every query in the
+product.
+
+**A person can cover more than one team.** `staff.extra_teams` is a `text[]`
+read with the staff row. `department` stays their main team, which is what the
+header names and what escalation matches on.
+
+Things a later change should not undo:
+
+- **There is no delete, only close.** Four tables point at a team and last
+  month's requests still have to read correctly.
+- **Renaming does not rewrite the slug.** A rename is a label change.
+- **`'all'` stays a sentinel, never a row**, or a team could be created that
+  makes a department account look like a manager.
+- **Onboarding seeds the four defaults.** A customer with no teams has nowhere
+  to route a request and empty selects on every form.
+- **The trust boundary moved with the constraint.** A forged department used to
+  hit the CHECK and return a 500; it is now validated against that
+  organisation's own teams, which is the only place that knows.
+
+### Still open from this
+
+| | Where | What |
+|---|---|---|
+| MINOR | `lib/notify.ts` | `notifyNewRequest` matches a staff member's main team only, so somebody whose *extra* team a request belongs to is not messaged. Their board is correct either way. The fix is one clause — matching the request's department against `extra_teams` as well — and it was left to the session that owns that file. |
+| POLISH | Manage → Teams | No reordering. `sort` exists and is respected; nothing sets it after creation, so teams appear in the order they were added. |
+| DECIDE | roles | Roles are still the four permission levels, deliberately. Making them data means letting an admin define permissions, and the first thing that gets used for is a role that can do what its author cannot. If a customer wants "Duty Manager" as a *title*, that is a display field and a much smaller change than it sounds. |
+
+---
+
+## 11. Working alongside another session
+
+For most of 15 September a second Claude session was building WhatsApp
+escalation in a worktree at `D:\concierge-wa`, on branch `whatsapp-links`,
+against the same development database. Worth knowing:
+
+- **`db/schema.sql` has two authors.** Both of us appended blocks; they merge
+  cleanly because everything is `add column if not exists` / `drop ... if
+  exists`, but expect a conflict at the tail and keep both sides.
+- **`git add -A` is the wrong habit in this tree.** It swept that session's
+  `WHATSAPP-TESTING-PLAN.md` into a commit once. Backed out before pushing,
+  but stage by explicit path here.
+- **Their test staff rows are in the database**, listed in §5.
