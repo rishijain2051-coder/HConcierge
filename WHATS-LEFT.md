@@ -15,10 +15,14 @@ Full reports with reproductions: [`docs/qa-2026-09-14/`](docs/qa-2026-09-14/).
 
 ## 1. Do this before the next deploy
 
-**Rotate the Supabase database password.** It was pasted into a chat transcript
-early in the project's life. It lives only in `.env.local`, which is gitignored,
-and it has never been committed — but it is in a transcript, and it has not been
-rotated. This is the one item on this page with a real blast radius.
+**Rotate three credentials.** The Supabase database password was pasted into a
+chat transcript early in the project's life; it lives only in `.env.local`,
+which is gitignored, and has never been committed, but it is in a transcript and
+has not been rotated. On 15 September the `hc.ops` and `rn.admin` passwords
+joined it there. All three are trial credentials on a demo database — rotate
+them anyway before this is in front of anyone. `npm run db:platform` for the
+platform account, Manage → Staff → Reset password for `rn.admin`, the Supabase
+dashboard for the database.
 
 **Check the Vercel region actually took.** `vercel.json` asks for `bom1`. On
 Hobby, multi-region is not available and the setting may be ignored — confirm
@@ -28,12 +32,12 @@ in Mumbai: a ~230ms round trip, and a page that makes five of them spends over
 a second on network alone. This is the largest single performance factor in the
 project and it cannot be verified from a development machine.
 
-**Restart any running server.** A `next start` process left over from this
-session is serving a stale build. The code on disk is current; the process is
-not.
+**Restart the production server on 3100.** Confirmed still up on 15 September
+and serving a build from before that day's work. The code on disk is current;
+the process is not.
 
-**Run `npm run db:push`.** The schema gained settlement columns, five NOTIFY
-triggers, and two constraint fixes. It is idempotent.
+~~Run `npm run db:push`~~ — done. Verified on 15 September: the three
+settlement columns and all five `hc_notify` triggers are live.
 
 ---
 
@@ -202,11 +206,18 @@ targets clear 44px; the room access code is readable on a phone; alerts no
 longer restart the live stream; reissuing a QR asks first; the board card
 announces itself to a screen reader; `npm run lint` is green.
 
+A second round the same day replaced two shapes that were fighting 375px rather
+than using it (`3ad66e4`): the header's destinations, name, Password and Sign
+out moved into a left navigation panel, putting the header back on one line;
+and the room list collapsed to `Room 401 · Occupied`, with the guest, the code,
+the bill and that room's own actions behind the tap. The separate grid of all
+twenty-two room numbers for reissuing a QR is gone — each room carries it now.
+
 Still open from this pass:
 
 | | Where | What |
 |---|---|---|
-| POLISH | `app/staff/(app)/rooms/Rooms.tsx` | Twenty-two rooms at ~75px a row is a long scroll on a phone to reach 415, and the front desk mostly wants the occupied ones. A room filter, or occupied-first ordering on narrow screens, would earn its keep. Not done because it changes desktop scanning order too. |
+| DECIDE | `app/staff/(app)/rooms/Rooms.tsx` | The collapsed row applies on the reception monitor too, so the access code and the guest name are one click away rather than a column you read across. Fifteen-plus rooms on screen at once is the compensation. If the desk misses the columns, keep the accordion below `sm` and restore the grid above it. |
 | POLISH | `app/staff/(app)/board/Board.tsx` `Card` | The 6px coloured left stripe is the pattern the craft floor refuses. It is kept deliberately: it is the only thing that separates on-time from amber at a glance across a lobby, which is what principle 2 asks for. Revisit only if the card surface starts carrying that state instead. |
 | POLISH | `app/staff/(app)/board/Board.tsx` toolbar | At 375px the overdue count and the alerts button wrap to their own right-aligned line once the Requests tab carries a number. Ragged, not broken. |
 | MINOR | `lib/admin.ts`, `lib/guest.ts` | The `icon` column is now written by nothing and read by nothing. The two admin fields were removed and existing values ride along untouched on save. Drop the column when the schema is next migrated. |
