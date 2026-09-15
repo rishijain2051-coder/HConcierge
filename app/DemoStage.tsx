@@ -632,7 +632,7 @@ function TicketCard({ t, minute, onAdvance }: { t: Ticket; minute: number; onAdv
       {t.status === 'done' && (
         <p className="text-ok border-line inline-flex w-full items-center justify-center gap-1 border-t py-1.5 text-[11px] font-semibold">
           <IconCheck size={11} />
-          Delivered
+          Done
         </p>
       )}
     </article>

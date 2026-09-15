@@ -159,8 +159,31 @@ export type GuestState = {
   settle_requested_at: string | null
 }
 
-/** The four beats of an order, as the guest is shown them. */
-export const GUEST_STEPS = ['Sent', 'Picked up', 'On the way', 'Delivered'] as const
+/**
+ * The four beats of a request, as the guest is shown them.
+ *
+ * These were 'Sent · Picked up · On the way · Delivered', which is a courier
+ * describing a parcel. Nobody picks up a blocked drain and nothing is on its
+ * way when the shower is being looked at. What actually happens is that a
+ * person takes the request and then does the work — and what that work looks
+ * like depends entirely on which team has it, so the words do too.
+ *
+ * Step two is 'Accepted' everywhere on purpose: it is the word on the button
+ * the staff member presses, so the desk can explain the guest's screen without
+ * translating.
+ */
+const STEPS: Record<string, readonly [string, string, string, string]> = {
+  fnb: ['Sent', 'Accepted', 'In the kitchen', 'Delivered'],
+  housekeeping: ['Sent', 'Accepted', 'On the way', 'Done'],
+  maintenance: ['Sent', 'Accepted', 'Being fixed', 'Fixed'],
+  front_desk: ['Sent', 'Accepted', 'Arranging', 'Done'],
+}
+
+const FALLBACK = ['Sent', 'Accepted', 'Under way', 'Done'] as const
+
+export function guestSteps(department: string): readonly [string, string, string, string] {
+  return STEPS[department] ?? FALLBACK
+}
 
 export function guestStep(status: RequestStatus): number {
   if (status === 'done') return 3
@@ -192,8 +215,8 @@ export const STATUS_LABEL: Record<RequestStatus, string> = {
 /** What the guest is told, which is not always what staff see. */
 export const GUEST_STATUS_LABEL: Record<RequestStatus, string> = {
   new: 'Sent to the team',
-  ack: 'Someone has picked this up',
-  in_progress: 'On the way',
+  ack: 'Someone has it',
+  in_progress: 'Being done now',
   done: 'Completed',
   cancelled: 'Cancelled',
 }

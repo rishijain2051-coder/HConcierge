@@ -5,8 +5,8 @@ import { rupees } from '@/lib/money'
 import { minutesRemaining, since } from '@/lib/sla'
 import { useLive } from '@/lib/use-live'
 import {
-  GUEST_STEPS,
   guestStep,
+  guestSteps,
   type Category,
   type GuestRequest,
   type GuestState,
@@ -539,6 +539,9 @@ function OrderTracker({
 }) {
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // What the beats are called depends on who has it: a kitchen prepares, a
+  // housekeeper walks, an engineer fixes, the desk arranges.
+  const steps = guestSteps(request.department)
   const step = guestStep(request.status)
   const left = minutesRemaining(request, new Date(now))
   const title = request.items.length
@@ -575,10 +578,10 @@ function OrderTracker({
         <div className="bg-line absolute top-[5px] right-[10%] left-[10%] h-[2px] rounded-full" />
         <div
           className="brand-bg ease-glide absolute top-[5px] left-[10%] h-[2px] origin-left rounded-full transition-transform duration-[900ms]"
-          style={{ width: '80%', transform: `scaleX(${step / (GUEST_STEPS.length - 1)})` }}
+          style={{ width: '80%', transform: `scaleX(${step / (steps.length - 1)})` }}
         />
         <ol className="relative flex justify-between">
-          {GUEST_STEPS.map((label, i) => {
+          {steps.map((label, i) => {
             const done = i <= step
             const current = i === step && request.status !== 'done'
             return (
@@ -612,7 +615,7 @@ function OrderTracker({
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="text-muted text-[12.5px]">
           {request.status === 'done'
-            ? 'Delivered — thank you'
+            ? `${steps[3]} — thank you`
             : left > 0
               ? `About ${left} min to go`
               : 'Taking longer than usual — we have flagged it'}
@@ -654,7 +657,8 @@ function ClosedCard({ request, now }: { request: GuestRequest; now: number }) {
     <div className="flex items-baseline justify-between gap-3 py-1.5">
       <p className="text-muted min-w-0 flex-1 truncate text-[14px] break-words">{title}</p>
       <p className="text-faint shrink-0 text-[12px]">
-        {request.status === 'done' ? 'Delivered' : 'Cancelled'} · {since(request.created_at, new Date(now))}
+        {request.status === 'done' ? guestSteps(request.department)[3] : 'Cancelled'} ·{' '}
+        {since(request.created_at, new Date(now))}
       </p>
     </div>
   )
