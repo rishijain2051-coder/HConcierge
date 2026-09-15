@@ -37,8 +37,9 @@ function generateCode(): string {
  * Issue a code and WhatsApp it to the number on file.
  *
  * Deliberately says nothing that is useful to someone who received it by
- * mistake: no room, no guest, no link — just the property name so the person it
- * *was* meant for recognises it.
+ * mistake: no room, no guest, no job list — just the property name so the person
+ * it *was* meant for recognises it, and a sign-in page that is no use without an
+ * account.
  */
 export async function sendPhoneCode(staffId: string): Promise<CodeResult> {
   const [target] = await sql<
