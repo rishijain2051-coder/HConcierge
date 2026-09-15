@@ -53,7 +53,44 @@ async function send(phone, body) {
   return { ok: true }
 }
 
+/**
+ * Is the gateway's session actually able to send right now?
+ *
+ * Asked once per pass because the alternative is asking N times and failing N
+ * times. A reboot test had the session DISCONNECTED for four minutes while this
+ * loop retried every five seconds: both messages reached attempt 36 before they
+ * went out. One status call replaces all of that, and `attempts` goes back to
+ * meaning "times we genuinely tried to send this".
+ */
+async function sessionReady() {
+  try {
+    const res = await fetch(`${gateway}/api/sessions/${session}`, { headers: { 'X-API-Key': key } })
+    if (!res.ok) return { ready: false, why: `gateway ${res.status}` }
+    const { status } = await res.json()
+    return { ready: status === 'ready', why: `session ${status}` }
+  } catch (err) {
+    return { ready: false, why: err.message }
+  }
+}
+
+let lastSkip = ''
+
 async function drain() {
+  const state = await sessionReady()
+  if (!state.ready) {
+    // Logged only when the reason changes, so an hour of downtime is one line
+    // rather than seven hundred.
+    if (state.why !== lastSkip) {
+      console.error(`waiting  ${state.why} — holding the queue`)
+      lastSkip = state.why
+    }
+    return 0
+  }
+  if (lastSkip) {
+    console.log(`ready    ${state.why} — draining`)
+    lastSkip = ''
+  }
+
   // Claim and read in one statement, so two drainers cannot send the same
   // message twice — a duplicate here is a duplicate on somebody's phone.
   const batch = await sql`

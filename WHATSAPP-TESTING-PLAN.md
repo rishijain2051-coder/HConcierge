@@ -105,6 +105,7 @@ Configuration, in `D:\OPENWA\.env`:
 | `PORT` | `2785` | Default. |
 | `API_MASTER_KEY` | 32+ random chars | The **only** thing between the internet and our WhatsApp session once Funnel is up. Boot refuses anything shorter or well-known. |
 | `SERVE_DASHBOARD` | `false` | See §2. |
+| `AUTO_START_SESSIONS` | `true` | **Load-bearing, and it lives outside this repo.** Unset means off, so the gateway restarts with its session DISCONNECTED and the queue silently grows. A reboot test caught exactly that: the bridge came back, the session did not, and two messages sat undelivered while the drainer burned 36 attempts against a dead session. Safe here only because this is a single instance — two replicas resurrecting one session risks a forced logout or a ban. |
 | `ENABLE_SWAGGER` | unset | The docs mount is not behind the API-key guard. |
 | `NODE_ENV` | `production` | Keeps `VALIDATION_ERROR_DETAIL` off, so a rejected request doesn't reflect our payload shape back at the caller. |
 
@@ -531,7 +532,11 @@ Still open:
 1. **Tailscale Funnel.** Does not serve this tailnet (§2), so Vercel cannot call the gateway
    directly. Nothing depends on it any more — the queue in §2a replaced it — but it is a
    Tailscale-side failure rather than a configuration one, and only they can fix it.
-2. **Surviving a logout, as opposed to a reboot.** The bridge starts from the per-user
+2. **Surviving a logout, as opposed to a reboot.** A cold start *was* tested, by stopping
+   the gateway, drainer and supervisor and then running the Startup entry exactly as logon
+   does: gateway back in 5s, drainer in 15s, session `ready` in 5s, and a backlog queued
+   while everything was down delivered on the first attempt. What is still untested is a
+   real power cycle, and a logout — The bridge starts from the per-user
    Startup folder, so it returns at logon. `scripts\Register-Bridge-Task.ps1` moves it to
    Task Scheduler, which also covers a logged-out machine, but registering a task needs an
    elevated shell. No actual reboot was tested — only the supervisor's restart path.
