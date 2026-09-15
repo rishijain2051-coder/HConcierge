@@ -26,6 +26,7 @@ export async function createStaff(input: {
   username: string
   role: Role
   department: Department
+  extraTeams?: string[]
   propertyId: string | null
   phone: string | null
   password?: string
@@ -38,7 +39,14 @@ export async function createStaff(input: {
 
 export async function updateStaff(
   id: string,
-  input: { name: string; role: Role; department: Department; propertyId: string | null; phone: string | null },
+  input: {
+    name: string
+    role: Role
+    department: Department
+    extraTeams?: string[]
+    propertyId: string | null
+    phone: string | null
+  },
 ) {
   const actor = await requireManager()
   const res = await admin.updateStaff(actor, id, input)

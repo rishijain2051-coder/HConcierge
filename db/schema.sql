@@ -442,3 +442,15 @@ alter table escalation_rules drop constraint if exists escalation_rules_departme
 -- staff.department still may not be empty, and 'all' is still meaningful.
 alter table staff drop constraint if exists staff_department_present;
 alter table staff add constraint staff_department_present check (length(department) > 0);
+
+-- ----------------------------------------------------- staff on more than one team
+-- A department account used to see exactly one team's board, so a hotel whose
+-- head of housekeeping also runs the laundry had to choose which half of the
+-- job the software knew about, or promote them to manager and hand them the
+-- whole property.
+--
+-- An array rather than a join table: it is a handful of slugs, it is read with
+-- the staff row on every single request, and the routed columns elsewhere
+-- already hold slugs rather than ids. `department` stays the person's main
+-- team — it is what the header shows, and what lib/notify.ts matches on.
+alter table staff add column if not exists extra_teams text[] not null default '{}';

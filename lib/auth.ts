@@ -3,7 +3,7 @@ import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { sql } from './db'
-import type { Department, Role } from './types'
+import { teamsVisibleTo, type Department, type Role } from './types'
 export { DEPARTMENTS, departmentLabel } from './types'
 export type { Department, Role } from './types'
 
@@ -13,7 +13,10 @@ export type Staff = {
   property_id: string | null
   username: string
   name: string
+  /** Their main team. What the header shows, and what escalation matches on. */
   department: Department
+  /** Any others they also cover. Empty for a manager or an admin, who see all. */
+  extra_teams: string[]
   role: Role
   phone: string | null
   property_name?: string | null
@@ -144,7 +147,7 @@ export async function staffFromToken(token?: string, enteredOrg?: string): Promi
 
   const rows = await sql<Staff[]>`
     select s.id, coalesce(s.organisation_id, o.id) as organisation_id, s.property_id,
-           s.username, s.name, s.department, s.role, s.phone,
+           s.username, s.name, s.department, s.extra_teams, s.role, s.phone,
            p.name as property_name, p.slug as property_slug, o.name as organisation_name
       from staff s
       left join properties p on p.id = s.property_id
@@ -240,9 +243,16 @@ export function generatePassword(): string {
 // ------------------------------------------------------------------ authorise
 
 /** Which departments this person's board should show. Empty array = all. */
+/**
+ * Which teams' requests this person may see. Empty means every team, which is
+ * what a manager, an admin and HConcierge get.
+ *
+ * A department account is pinned to its own — plus any it also covers, so the
+ * head of housekeeping who also runs the laundry sees both boards instead of
+ * having to be promoted to manager to see the second one.
+ */
 export function visibleDepartments(staff: Staff): string[] {
-  if (staff.role === 'staff' && staff.department !== 'all') return [staff.department]
-  return []
+  return teamsVisibleTo(staff.role, staff.department, staff.extra_teams)
 }
 
 export function canTouchDepartment(staff: Staff, department: string): boolean {

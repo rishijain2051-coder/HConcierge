@@ -65,6 +65,21 @@ export const DEPARTMENTS: { value: string; label: string }[] = [
  * the humanised slug when it does not. Client components take the list as a
  * prop; there is no organisation to query from inside one.
  */
+/**
+ * Which teams a staff member may see the requests of. An empty list means every
+ * team — what a manager, an admin and HConcierge get.
+ *
+ * Pure and dependency-free on purpose: this decides whether one department
+ * account can read another team's guests, so it is the one rule in the product
+ * with a test beside it (lib/teams.test.ts).
+ */
+export function teamsVisibleTo(role: string, department: string, extraTeams?: string[] | null): string[] {
+  if (role !== 'staff' || department === 'all') return []
+  const seen = new Set<string>([department])
+  for (const t of extraTeams ?? []) if (t) seen.add(t)
+  return [...seen]
+}
+
 export function teamLabel(teams: { value: string; label: string }[], slug: string): string {
   return teams.find((t) => t.value === slug)?.label ?? departmentLabel(slug)
 }

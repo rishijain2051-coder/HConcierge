@@ -147,12 +147,14 @@ export function Select({
   defaultValue,
   options,
   hint,
+  onChange,
 }: {
   label: string
   name: string
   defaultValue?: string
   options: { value: string; label: string }[]
   hint?: string
+  onChange?: (value: string) => void
 }) {
   return (
     <label className="block">
@@ -160,6 +162,7 @@ export function Select({
       <select
         name={name}
         defaultValue={defaultValue}
+        onChange={onChange ? (e) => onChange(e.target.value) : undefined}
         className="border-line bg-surface focus:border-ink w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors"
       >
         {options.map((o) => (
@@ -173,12 +176,24 @@ export function Select({
   )
 }
 
-export function Check({ label, name, defaultChecked }: { label: string; name: string; defaultChecked?: boolean }) {
+export function Check({
+  label,
+  name,
+  value,
+  defaultChecked,
+}: {
+  label: string
+  name: string
+  /** Needed when several checkboxes share a name and the form reads getAll. */
+  value?: string
+  defaultChecked?: boolean
+}) {
   return (
     <label className="flex cursor-pointer items-center gap-2.5 py-1">
       <input
         type="checkbox"
         name={name}
+        value={value}
         defaultChecked={defaultChecked}
         className="accent-ink h-4 w-4 rounded"
       />

@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react'
 import { teamLabel } from '@/lib/types'
 import type { StaffRow } from '@/lib/admin'
 import { createStaff, resetStaffPassword, setStaffActive, unlockStaff, updateStaff } from './actions'
-import { Button, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from '../ui'
+import { Button, Check, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from '../ui'
 
 type Me = { id: string; role: string; propertyId: string | null }
 type Property = { id: string; name: string }
@@ -48,6 +48,10 @@ export default function StaffManager({
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null)
   const [confirming, setConfirming] = useState<StaffRow | null>(null)
+  // Only a department account can cover extra teams — a manager and an admin
+  // already see all of them — so the form has to know which role is selected,
+  // not only which one it opened with.
+  const [role, setRole] = useState<string>('staff')
 
   // Whoever you are editing keeps their own role as an option, even if you
   // could not grant it. Without this, an admin editing an admin saw a select
@@ -74,7 +78,13 @@ export default function StaffManager({
       title="Staff"
       description="Who can sign in, what they see, and how to get them back in when they are locked out. New accounts and resets both produce a one-time password that is shown once."
       action={
-        <Button variant="primary" onClick={() => setAdding(true)}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            setRole('staff')
+            setAdding(true)
+          }}
+        >
           + Add someone
         </Button>
       }
@@ -110,13 +120,23 @@ export default function StaffManager({
                         : 'Staff'}
                 </Tag>
                 <Tag>{teamLabel(teams, s.department)}</Tag>
+                {s.extra_teams?.map((t) => (
+                  <Tag key={t}>{teamLabel(teams, t)}</Tag>
+                ))}
                 {!s.active && <Tag tone="late">Deactivated</Tag>}
                 {locked && <Tag tone="late">Locked</Tag>}
                 {!s.last_login_at && s.active && <Tag>Never signed in</Tag>}
               </div>
 
               <div className="flex shrink-0 flex-wrap gap-1.5">
-                <Button onClick={() => setEditing(s)}>Edit</Button>
+                <Button
+                  onClick={() => {
+                    setRole(s.role)
+                    setEditing(s)
+                  }}
+                >
+                  Edit
+                </Button>
                 <Button
                   onClick={() =>
                     run(async () => {
@@ -165,6 +185,7 @@ export default function StaffManager({
                 name: String(form.get('name') ?? ''),
                 role: String(form.get('role') ?? 'staff') as 'staff' | 'manager' | 'admin' | 'platform',
                 department: String(form.get('department') ?? 'front_desk') as never,
+                extraTeams: form.getAll('extraTeams').map(String),
                 propertyId: String(form.get('propertyId') ?? '') || me.propertyId,
                 phone: String(form.get('phone') ?? '') || null,
               }
@@ -193,14 +214,43 @@ export default function StaffManager({
                 hint="Lowercase letters, numbers, dot, dash or underscore. This cannot be changed later."
               />
             )}
-            <Select label="Role" name="role" defaultValue={editing?.role ?? 'staff'} options={roleOptions} />
+            <Select
+              label="Role"
+              name="role"
+              defaultValue={editing?.role ?? 'staff'}
+              options={roleOptions}
+              onChange={setRole}
+            />
             <Select
               label="Team"
               name="department"
-              defaultValue={editing?.department ?? 'front_desk'}
+              defaultValue={editing?.department ?? teams[0]?.value ?? 'front_desk'}
               options={[...teams, { value: 'all', label: 'All teams' }]}
-              hint="A staff account only sees this team's requests. Managers and admins see everything."
+              hint="A staff account sees this team's board. Managers and admins see every team."
             />
+
+            {/* The head of housekeeping who also runs the laundry used to have
+                to choose which half of the job the software knew about, or be
+                promoted to manager and handed the whole property. */}
+            {role === 'staff' && teams.length > 1 && (
+              <div>
+                <p className="mb-1.5 text-[13px] font-medium">Also covers</p>
+                <div className="border-line rounded-xl border px-3.5 py-2">
+                  {teams.map((t) => (
+                    <Check
+                      key={t.value}
+                      label={t.label}
+                      name="extraTeams"
+                      value={t.value}
+                      defaultChecked={editing?.extra_teams?.includes(t.value)}
+                    />
+                  ))}
+                </div>
+                <p className="text-faint mt-1 block text-[11px]">
+                  Their board shows these teams as well as their own. Ticking their own team changes nothing.
+                </p>
+              </div>
+            )}
             {!me.propertyId && properties.length > 0 && (
               <Select
                 label="Property"

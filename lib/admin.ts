@@ -115,6 +115,7 @@ export type StaffRow = {
   name: string
   role: Role
   department: Department
+  extra_teams: string[]
   phone: string | null
   active: boolean
   failed_logins: number
@@ -128,7 +129,7 @@ export type StaffRow = {
 
 export async function listStaff(actor: Staff): Promise<StaffRow[]> {
   return sql<StaffRow[]>`
-    select s.id, s.username, s.name, s.role, s.department, s.phone, s.active,
+    select s.id, s.username, s.name, s.role, s.department, s.extra_teams, s.phone, s.active,
            s.failed_logins, s.locked_until, s.last_login_at,
            s.property_id, p.name as property_name,
            s.organisation_id, o.name as organisation_name
@@ -151,6 +152,8 @@ export type StaffInput = {
   username: string
   role: Role
   department: Department
+  /** Teams this person also covers, beyond `department`. Staff accounts only. */
+  extraTeams?: string[]
   propertyId: string | null
   phone: string | null
   password?: string
@@ -197,15 +200,17 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   const [clash] = await sql`select 1 from staff where lower(username) = ${username}`
   if (clash) return fail(`“${username}” is not available. Try another.`)
 
+  const extraTeams = await resolveExtraTeams(organisationId, input.role, input.department, input.extraTeams)
+
   const password = input.password?.trim() || generatePassword()
   const problem = passwordProblem(password)
   if (problem) return fail(problem)
 
   const [row] = await sql<{ id: string }[]>`
     insert into staff (organisation_id, property_id, username, name, password_hash, department,
-                       role, phone)
+                       extra_teams, role, phone)
     values (${organisationId}, ${propertyId}, ${username}, ${name}, ${hashPassword(password)},
-            ${input.department}, ${input.role}, ${input.phone?.trim() || null})
+            ${input.department}, ${extraTeams}, ${input.role}, ${input.phone?.trim() || null})
     returning id`
 
   await audit({
@@ -215,7 +220,7 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
     action: 'staff.created',
     entity: 'staff',
     entityId: row.id,
-    meta: { username, role: input.role, department: input.department },
+    meta: { username, role: input.role, department: input.department, extraTeams },
   })
 
   // Returned once, shown once, never stored in the clear.
@@ -230,6 +235,26 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
  *
  * 'all' is accepted for staff because it is the sentinel for every team.
  */
+/**
+ * The extra teams a staff account may also cover, filtered to what is real.
+ *
+ * Only a department account has them: a manager and an admin already see every
+ * team, so carrying a list for them would be state that means nothing and can
+ * go stale. The main team is removed rather than rejected — picking it twice is
+ * a mis-click, not an error worth a message.
+ */
+async function resolveExtraTeams(
+  organisationId: string | null,
+  role: Role,
+  main: string,
+  wanted: string[] | undefined,
+): Promise<string[]> {
+  if (role !== 'staff' || !wanted?.length || !organisationId) return []
+  const teams = await listTeams(organisationId)
+  const open = new Set(teams.filter((t) => t.active).map((t) => t.slug))
+  return [...new Set(wanted)].filter((slug) => slug !== main && slug !== 'all' && open.has(slug))
+}
+
 async function isTeamOfProperty(propertyId: string, slug: string): Promise<boolean> {
   const [row] = await sql<{ organisation_id: string | null }[]>`
     select organisation_id from properties where id = ${propertyId}`
@@ -277,13 +302,16 @@ export async function updateStaff(
     // somebody into another customer's property and hand them its board.
     if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
   }
+
   const organisationId = input.role === 'platform' ? null : (target.organisation_id ?? actor.organisation_id)
+  const extraTeams = await resolveExtraTeams(organisationId, input.role, input.department, input.extraTeams)
 
   await sql`
     update staff
        set name = ${input.name.trim().slice(0, 120)},
            role = ${input.role},
            department = ${input.department},
+           extra_teams = ${extraTeams},
            organisation_id = ${organisationId},
            property_id = ${propertyId},
            phone = ${input.phone?.trim() || null}
@@ -296,7 +324,7 @@ export async function updateStaff(
     action: 'staff.updated',
     entity: 'staff',
     entityId: id,
-    meta: { username: target.username, role: input.role },
+    meta: { username: target.username, role: input.role, department: input.department, extraTeams },
   })
   return { ok: true }
 }

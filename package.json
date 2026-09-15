@@ -11,7 +11,8 @@
     "db:seed": "node --env-file=.env.local db/seed.mjs",
     "db:reset": "node --env-file=.env.local db/reset.mjs",
     "db:migrate": "node --env-file=.env.local db/migrate-tenancy.mjs",
-    "db:platform": "node --env-file=.env.local db/platform-user.mjs"
+    "db:platform": "node --env-file=.env.local db/platform-user.mjs",
+    "test": "node --test lib/*.test.ts"
   },
   "dependencies": {
     "next": "16.3.5",
@@ -31,5 +32,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "HConcierge — in-room guest request platform for RN Hospitality"
+  "description": "HConcierge \u2014 in-room guest request platform for RN Hospitality"
 }
