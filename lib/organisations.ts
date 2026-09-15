@@ -56,6 +56,17 @@ export async function createOrganisation(
   const [org] = await sql<{ id: string }[]>`
     insert into organisations (slug, name) values (${slug}, ${name}) returning id`
 
+  // A customer with no teams has nowhere to route a request, no options on the
+  // staff form and no "goes to" in the directory. Every organisation starts
+  // with the four that used to be hardcoded; they can rename, close and add
+  // from Manage → Teams.
+  await sql`
+    insert into departments (organisation_id, slug, name, sort)
+    values (${org.id}, 'front_desk', 'Front desk', 0),
+           (${org.id}, 'housekeeping', 'Housekeeping', 1),
+           (${org.id}, 'fnb', 'Food & beverage', 2),
+           (${org.id}, 'maintenance', 'Maintenance', 3)`
+
   const created = await createStaff(actor, {
     name: input.adminName,
     username: input.adminUsername,

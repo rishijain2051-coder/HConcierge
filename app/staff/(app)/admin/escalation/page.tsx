@@ -1,6 +1,7 @@
 import { requireInOrganisation } from '@/lib/auth'
 import { listProperties } from '@/lib/admin'
 import { getWarnThreshold, listEscalationCandidates, listEscalationRules } from '@/lib/escalation'
+import { activeTeams } from '@/lib/departments'
 import EscalationManager from './EscalationManager'
 
 export const dynamic = 'force-dynamic'
@@ -17,10 +18,11 @@ export default async function AdminEscalationPage({ searchParams }: PageProps<'/
 
   if (!selected) return <p className="text-faint py-16 text-center text-sm">Add a property first.</p>
 
-  const [rules, candidates, warnAt] = await Promise.all([
+  const [rules, candidates, warnAt, teams] = await Promise.all([
     listEscalationRules(me, selected),
     listEscalationCandidates(me, selected),
     getWarnThreshold(selected),
+    activeTeams(me.organisation_id),
   ])
 
   return (
@@ -30,6 +32,7 @@ export default async function AdminEscalationPage({ searchParams }: PageProps<'/
       rules={rules}
       candidates={candidates}
       warnAt={warnAt}
+      teams={teams.map((t) => ({ value: t.slug, label: t.name }))}
     />
   )
 }

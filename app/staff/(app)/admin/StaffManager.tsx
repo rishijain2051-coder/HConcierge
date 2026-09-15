@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { DEPARTMENTS, departmentLabel } from '@/lib/types'
+import { teamLabel } from '@/lib/types'
 import type { StaffRow } from '@/lib/admin'
 import { createStaff, resetStaffPassword, setStaffActive, unlockStaff, updateStaff } from './actions'
 import { Button, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from '../ui'
@@ -28,19 +28,18 @@ const ASSIGNABLE: Record<string, string[]> = {
   manager: ['staff'],
 }
 
-const DEPT_OPTIONS = [
-  ...DEPARTMENTS.map((d) => ({ value: d.value, label: d.label })),
-  { value: 'all', label: 'All departments' },
-]
+type Opt = { value: string; label: string }
 
 export default function StaffManager({
   me,
   staff,
   properties,
+  teams,
 }: {
   me: Me
   staff: StaffRow[]
   properties: Property[]
+  teams: Opt[]
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -110,7 +109,7 @@ export default function StaffManager({
                         ? 'Manager'
                         : 'Staff'}
                 </Tag>
-                <Tag>{departmentLabel(s.department)}</Tag>
+                <Tag>{teamLabel(teams, s.department)}</Tag>
                 {!s.active && <Tag tone="late">Deactivated</Tag>}
                 {locked && <Tag tone="late">Locked</Tag>}
                 {!s.last_login_at && s.active && <Tag>Never signed in</Tag>}
@@ -199,7 +198,7 @@ export default function StaffManager({
               label="Team"
               name="department"
               defaultValue={editing?.department ?? 'front_desk'}
-              options={DEPT_OPTIONS}
+              options={[...teams, { value: 'all', label: 'All teams' }]}
               hint="A staff account only sees this team's requests. Managers and admins see everything."
             />
             {!me.propertyId && properties.length > 0 && (

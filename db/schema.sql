@@ -27,7 +27,7 @@ create table if not exists staff (
   username      text not null,
   name          text not null,
   password_hash text not null,
-  department    text not null check (department in ('front_desk','housekeeping','fnb','maintenance','all')),
+  department    text not null,  -- a departments.slug, or 'all' for every team
   role          text not null default 'staff' check (role in ('platform','admin','manager','staff')),
   phone         text,
   active        boolean not null default true,
@@ -105,7 +105,7 @@ create table if not exists items (
   description     text,
   price_paise     int not null default 0,
   unit            text,
-  department      text not null check (department in ('front_desk','housekeeping','fnb','maintenance')),
+  department      text not null,  -- a departments.slug
   sla_minutes     int not null default 15,
   veg             boolean,
   needs_time      boolean not null default false,
@@ -135,7 +135,7 @@ create table if not exists requests (
   room_id         uuid not null references rooms(id) on delete cascade,
   ref             bigint generated always as identity,
   kind            text not null check (kind in ('order','amenity','service','front_desk','other')),
-  department      text not null check (department in ('front_desk','housekeeping','fnb','maintenance')),
+  department      text not null,  -- a departments.slug
   status          text not null default 'new' check (status in ('new','ack','in_progress','done','cancelled')),
   note            text,
   scheduled_for   timestamptz,
@@ -282,7 +282,7 @@ create table if not exists escalation_rules (
   id              uuid primary key default gen_random_uuid(),
   property_id     uuid not null references properties(id) on delete cascade,
   -- null means every team
-  department      text check (department in ('front_desk','housekeeping','fnb','maintenance')),
+  department      text,  -- a departments.slug; null means every team
   step            int not null default 1,
   after_minutes   int not null default 0,
   applies_to      text not null default 'unaccepted'
@@ -396,3 +396,49 @@ update audit_log a
  where a.property_id = p.id and a.organisation_id is null;
 
 create index if not exists audit_log_org_idx on audit_log (organisation_id, created_at desc);
+
+-- ------------------------------------------------------------------- teams
+-- The four teams used to be a CHECK constraint repeated on five tables, which
+-- meant a hotel with a spa, a valet or a concierge desk could not have one
+-- without a migration. They are rows now, owned by the organisation, and the
+-- columns that route to them keep holding the slug — an FK rewrite across
+-- requests, items, staff and escalation_rules buys referential integrity that
+-- the application already enforces, at the cost of touching every query in the
+-- product.
+--
+-- 'all' is not a team. It stays a sentinel on staff.department meaning "every
+-- team", which is what a manager or an admin has.
+create table if not exists departments (
+  id              uuid primary key default gen_random_uuid(),
+  organisation_id uuid not null references organisations(id) on delete cascade,
+  slug            text not null,
+  name            text not null,
+  sort            int not null default 0,
+  active          boolean not null default true,
+  created_at      timestamptz not null default now(),
+  unique (organisation_id, slug)
+);
+create index if not exists departments_org_idx on departments (organisation_id, sort);
+
+-- Every organisation starts with the four that were hardcoded, so nothing that
+-- already exists has to be re-pointed.
+insert into departments (organisation_id, slug, name, sort)
+select o.id, d.slug, d.name, d.sort
+  from organisations o
+  cross join (values ('front_desk', 'Front desk', 0),
+                     ('housekeeping', 'Housekeeping', 1),
+                     ('fnb', 'Food & beverage', 2),
+                     ('maintenance', 'Maintenance', 3)) as d(slug, name, sort)
+ on conflict (organisation_id, slug) do nothing;
+
+-- The constraints that made a fifth team impossible. The set of teams is now a
+-- table, and which slugs are legal depends on the organisation — which a CHECK
+-- constraint cannot express.
+alter table staff            drop constraint if exists staff_department_check;
+alter table items            drop constraint if exists items_department_check;
+alter table requests         drop constraint if exists requests_department_check;
+alter table escalation_rules drop constraint if exists escalation_rules_department_check;
+
+-- staff.department still may not be empty, and 'all' is still meaningful.
+alter table staff drop constraint if exists staff_department_present;
+alter table staff add constraint staff_department_present check (length(department) > 0);

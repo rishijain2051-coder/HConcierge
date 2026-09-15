@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { DEPARTMENTS, departmentLabel, type AppliesTo, type EscalationRule } from '@/lib/types'
+import { departmentLabel, type AppliesTo, type EscalationRule } from '@/lib/types'
 import { deleteEscalationRule, saveEscalationRule, setWarnThreshold } from '../actions'
 import { Button, Check, Confirm, Err, Modal, Panel, Select } from '../../ui'
 
@@ -35,12 +35,14 @@ export default function EscalationManager({
   rules,
   candidates,
   warnAt,
+  teams,
 }: {
   propertyId: string
   properties: { id: string; name: string }[]
   rules: EscalationRule[]
   candidates: Candidate[]
   warnAt: number
+  teams: { value: string; label: string }[]
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -240,7 +242,7 @@ export default function EscalationManager({
               defaultValue={editing?.department ?? ''}
               options={[
                 { value: '', label: 'Any team' },
-                ...DEPARTMENTS.map((d) => ({ value: d.value, label: `${d.label} only` })),
+                ...teams.map((d) => ({ value: d.value, label: `${d.label} only` })),
               ]}
             />
 

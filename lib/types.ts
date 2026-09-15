@@ -32,18 +32,50 @@ export type EscalationInput = {
   staffIds: string[]
 }
 
-export type Department = 'front_desk' | 'housekeeping' | 'fnb' | 'maintenance' | 'all'
+/**
+ * A team's slug, or 'all' for every team. Not a closed union any more: the
+ * teams are rows in `departments`, owned by the organisation, so a hotel can
+ * have a spa or a valet desk without a migration. See lib/departments.ts.
+ */
+export type Department = string
 export type Role = 'platform' | 'admin' | 'manager' | 'staff'
 
-export const DEPARTMENTS: { value: Exclude<Department, 'all'>; label: string }[] = [
+/**
+ * The four every organisation is seeded with. Kept as the offline fallback for
+ * code paths that have no organisation to load from — not as the set of teams
+ * that may exist, which is `listTeams` in lib/departments.ts.
+ */
+export const DEPARTMENTS: { value: string; label: string }[] = [
   { value: 'front_desk', label: 'Front desk' },
   { value: 'housekeeping', label: 'Housekeeping' },
   { value: 'fnb', label: 'Food & beverage' },
   { value: 'maintenance', label: 'Maintenance' },
 ]
 
+/**
+ * A readable name for a team slug, without a database round trip.
+ *
+ * Server code that has the organisation should prefer `teamLabels()`, which
+ * knows the hotel's own names. This is what the paths that cannot — the
+ * escalation messages in lib/notify.ts, for one — fall back to, so a custom
+ * team reads as "Spa wellness" rather than "spa_wellness".
+ */
+/**
+ * The hotel's own name for a team when the caller has the list, falling back to
+ * the humanised slug when it does not. Client components take the list as a
+ * prop; there is no organisation to query from inside one.
+ */
+export function teamLabel(teams: { value: string; label: string }[], slug: string): string {
+  return teams.find((t) => t.value === slug)?.label ?? departmentLabel(slug)
+}
+
 export function departmentLabel(d: string): string {
-  return DEPARTMENTS.find((x) => x.value === d)?.label ?? (d === 'all' ? 'All departments' : d)
+  const known = DEPARTMENTS.find((x) => x.value === d)
+  if (known) return known.label
+  if (d === 'all') return 'All teams'
+  if (!d) return 'Unassigned'
+  const words = d.replace(/[_-]+/g, ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 export type CategoryKind = 'amenity' | 'fnb' | 'service' | 'front_desk'

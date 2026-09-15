@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { rupees } from '@/lib/money'
-import { DEPARTMENTS, departmentLabel } from '@/lib/types'
+import { teamLabel } from '@/lib/types'
 import type { AdminCategory, AdminItem } from '@/lib/admin'
 import {
   createCategory,
@@ -27,7 +27,7 @@ const KIND_SHORT: Record<string, string> = {
   service: 'Services',
   front_desk: 'Front desk',
 }
-const DEPT_OPTIONS = DEPARTMENTS.map((d) => ({ value: d.value, label: d.label }))
+type Opt = { value: string; label: string }
 const VEG_OPTIONS = [
   { value: '', label: 'Not a food item' },
   { value: 'veg', label: 'Vegetarian' },
@@ -38,10 +38,12 @@ export default function CatalogManager({
   propertyId,
   properties,
   categories,
+  teams,
 }: {
   propertyId: string
   properties: { id: string; name: string }[]
   categories: AdminCategory[]
+  teams: Opt[]
 }) {
   const router = useRouter()
   const [pending, start] = useTransition()
@@ -181,7 +183,7 @@ export default function CatalogManager({
                     </div>
                     <div className="flex min-w-[15rem] flex-wrap items-center gap-1.5">
                       <Tag>{i.price_paise > 0 ? rupees(i.price_paise) : 'Complimentary'}</Tag>
-                      <Tag>{departmentLabel(i.department)}</Tag>
+                      <Tag>{teamLabel(teams, i.department)}</Tag>
                       <Tag>{i.sla_minutes} min</Tag>
                       {i.needs_time && <Tag tone="warn">Needs a time</Tag>}
                       {!i.available && <Tag tone="late">Unavailable</Tag>}
@@ -259,7 +261,7 @@ export default function CatalogManager({
                 label="Goes to"
                 name="department"
                 defaultValue={editingItem?.department ?? 'housekeeping'}
-                options={DEPT_OPTIONS}
+                options={teams}
               />
               <Select
                 label="Food marking"

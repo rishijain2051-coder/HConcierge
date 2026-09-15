@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import { sql } from './db'
 import { audit } from './audit'
 import { scopeTo } from './scope'
+import { listTeams } from './departments'
 import {
   canTouchProperty,
   generatePassword,
@@ -170,7 +171,6 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   if (!/[a-z0-9]/.test(username)) return fail('A username needs at least one letter or number.')
   // A forged form field used to reach the CHECK constraint and come back as a
   // 500. The database is the backstop, not the validation.
-  if (!DEPARTMENTS_WITH_ALL.includes(input.department)) return fail('Choose a team.')
   if (!canAssignRole(actor, input.role)) return fail('Only a group admin can create managers or admins.')
 
   // platform is org-less by definition; everyone else inherits the actor's
@@ -182,6 +182,11 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
         ? (input.organisationId ?? actor.organisation_id)
         : actor.organisation_id
   if (input.role !== 'platform' && !organisationId) return fail('Choose an organisation.')
+  // Checked against the organisation the account is being created in, which is
+  // resolved just above — a team belongs to one customer.
+  if (input.role !== 'platform' && !(await isTeamOfOrg(organisationId, input.department, true))) {
+    return fail('Choose a team.')
+  }
 
   const propertyId = input.role === 'admin' || input.role === 'platform' ? null : (input.propertyId ?? actor.property_id)
   if (input.role === 'manager' || input.role === 'staff') {
@@ -217,7 +222,26 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
   return { ok: true, password }
 }
 
-const DEPARTMENTS_WITH_ALL: string[] = ['front_desk', 'housekeeping', 'fnb', 'maintenance', 'all']
+/**
+ * A trust boundary: a forged form field used to reach a CHECK constraint and
+ * come back as a 500. The constraint is gone now that teams are rows, so this
+ * is the only thing standing between a hand-crafted POST and a staff account
+ * routed to a team that does not exist.
+ *
+ * 'all' is accepted for staff because it is the sentinel for every team.
+ */
+async function isTeamOfProperty(propertyId: string, slug: string): Promise<boolean> {
+  const [row] = await sql<{ organisation_id: string | null }[]>`
+    select organisation_id from properties where id = ${propertyId}`
+  return isTeamOfOrg(row?.organisation_id ?? null, slug)
+}
+
+async function isTeamOfOrg(organisationId: string | null, slug: string, allowAll = false): Promise<boolean> {
+  if (allowAll && slug === 'all') return true
+  if (!organisationId || !slug) return false
+  const teams = await listTeams(organisationId)
+  return teams.some((t) => t.slug === slug && t.active)
+}
 
 export async function updateStaff(
   actor: Staff,
@@ -229,7 +253,7 @@ export async function updateStaff(
   >`select role, property_id, organisation_id, username from staff where id = ${id}`
   if (!target) return fail('That account no longer exists.')
   if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
-  if (!DEPARTMENTS_WITH_ALL.includes(input.department)) return fail('Choose a team.')
+  if (!(await isTeamOfOrg(target.organisation_id, input.department, true))) return fail('Choose a team.')
   if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can edit that account.')
   if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can edit an admin.')
   // Only a role CHANGE needs the authority to grant it. Requiring it to leave
@@ -564,12 +588,10 @@ export type ItemInput = {
   available: boolean
 }
 
-const DEPARTMENTS = ['front_desk', 'housekeeping', 'fnb', 'maintenance']
 const KINDS = ['amenity', 'fnb', 'service', 'front_desk']
 
 function validateItem(input: ItemInput): string | null {
   if (!input.name.trim()) return 'Enter a name.'
-  if (!DEPARTMENTS.includes(input.department)) return 'Choose a team.'
   if (!Number.isFinite(input.priceRupees) || input.priceRupees < 0 || input.priceRupees > 1_000_000) {
     return 'Price must be between ₹0 and ₹10,00,000.'
   }
@@ -587,6 +609,7 @@ export async function createItem(actor: Staff, categoryId: string, input: ItemIn
 
   const problem = validateItem(input)
   if (problem) return fail(problem)
+  if (!(await isTeamOfProperty(category.property_id, input.department))) return fail('Choose a team.')
 
   const [{ next }] = await sql<{ next: number }[]>`
     select coalesce(max(sort), -1) + 1 as next from items where category_id = ${categoryId}`
@@ -617,6 +640,7 @@ export async function updateItem(actor: Staff, id: string, input: ItemInput): Pr
 
   const problem = validateItem(input)
   if (problem) return fail(problem)
+  if (!(await isTeamOfProperty(item.property_id, input.department))) return fail('Choose a team.')
 
   await sql`
     update items

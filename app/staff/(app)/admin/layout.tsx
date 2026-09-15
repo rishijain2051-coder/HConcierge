@@ -28,7 +28,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: '/staff/admin', label: 'Staff' },
         // Properties is admin-level; a manager who clicked it was bounced to
         // the board with no explanation.
-        ...(staff.role === 'manager' ? [] : [{ href: '/staff/admin/properties', label: 'Properties' }]),
+        ...(staff.role === 'manager'
+          ? []
+          : [
+              { href: '/staff/admin/properties', label: 'Properties' },
+              // Teams are organisation-wide, like properties, so they sit on
+              // the same side of the manager line.
+              { href: '/staff/admin/teams', label: 'Teams' },
+            ]),
         { href: '/staff/admin/catalog', label: 'Directory' },
         { href: '/staff/admin/escalation', label: 'Escalation' },
         { href: '/staff/admin/info', label: 'Hotel info' },

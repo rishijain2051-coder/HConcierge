@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { rupees } from '@/lib/money'
 import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
-import { DEPARTMENTS, departmentLabel, STATUS_LABEL, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
+import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { IconAlarm, IconChat, IconClose } from '@/components/icons'
 import { assign, openThread, reply, updateStatus } from './actions'
@@ -20,6 +20,7 @@ type Me = { id: string; name: string; role: string; department: string }
 export default function Board({
   me,
   visibleDepartments,
+  teams,
   properties,
   assignable,
   initialRequests,
@@ -27,6 +28,9 @@ export default function Board({
 }: {
   me: Me
   visibleDepartments: string[]
+  // Every team, not only the open ones: a request routed to a team that has
+  // since been closed still has to say which team it was.
+  teams: { value: string; label: string; active: boolean }[]
   properties: { id: string; name: string }[]
   assignable: { id: string; name: string; department: string }[]
   initialRequests: BoardRequest[]
@@ -58,6 +62,8 @@ export default function Board({
   const chime = useRef<(() => void) | null>(null)
 
   const canFilterDepartment = visibleDepartments.length === 0
+  // The hotel's own name for a team, not the humanised slug.
+  const nameOf = useCallback((slug: string) => teamLabel(teams, slug), [teams])
 
   // Read through a ref, not a dependency. `announce` feeds `apply`, which the
   // live stream and the poll both depend on — so with `alerts` in the closure,
@@ -70,19 +76,22 @@ export default function Board({
 
   // Declared above `apply`, which calls it: read the other way round it
   // captured a stale `alerts` and could chime after the toggle was off.
-  const announce = useCallback((arrived: BoardRequest[]) => {
+  const announce = useCallback(
+    (arrived: BoardRequest[]) => {
     if (!alertsOn.current) return
     chime.current?.()
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       for (const r of arrived.slice(0, 3)) {
         const what = r.items.length ? r.items.map((i) => `${i.qty}× ${i.name}`).join(', ') : r.note || 'New request'
-        new Notification(`Room ${r.room_number} — ${departmentLabel(r.department)}`, {
+        new Notification(`Room ${r.room_number} — ${nameOf(r.department)}`, {
           body: what,
           tag: r.id,
         })
       }
-    }
-  }, [])
+      }
+    },
+    [nameOf],
+  )
 
   // One landing point for new data, whether it was pushed or fetched.
   const apply = useCallback(
@@ -271,7 +280,7 @@ export default function Board({
             <Chip on={dept === ''} onClick={() => setDept('')}>
               All teams
             </Chip>
-            {DEPARTMENTS.map((d) => {
+            {teams.filter((t) => t.active).map((d) => {
               const count = requests.filter((r) => r.department === d.value && r.status !== 'done' && r.status !== 'cancelled').length
               return (
                 <Chip key={d.value} on={dept === d.value} onClick={() => setDept(d.value)}>
@@ -308,17 +317,17 @@ export default function Board({
         <div className="grid gap-3 lg:grid-cols-3">
           <Column title="New" tone="late" count={columns.new.length} empty="Nothing waiting. Good.">
             {columns.new.map((r) => (
-              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} onOpen={setOpenId} onAct={act} />
+              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} team={nameOf(r.department)} onOpen={setOpenId} onAct={act} />
             ))}
           </Column>
           <Column title="Working" tone="warn" count={columns.working.length} empty="Nothing in progress.">
             {columns.working.map((r) => (
-              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} onOpen={setOpenId} onAct={act} />
+              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} team={nameOf(r.department)} onOpen={setOpenId} onAct={act} />
             ))}
           </Column>
           <Column title="Finished · last 4h" tone="ok" count={columns.done.length} empty="Nothing finished yet.">
             {columns.done.map((r) => (
-              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} onOpen={setOpenId} onAct={act} />
+              <Card key={r.id} r={r} now={now} landing={landing.has(r.id)} busy={acting.has(r.id)} team={nameOf(r.department)} onOpen={setOpenId} onAct={act} />
             ))}
           </Column>
         </div>
@@ -330,6 +339,8 @@ export default function Board({
         <Drawer onClose={() => setOpenId(null)} title={`Room ${openRequest.room_number}`}>
           <RequestDetail
             r={openRequest}
+            team={nameOf(openRequest.department)}
+            nameOf={nameOf}
             me={me}
             assignable={assignable}
             now={now}
@@ -411,6 +422,7 @@ function Card({
   now,
   landing,
   busy,
+  team,
   onOpen,
   onAct,
 }: {
@@ -418,6 +430,7 @@ function Card({
   now: number
   landing: boolean
   busy: boolean
+  team: string
   onOpen: (id: string) => void
   onAct: (id: string, s: RequestStatus) => void
 }) {
@@ -459,7 +472,7 @@ function Card({
         )}
 
         <span className="mt-2 flex flex-wrap items-center gap-1.5">
-          <Tag>{departmentLabel(r.department)}</Tag>
+          <Tag>{team}</Tag>
           {r.total_paise > 0 && <Tag>{rupees(r.total_paise)}</Tag>}
           {r.scheduled_for && (
             <Tag tone="warn">
@@ -583,6 +596,8 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
 
 function RequestDetail({
   r,
+  team,
+  nameOf,
   me,
   assignable,
   now,
@@ -591,6 +606,8 @@ function RequestDetail({
   onRefresh,
 }: {
   r: BoardRequest
+  team: string
+  nameOf: (slug: string) => string
   me: Me
   assignable: { id: string; name: string; department: string }[]
   now: number
@@ -606,7 +623,7 @@ function RequestDetail({
     <div className="space-y-5 p-4">
       <div>
         <p className="text-faint text-[12px]">
-          #{r.ref} · {r.property_name} · {departmentLabel(r.department)}
+          #{r.ref} · {r.property_name} · {team}
         </p>
         <p className="mt-1 text-[15px] font-medium">
           {r.guest_name ?? 'Guest'}
@@ -689,7 +706,7 @@ function RequestDetail({
                 <option value="">Nobody yet</option>
                 {assignable.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} — {departmentLabel(s.department)}
+                    {s.name} — {nameOf(s.department)}
                   </option>
                 ))}
               </select>

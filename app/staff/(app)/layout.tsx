@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { departmentLabel, homeFor, requireStaff } from '@/lib/auth'
+import { homeFor, requireStaff } from '@/lib/auth'
+import { teamLabels } from '@/lib/departments'
 import { logout } from '../login/actions'
 import StaffNav from './StaffNav'
 
@@ -21,12 +22,16 @@ export default async function StaffLayout({ children }: { children: React.ReactN
 
   // Who is signed in and where. The header shows it on a monitor; on a phone it
   // heads the navigation panel, which is the first place it has ever fitted.
+  // The team name comes from the hotel's own list, so somebody on a team this
+  // customer invented reads as that team rather than as its slug.
+  const labels = await teamLabels(staff.organisation_id)
+  const team = staff.department === 'all' ? 'All teams' : (labels.get(staff.department) ?? staff.department)
   const subtitle =
     staff.role === 'platform'
       ? staff.organisation_name
         ? `HConcierge · ${staff.organisation_name}`
         : 'HConcierge · every organisation'
-      : `${staff.property_name ?? staff.organisation_name ?? ''} · ${departmentLabel(staff.department)}`
+      : `${staff.property_name ?? staff.organisation_name ?? ''} · ${team}`
 
   return (
     <div className="flex min-h-dvh flex-col">

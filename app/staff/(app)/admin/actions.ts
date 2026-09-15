@@ -5,6 +5,7 @@ import { requireManager, type Department, type Role } from '@/lib/auth'
 import * as admin from '@/lib/admin'
 import * as escalation from '@/lib/escalation'
 import * as orgs from '@/lib/organisations'
+import * as teams from '@/lib/departments'
 import { enterOrganisation as setOrganisation, requirePlatform } from '@/lib/auth'
 
 /**
@@ -200,6 +201,29 @@ export async function enterOrganisation(id: string | null) {
 export async function updateOrganisation(id: string, name: string) {
   const actor = await requirePlatform()
   const res = await orgs.updateOrganisation(actor, id, name)
+  if (res.ok) touched()
+  return res
+}
+
+/* ------------------------------------------------------------------ teams */
+
+export async function createTeam(name: string) {
+  const actor = await requireManager()
+  const res = await teams.createTeam(actor, name)
+  if (res.ok) touched()
+  return res
+}
+
+export async function renameTeam(id: string, name: string) {
+  const actor = await requireManager()
+  const res = await teams.renameTeam(actor, id, name)
+  if (res.ok) touched()
+  return res
+}
+
+export async function setTeamActive(id: string, active: boolean) {
+  const actor = await requireManager()
+  const res = await teams.setTeamActive(actor, id, active)
   if (res.ok) touched()
   return res
 }

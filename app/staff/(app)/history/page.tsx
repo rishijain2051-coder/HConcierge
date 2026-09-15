@@ -1,8 +1,9 @@
-import { DEPARTMENTS, departmentLabel, requireOperational, visibleDepartments } from '@/lib/auth'
+import { requireOperational, visibleDepartments } from '@/lib/auth'
+import { listTeams } from '@/lib/departments'
 import { sql } from '@/lib/db'
 import { loadByDepartment, loadHistory, loadStats, type HistoryFilters } from '@/lib/history'
 import { rupees } from '@/lib/money'
-import { STATUS_LABEL, type RequestStatus } from '@/lib/types'
+import { STATUS_LABEL, teamLabel, type RequestStatus } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,20 +21,22 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
     days: Number(one(params.days) ?? 7) || 7,
   }
 
-  const [rows, stats, byDept, properties] = await Promise.all([
+  const [rows, stats, byDept, properties, teams] = await Promise.all([
     loadHistory(staff, filters),
     loadStats(staff, filters),
     loadByDepartment(staff, filters),
     staff.role === 'admin'
       ? sql<{ id: string; name: string }[]>`select id, name from properties order by name`
       : Promise.resolve([]),
+    listTeams(staff.organisation_id),
   ])
 
   const slaRate = stats.done > 0 ? Math.round((stats.within_sla / stats.done) * 100) : null
   const csvHref = `/api/staff/folio.csv?days=${filters.days}${filters.propertyId ? `&property=${filters.propertyId}` : ''}`
-  const departmentOptions = visibleDepartments(staff).length
-    ? DEPARTMENTS.filter((d) => visibleDepartments(staff).includes(d.value))
-    : DEPARTMENTS
+  const mine = visibleDepartments(staff)
+  const labels = teams.map((t) => ({ value: t.slug, label: t.name }))
+  const open = teams.filter((t) => t.active).map((t) => ({ value: t.slug, label: t.name }))
+  const departmentOptions = mine.length ? open.filter((d) => mine.includes(d.value)) : open
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6">
@@ -133,7 +136,7 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
               const rate = d.done > 0 ? Math.round((d.within_sla / d.done) * 100) : 0
               return (
                 <div key={d.department} className="p-3.5">
-                  <p className="text-[13px] font-semibold">{departmentLabel(d.department)}</p>
+                  <p className="text-[13px] font-semibold">{teamLabel(labels, d.department)}</p>
                   <p className="text-muted mt-1 text-[12px]">
                     {d.total} request{d.total === 1 ? '' : 's'} · {d.avg_resolve ?? '—'} min average
                   </p>
@@ -181,7 +184,7 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
                       <span className="block truncate">{r.summary ?? r.note ?? '—'}</span>
                       {r.assigned_name && <span className="text-faint text-[11px]">{r.assigned_name}</span>}
                     </Td>
-                    <Td className="text-muted">{departmentLabel(r.department)}</Td>
+                    <Td className="text-muted">{teamLabel(labels, r.department)}</Td>
                     <Td className="text-muted tabular-nums">
                       {new Date(r.created_at).toLocaleString([], {
                         day: 'numeric',

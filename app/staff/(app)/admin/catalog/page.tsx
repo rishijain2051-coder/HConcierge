@@ -1,5 +1,6 @@
 import { requireInOrganisation } from '@/lib/auth'
 import { listCatalog, listProperties } from '@/lib/admin'
+import { activeTeams } from '@/lib/departments'
 import CatalogManager from './CatalogManager'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,7 @@ export default async function AdminCatalogPage({ searchParams }: PageProps<'/sta
       propertyId={selected}
       properties={properties.length > 1 ? properties.map((p) => ({ id: p.id, name: p.name })) : []}
       categories={await listCatalog(me, selected)}
+      teams={(await activeTeams(me.organisation_id)).map((t) => ({ value: t.slug, label: t.name }))}
     />
   )
 }

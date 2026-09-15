@@ -1,4 +1,5 @@
 import { requireOperational, visibleDepartments } from '@/lib/auth'
+import { listTeams } from '@/lib/departments'
 import { loadAssignableStaff, loadBoard, loadChatRooms } from '@/lib/board'
 import { sql } from '@/lib/db'
 import Board from './Board'
@@ -8,19 +9,21 @@ export const dynamic = 'force-dynamic'
 export default async function BoardPage() {
   const staff = await requireOperational()
 
-  const [requests, chats, properties, assignable] = await Promise.all([
+  const [requests, chats, properties, assignable, teams] = await Promise.all([
     loadBoard(staff),
     loadChatRooms(staff),
     staff.role === 'admin'
       ? sql<{ id: string; name: string }[]>`select id, name from properties order by name`
       : Promise.resolve([]),
     staff.property_id ? loadAssignableStaff(staff, staff.property_id) : Promise.resolve([]),
+    listTeams(staff.organisation_id),
   ])
 
   return (
     <Board
       me={{ id: staff.id, name: staff.name, role: staff.role, department: staff.department }}
       visibleDepartments={visibleDepartments(staff)}
+      teams={teams.map((t) => ({ value: t.slug, label: t.name, active: t.active }))}
       properties={properties}
       assignable={assignable}
       initialRequests={requests}
