@@ -148,6 +148,21 @@ function actionLine(base: string | null, who: Recipient, ref: string): string {
   }
 }
 
+/**
+ * The hotel's own name for a team, when it has one.
+ *
+ * Teams became rows on main, so an organisation can rename "Spa & wellness" or
+ * add one the four hardcoded slugs never covered. `departmentLabel` humanises an
+ * unknown slug to "Spa wellness", which is not wrong but is not what anybody
+ * typed either — so every query here joins `departments` on its unique
+ * (organisation_id, slug) index. A join rather than a separate lookup because
+ * this file is on the escalation path, and round trips are the cost this project
+ * is explicitly trying not to spend.
+ */
+function teamName(team: string | null, department: string): string {
+  return team ?? departmentLabel(department)
+}
+
 type FiredRow = {
   id: string
   ref: string
@@ -158,6 +173,7 @@ type FiredRow = {
   sla_minutes: number
   room_number: string
   summary: string | null
+  team: string | null
   rule_id: string
   step: number
   notify_managers: boolean
@@ -185,12 +201,14 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
     with due as (
       select distinct on (r.id)
              r.id, r.ref::text as ref, r.property_id, p.organisation_id, r.department, r.status,
-             r.sla_minutes, rm.number as room_number, r.note as summary,
+             r.sla_minutes, rm.number as room_number, r.note as summary, d.name as team,
              e.id as rule_id, e.step, e.notify_managers, e.notify_admins,
              extract(epoch from (now() - r.created_at)) / 60 as minutes_waiting
         from requests r
         join rooms rm on rm.id = r.room_id
         join properties p on p.id = r.property_id
+        left join departments d
+          on d.organisation_id = p.organisation_id and d.slug = r.department
         join escalation_rules e
           on e.property_id = r.property_id
          and e.active
@@ -249,7 +267,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
 
     const waited = Math.round(r.minutes_waiting)
     const text =
-      `HConcierge: Room ${r.room_number} — ${r.summary || departmentLabel(r.department)} ` +
+      `HConcierge: Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} ` +
       `(#${r.ref}) is ${waited} min old, past its ${r.sla_minutes} min target and still ${r.status}.`
     const base = await linkBase()
     await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
@@ -261,9 +279,14 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
 /** Optional ping when a request first arrives. Off unless NOTIFY_ON_NEW=1. */
 export async function notifyNewRequest(requestId: string): Promise<void> {
   if (process.env.NOTIFY_ON_NEW !== '1') return
-  const [r] = await sql<{ property_id: string; department: string; ref: string; room_number: string; note: string | null }[]>`
-    select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.note
-      from requests r join rooms rm on rm.id = r.room_id
+  const [r] = await sql<
+    { property_id: string; department: string; ref: string; room_number: string; note: string | null; team: string | null }[]
+  >`select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.note, d.name as team
+      from requests r
+      join rooms rm on rm.id = r.room_id
+      join properties p on p.id = r.property_id
+      left join departments d
+        on d.organisation_id = p.organisation_id and d.slug = r.department
      where r.id = ${requestId} limit 1`
   if (!r) return
 
@@ -273,7 +296,7 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
        and property_id = ${r.property_id}
        and (department = ${r.department} or department = 'all' or role in ('manager','admin'))`
 
-  const text = `HConcierge: new ${departmentLabel(r.department)} request from Room ${r.room_number} (#${r.ref}). ${r.note ?? ''}`.trim()
+  const text = `HConcierge: new ${teamName(r.team, r.department)} request from Room ${r.room_number} (#${r.ref}). ${r.note ?? ''}`.trim()
   const base = await linkBase()
   await Promise.all(targets.map((t) => sendMessage(t.phone, `${text}\n${actionLine(base, t, r.ref)}`)))
 }
@@ -301,15 +324,19 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
       total_paise: number
       finished_by: string | null
       summary: string | null
+      team: string | null
     }[]
   >`
     select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.total_paise,
-           s.name as finished_by,
+           s.name as finished_by, d.name as team,
            (select string_agg(case when ri.qty > 1 then ri.qty || '× ' || ri.name else ri.name end,
                               ', ' order by ri.name)
               from request_items ri where ri.request_id = r.id) as summary
       from requests r
       join rooms rm on rm.id = r.room_id
+      join properties p on p.id = r.property_id
+      left join departments d
+        on d.organisation_id = p.organisation_id and d.slug = r.department
       left join staff s on s.id = r.assigned_to
      where r.id = ${requestId} limit 1`
   if (!r) return
@@ -322,7 +349,7 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
 
   const money = r.total_paise > 0 ? ` ${rupees(r.total_paise)} to the room folio.` : ''
   const text =
-    `HConcierge: Room ${r.room_number} — ${r.summary || departmentLabel(r.department)} (#${r.ref}) ` +
+    `HConcierge: Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} (#${r.ref}) ` +
     `is done${r.finished_by ? `, by ${r.finished_by}` : ''}.${money}`
   await Promise.all(targets.map((t) => sendMessage(t.phone, text)))
 }

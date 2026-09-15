@@ -172,6 +172,14 @@ calls this fire-and-forget on purpose: a gateway hiccup must not fail a guest's 
 New env vars: `OPENWA_URL`, `OPENWA_SESSION`, `OPENWA_KEY`, and `NOTIFY_ON_DONE=1` if
 completion notices are wanted (§6).
 
+**Team names come from a join, not a second query.** Teams became rows on `main`
+(`departments`, unique on `organisation_id, slug`), so a hotel can rename a team or add one.
+`departmentLabel` humanises an unknown slug — "Spa wellness" — which is not wrong but is not
+what anybody typed. All three message queries left-join `departments` for the real name and
+fall back to `departmentLabel`. A join rather than `teamLabels()` because this is the
+escalation path and round trips are the cost this project is explicitly avoiding; the join
+rides an index it already has and adds none.
+
 **`NEXT_PUBLIC_BASE_URL` is the one setting that decides whether a link works at all.**
 `baseUrl()` in `lib/qr.ts` prefers it over the live request host, so a stale value silently
 sends every staff member a link to the wrong origin. This cost a test run: the value copied
@@ -450,19 +458,20 @@ Verified on 2026-09-15 against the live gateway and the dev database:
 | Completion notice | Reached both test numbers with who closed it. |
 | Token self-check | `SESSION_SECRET=… node lib/staff-link.check.mjs` — forgery, tampering, expiry, junk input, wrong token family. |
 | 375px | Checked at 375×812; buttons meet the 44px touch target. |
+| Verification round trip | A person signed in, asked for a code, received it on a real handset and typed it back: `staff.phone_code_sent` 08:57:56 → `staff.phone_verified` 08:58:49. That number then received a link instead of the text-only fallback, with its own distinct token. |
+| A hotel's own team name | A request on the custom `spa_wellness` team read "Spa & wellness" — the name the hotel typed — rather than the humanised "Spa wellness". |
 
 Still untested, and each needs a human or a deploy:
 
-1. **A real handset.** Every tap so far was automated against localhost. Nobody has received
-   a message on a phone, tapped the link, and worked a job.
-2. **The verification round trip.** `sendPhoneCode` → WhatsApp → `submitPhoneCode` has not
-   been driven by a person signing in. The code send is exercised; typing it back is not.
-3. **Tailscale Funnel and Vercel.** Everything above ran with the gateway and the app both
+1. **Working a job from the handset.** The verification round trip was done on a real phone,
+   but every Accept and Mark done so far was driven against localhost from this machine.
+   Nobody has received a job alert on a phone, tapped through and finished the work.
+2. **Tailscale Funnel and Vercel.** Everything above ran with the gateway and the app both
    on localhost, so the gateway was reached directly. The Funnel hop in §2 has not been
    opened, and no message has been sent from a deployed build.
 4. **The lock and throttle paths.** Five wrong codes, the fifteen-minute lock, and the
    sixty-second resend refusal are written and typechecked but never tripped.
-5. **Expiry in the wild.** A token past `exp` renders the expired page in principle; no
+4. **Expiry in the wild.** A token past `exp` renders the expired page in principle; no
    token has actually aged out.
 
 ## Not building, on purpose
