@@ -48,40 +48,42 @@ function chatId(phone: string): string | null {
   return digits.length >= 10 && digits.length <= 15 ? `${digits}@c.us` : null
 }
 
-export async function sendMessage(to: string, body: string): Promise<boolean> {
+/** The self-hosted gateway. False means "did not send", including "not configured". */
+async function viaGateway(to: string, body: string): Promise<boolean> {
   const [waUrl, waSession, waKey] = [WA_URL(), WA_SESSION(), WA_KEY()]
-  if (waUrl && waSession && waKey) {
-    const chat = chatId(to)
-    if (!chat) {
-      console.error(`[notify] unusable phone number, not sending: ${to}`)
-      return false
-    }
-    try {
-      const res = await fetch(`${waUrl}/api/sessions/${waSession}/messages/send-text`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-API-Key': waKey },
-        // linkPreview off on both engines: whatsapp-web.js builds one by default
-        // and this suppresses it, while on Baileys a preview is an opt-in
-        // blocking fetch per URL. Either way there is no reason to hand a
-        // previewer a staff member's job-list URL.
-        body: JSON.stringify({ chatId: chat, text: body, linkPreview: false }),
-      })
-      if (!res.ok) {
-        console.error('[notify] gateway rejected:', res.status, await res.text())
-        return false
-      }
-      return true
-    } catch (err) {
-      console.error('[notify] gateway request failed', err)
-      return false
-    }
-  }
+  if (!waUrl || !waSession || !waKey) return false
 
-  const [sid, token, from] = [SID(), TOKEN(), FROM()]
-  if (!sid || !token || !from) {
-    console.log(`[notify] (not configured, would send) → ${to}: ${body}`)
+  const chat = chatId(to)
+  if (!chat) {
+    console.error(`[notify] unusable phone number, not sending: ${to}`)
     return false
   }
+  try {
+    const res = await fetch(`${waUrl}/api/sessions/${waSession}/messages/send-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': waKey },
+      // linkPreview off on both engines: whatsapp-web.js builds one by default
+      // and this suppresses it, while on Baileys a preview is an opt-in
+      // blocking fetch per URL. Either way there is no reason to hand a
+      // previewer a staff member's job-list URL.
+      body: JSON.stringify({ chatId: chat, text: body, linkPreview: false }),
+    })
+    if (!res.ok) {
+      console.error('[notify] gateway rejected:', res.status, await res.text())
+      return false
+    }
+    return true
+  } catch (err) {
+    console.error('[notify] gateway request failed', err)
+    return false
+  }
+}
+
+/** Twilio's REST API. The durable path, and the one that survives a closed laptop. */
+async function viaTwilio(to: string, body: string): Promise<boolean> {
+  const [sid, token, from] = [SID(), TOKEN(), FROM()]
+  if (!sid || !token || !from) return false
+
   // A whatsapp: sender can only message a whatsapp: recipient, and vice versa.
   const recipient = from.startsWith('whatsapp:') && !to.startsWith('whatsapp:') ? `whatsapp:${to}` : to
 
@@ -103,6 +105,27 @@ export async function sendMessage(to: string, body: string): Promise<boolean> {
     console.error('[notify] twilio request failed', err)
     return false
   }
+}
+
+/**
+ * Try the gateway, then Twilio.
+ *
+ * The fall-through is the point, not a nicety. The gateway is a process on
+ * somebody's laptop; Twilio is a service. If the gateway were the only path
+ * whenever it happens to be configured, a closed lid would silence escalation
+ * while a working transport sat there unused — an invisible failure of the one
+ * thing this file exists to do. So a gateway that is unreachable, unauthorised
+ * or simply slow hands off rather than giving up.
+ *
+ * The cost is that a message can arrive by SMS instead of WhatsApp without
+ * anyone being told, and it will carry a link that still works. That is the
+ * right trade while the gateway is an experiment.
+ */
+export async function sendMessage(to: string, body: string): Promise<boolean> {
+  if (await viaGateway(to, body)) return true
+  if (await viaTwilio(to, body)) return true
+  console.log(`[notify] (undelivered, no transport succeeded) → ${to}: ${body}`)
+  return false
 }
 
 type Recipient = { id: string; name: string; phone: string; phone_verified_at: Date | null }
