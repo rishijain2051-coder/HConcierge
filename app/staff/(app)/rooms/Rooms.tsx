@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { rupees } from '@/lib/money'
+import { IconChevron } from '@/components/icons'
 import { Confirm, Field, Modal } from '../ui'
 import { addRoom, checkIn, checkOut, newAccessCode, rotateToken, settleBill, unlockRoomCode } from './actions'
 
@@ -51,6 +52,9 @@ export default function Rooms({
   // The only action here that cannot be undone and cannot be seen until
   // somebody walks to the room. It was a single tap on a grid of room numbers.
   const [rotating, setRotating] = useState<RoomRow | null>(null)
+  // One room at a time: opening a second closes the first, so the list never
+  // grows back into the thing it replaced.
+  const [openId, setOpenId] = useState<string | null>(null)
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null)
@@ -96,147 +100,145 @@ export default function Rooms({
       {error && <p className="bg-late-soft text-late mb-3 rounded-xl px-3.5 py-2.5 text-[13px] break-all">{error}</p>}
 
       <div className="bg-surface border-line divide-line divide-y overflow-hidden rounded-2xl border">
-        <div className="text-muted bg-paper hidden grid-cols-[4.5rem_1fr_auto] gap-3 px-4 py-2 text-[11px] font-semibold tracking-wide uppercase sm:grid sm:grid-cols-[4.5rem_7rem_1fr_5.5rem_auto]">
-          <span>Room</span>
-          <span className="hidden sm:block">Type</span>
-          <span>Guest</span>
-          <span className="hidden text-center sm:block">Code</span>
-          <span className="text-right">Actions</span>
-        </div>
-
         {rooms.map((r) => {
-          const locked = r.code_locked_until && new Date(r.code_locked_until) > new Date()
+          const locked = !!r.code_locked_until && new Date(r.code_locked_until) > new Date()
+          const open = openId === r.id
           return (
-            <div
-              key={r.id}
-              // On a phone the actions column is several buttons wide, which
-              // squeezed the guest name, the balance and "wants to settle" down
-              // to nothing. Below sm this stacks instead of competing for width.
-              className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:grid sm:grid-cols-[4.5rem_7rem_1fr_5.5rem_auto] sm:gap-3 sm:py-2.5"
-            >
-              <div>
-                <p className="text-[15px] font-semibold tabular-nums">{r.number}</p>
-                {properties.length > 1 && <p className="text-faint text-[11px]">{r.property_name}</p>}
-              </div>
-
-              <p className="text-muted hidden text-[13px] sm:block">
-                {r.room_type ?? '—'}
-                {r.floor ? ` · Fl ${r.floor}` : ''}
-              </p>
-
-              <div className="min-w-0 flex-1 basis-[55%] sm:basis-auto">
-                {r.occupied ? (
-                  <>
-                    <p className="truncate text-[14px] font-medium">{r.guest_name}</p>
-                    <p className="text-faint text-[11px]">
-                      In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '—'}
-                      {r.checkout_at && ` · out ${new Date(r.checkout_at).toLocaleDateString()}`}
-                      {r.open_requests > 0 && ` · ${r.open_requests} open`}
-                      {r.balance_paise > 0 && (
-                        <span className="text-ink font-semibold"> · {rupees(r.balance_paise)}</span>
-                      )}
-                      {r.settle_requested_at && (
-                        <span className="text-warn font-semibold"> · wants to settle</span>
-                      )}
-                      {locked && <span className="text-late font-semibold"> · code locked</span>}
-                    </p>
-                  </>
-                ) : (
-                  <p className="text-faint text-[13px]">Vacant</p>
-                )}
-              </div>
-
-              {/* The code plus the QR token IS the guest's login — it opens
-                  their bill, their private thread with the desk, and the
-                  ability to charge the room. Only the people who issue it see
-                  it; everyone else gets the same dash as an empty room.
-
-                  It used to be hidden below sm, which meant a front desk
-                  working from a phone could not read the one thing this row
-                  exists to hand over. The dash is what stays hidden now. */}
-              <div
-                className={`shrink-0 text-center ${
-                  canEdit && r.occupied && r.access_code ? '' : 'hidden sm:block'
+            <div key={r.id}>
+              {/* Closed, a room is its number and whether anyone is in it.
+                  Twenty-two of those fit on a screen; twenty-two rows carrying
+                  a guest, a code, a balance and five buttons did not, on any
+                  screen. The exceptions still speak up — an unanswered request,
+                  a guest waiting to settle, a locked code — because those are
+                  the rooms the desk is actually looking for. */}
+              <button
+                onClick={() => setOpenId(open ? null : r.id)}
+                aria-expanded={open}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${
+                  open ? 'bg-paper' : 'hover:bg-paper/60'
                 }`}
               >
-                {canEdit && r.occupied && r.access_code ? (
-                  <span className="bg-paper rounded-lg px-2 py-1 text-[15px] font-semibold tracking-[0.14em] tabular-nums">
-                    {r.access_code}
-                  </span>
-                ) : (
-                  <span className="text-faint text-[13px]">—</span>
-                )}
-              </div>
+                <span className="text-[15px] font-semibold tabular-nums">Room {r.number}</span>
+                <span className={`text-[13px] ${r.occupied ? 'text-muted' : 'text-faint'}`}>
+                  {r.occupied ? 'Occupied' : 'Vacant'}
+                </span>
 
-              <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto">
-                {canEdit &&
-                  (r.occupied ? (
-                    <>
-                      <Link
-                        href={`/staff/rooms/print?room=${r.id}&slip=1`}
-                        target="_blank"
-                        className="border-line text-muted hover:text-ink inline-flex min-h-11 items-center rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition sm:min-h-0"
-                      >
-                        Welcome card
-                      </Link>
-                      {locked && (
-                        <Mini onClick={() => run(() => unlockRoomCode(r.id))} disabled={pending}>
-                          Unlock
-                        </Mini>
+                <span className="ml-auto flex items-center gap-1.5">
+                  {r.open_requests > 0 && <Flag>{r.open_requests} open</Flag>}
+                  {r.settle_requested_at && <Flag tone="warn">Wants to settle</Flag>}
+                  {locked && <Flag tone="late">Code locked</Flag>}
+                  <IconChevron
+                    size={16}
+                    className={`text-faint ease-glide shrink-0 transition-transform duration-300 ${
+                      open ? 'rotate-180' : ''
+                    }`}
+                  />
+                </span>
+              </button>
+
+              {open && (
+                <div className="border-line space-y-4 border-t px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+                    <div className="min-w-0">
+                      {r.occupied ? (
+                        <>
+                          <p className="text-[15px] font-medium">{r.guest_name}</p>
+                          <p className="text-faint mt-0.5 text-[12px] leading-relaxed">
+                            In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '—'}
+                            {r.checkout_at && ` · out ${new Date(r.checkout_at).toLocaleDateString()}`}
+                            {r.balance_paise > 0 && (
+                              <span className="text-ink font-semibold"> · {rupees(r.balance_paise)} on the bill</span>
+                            )}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-faint text-[13px]">Nobody is checked in.</p>
                       )}
-                      <Mini
-                        onClick={() =>
-                          run(async () => {
-                            const res = await newAccessCode(r.id)
-                            if (res.ok) setIssued({ room: r, code: res.code })
-                            return res
-                          })
-                        }
-                        disabled={pending}
-                      >
-                        New code
-                      </Mini>
-                      {r.balance_paise > 0 && (
-                        <Mini
-                          onClick={() => run(() => settleBill(r.id))}
-                          disabled={pending}
-                          tone={r.settle_requested_at ? 'ink' : undefined}
-                        >
-                          Settle {rupees(r.balance_paise)}
-                        </Mini>
-                      )}
-                      <Mini
-                        onClick={() =>
-                          run(async () => {
-                            const res = await checkOut(r.id)
-                            if (!res.ok && typeof res.outstanding === 'number') {
-                              setOwing({ room: r, amount: res.outstanding })
-                              return { ok: true }
+                      <p className="text-faint mt-1 text-[12px]">
+                        {r.room_type ?? 'No room type'}
+                        {r.floor ? ` · Floor ${r.floor}` : ''}
+                        {properties.length > 1 ? ` · ${r.property_name}` : ''}
+                      </p>
+                    </div>
+
+                    {/* The code plus the QR token IS the guest's login — it
+                        opens their bill, their thread with the desk, and the
+                        ability to charge the room. Only the people who issue it
+                        ever receive it; for everyone else it is not in the page
+                        at all. */}
+                    {canEdit && r.occupied && r.access_code && (
+                      <div className="shrink-0">
+                        <p className="text-faint text-[11px]">Access code</p>
+                        <p className="bg-paper mt-1 rounded-lg px-2.5 py-1.5 text-[18px] font-semibold tracking-[0.16em] tabular-nums">
+                          {r.access_code}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {canEdit && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {r.occupied ? (
+                        <>
+                          <PrintLink href={`/staff/rooms/print?room=${r.id}&slip=1`}>Print welcome card</PrintLink>
+                          {locked && (
+                            <Mini onClick={() => run(() => unlockRoomCode(r.id))} disabled={pending}>
+                              Unlock the code
+                            </Mini>
+                          )}
+                          <Mini
+                            onClick={() =>
+                              run(async () => {
+                                const res = await newAccessCode(r.id)
+                                if (res.ok) setIssued({ room: r, code: res.code })
+                                return res
+                              })
                             }
-                            return res
-                          })
-                        }
-                        disabled={pending}
-                        tone="late"
-                      >
-                        Check out
+                            disabled={pending}
+                          >
+                            New code
+                          </Mini>
+                          {r.balance_paise > 0 && (
+                            <Mini
+                              onClick={() => run(() => settleBill(r.id))}
+                              disabled={pending}
+                              tone={r.settle_requested_at ? 'ink' : undefined}
+                            >
+                              Settle {rupees(r.balance_paise)}
+                            </Mini>
+                          )}
+                          <Mini
+                            onClick={() =>
+                              run(async () => {
+                                const res = await checkOut(r.id)
+                                if (!res.ok && typeof res.outstanding === 'number') {
+                                  setOwing({ room: r, amount: res.outstanding })
+                                  return { ok: true }
+                                }
+                                return res
+                              })
+                            }
+                            disabled={pending}
+                            tone="late"
+                          >
+                            Check out
+                          </Mini>
+                        </>
+                      ) : (
+                        <>
+                          <PrintLink href={`/staff/rooms/print?room=${r.id}`}>Print the QR card</PrintLink>
+                          <Mini onClick={() => setCheckingIn(r)} tone="ink">
+                            Check in
+                          </Mini>
+                        </>
+                      )}
+                      <Mini onClick={() => setRotating(r)} disabled={pending} tone="late">
+                        Reissue the QR
                       </Mini>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href={`/staff/rooms/print?room=${r.id}`}
-                        target="_blank"
-                        className="border-line text-muted hover:text-ink inline-flex min-h-11 items-center rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition sm:min-h-0"
-                      >
-                        QR
-                      </Link>
-                      <Mini onClick={() => setCheckingIn(r)} tone="ink">
-                        Check in
-                      </Mini>
-                    </>
-                  ))}
-              </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
@@ -384,32 +386,6 @@ export default function Rooms({
         </Modal>
       )}
 
-      {canEdit && (
-        <details className="text-faint mt-6 text-[12px]">
-          <summary className="cursor-pointer">A QR card has been damaged or copied</summary>
-          <div className="border-line mt-2 rounded-xl border p-3 leading-relaxed">
-            <p>
-              Reissuing a room&rsquo;s QR invalidates the printed card immediately — you have to print and replace it.
-              Only do this for a card that has been damaged, or photographed by someone who should not have it. For a
-              guest who simply lost their welcome card, use <span className="text-ink font-semibold">New code</span>{' '}
-              instead.
-            </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {rooms.map((r) => (
-                <button
-                  key={r.id}
-                  onClick={() => setRotating(r)}
-                  disabled={pending}
-                  className="border-line hover:text-late min-h-10 min-w-10 rounded-lg border px-2 py-1 text-[11px] font-semibold tabular-nums disabled:opacity-40 sm:min-h-0 sm:min-w-0"
-                >
-                  {r.number}
-                </button>
-              ))}
-            </div>
-          </div>
-        </details>
-      )}
-
       {rotating && (
         <Confirm
           title={`Reissue the QR for Room ${rotating.number}?`}
@@ -420,6 +396,26 @@ export default function Rooms({
         />
       )}
     </div>
+  )
+}
+
+/** A room's non-default state, said out loud on the closed row. */
+function Flag({ children, tone }: { children: React.ReactNode; tone?: 'warn' | 'late' }) {
+  const cls =
+    tone === 'late' ? 'bg-late-soft text-late' : tone === 'warn' ? 'bg-warn-soft text-warn' : 'bg-paper text-muted'
+  return <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>{children}</span>
+}
+
+/** Printing opens a new tab, so it is a link — sized to match the buttons. */
+function PrintLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      target="_blank"
+      className="border-line text-muted hover:text-ink inline-flex min-h-11 items-center rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition sm:min-h-0"
+    >
+      {children}
+    </Link>
   )
 }
 

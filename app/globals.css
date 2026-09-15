@@ -256,13 +256,14 @@ a {
   }
 }
 
-/* The same arrival, from the edge the staff drawer is anchored to. It used to
-   appear with no transition at all, which read as a page swap next to the
-   guest sheet that eases in. */
+/* The same arrival, from whichever edge the panel is anchored to — the request
+   drawer comes in from the right, the phone navigation from the left, so the
+   offset is the caller's to set. Both used to appear with no transition at all,
+   which read as a page swap next to the guest sheet that eases in. */
 @keyframes hc-drawer-in {
   from {
     opacity: 0;
-    transform: translate3d(3%, 0, 0);
+    transform: translate3d(var(--drawer-from, 3%), 0, 0);
   }
   to {
     opacity: 1;

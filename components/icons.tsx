@@ -186,3 +186,14 @@ export function IconAlarm({ on = false, ...p }: IconProps & { on?: boolean }) {
     </Icon>
   )
 }
+
+/** The phone navigation. Three rules at the same stroke as everything else. */
+export function IconMenu(p: IconProps) {
+  return (
+    <Icon {...p}>
+      <path d="M3.8 7.2h16.4" />
+      <path d="M3.8 12h16.4" />
+      <path d="M3.8 16.8h16.4" />
+    </Icon>
+  )
+}
