@@ -41,43 +41,25 @@ settlement columns and all five `hc_notify` triggers are live.
 
 ---
 
-## 2. Open findings, none severe
+## 2. Open findings from the four-agent pass
 
-Severity is the testing pass's own. File references are to current `main`.
+**All clear as of 15 September.** Every MINOR and POLISH finding this section
+listed has been fixed — the five on the guest screens, the assignee tag on the
+board, the five in the admin panel, and the three in the API and data layer.
+See commit `45eb136` for what each one was and why it mattered. Reproductions
+for the originals remain in [`docs/qa-2026-09-14/`](docs/qa-2026-09-14/).
 
-### Guest app
+Two of them were more than polish and are worth knowing about:
 
-| | Where | What |
-|---|---|---|
-| POLISH | `app/r/[token]/GuestApp.tsx` `QuickTile` | An item with modifiers or `needs_time` gets no visible control on the Home tiles — "Wake-up call" is just text. Tappable, with nothing to say so. |
-| POLISH | `app/r/[token]/GuestApp.tsx` `ItemRow` | A `needs_time` item's button says "Choose", and the sheet it opens offers nothing to choose. The time is asked for later, in the basket. Either label it "Add" or move the time picker into the sheet. |
-| POLISH | `app/r/[token]/GuestApp.tsx` `OrderTracker` | Cancel is one tap with no confirmation and no undo. The server correctly refuses once staff have started, but a mis-tap before that is silently destructive. |
-| POLISH | `app/r/[token]/GuestApp.tsx` `Catalog` | The category rail resets to the first category every time you leave the tab and come back — `Catalog` unmounts on tab change. Lift `active` to `GuestApp` if this annoys anyone. |
-| POLISH | `app/r/[token]/GuestApp.tsx` `ItemSheet.toggle` | When a multi-select group is at its maximum, tapping a fourth option returns the previous state silently. Nothing says why the tap did nothing. |
+- **Creating an admin was invisible in its own organisation's Activity log.** An
+  admin belongs to no property, the event carried a null `property_id`, and
+  every organisation-scoped view filters on exactly that. `audit_log` now
+  carries `organisation_id`.
+- **The charges export could miss a charge posted seconds before it.** The
+  window came from the app server's clock and was compared against a timestamp
+  Postgres wrote; the two measured 291ms apart. The window is built in SQL now.
 
-### Staff screens
-
-| | Where | What |
-|---|---|---|
-| POLISH | `app/staff/(app)/board/Board.tsx` (assignee tag) | The card shows `assigned_name.split(' ')[0]`, so two people whose names start with the same word are indistinguishable without opening the drawer. |
-
-### Admin panel
-
-| | Where | What |
-|---|---|---|
-| MINOR | `lib/admin.ts` `listAudit` (`limit 300`) | "Showing the most recent 300 — narrow the period to see further back" is advice that cannot work: narrowing only ever removes older rows. Needs paging or a date-range filter, not a period. |
-| MINOR | `lib/admin.ts` `createStaff` / `saveInfoPage` | Over-length usernames are silently truncated to 60 rather than refused; `...` is a legal username; a hotel-info slug typed by hand is stored verbatim (spaces, capitals) while a generated one is sanitised; a section icon accepts a whole string although the hint says one character. Property slugs *are* properly validated — copy that treatment across. |
-| POLISH | `lib/admin.ts` `createStaff` | "That username is taken" is returned for a username held by a different customer, which confirms an account exists in another tenant. Usernames are global, so this is hard to remove entirely — but the message could be less certain. |
-| POLISH | `lib/admin.ts` (audit calls) + `lib/scope.ts` | Creating an admin is filed with `property_id = null`, and every organisation-scoped view filters on `property_id`, so the single most auditable event in the panel is invisible to the organisation it happened in. Same for `organisation.created`. Fix by scoping the audit view on `organisation_id` as well. |
-| POLISH | directory sections | Two sections can carry the same name in one property's directory. |
-
-### API and data
-
-| | Where | What |
-|---|---|---|
-| MINOR | `lib/requests.ts` (`i.id = any(${ids})`, `id = ${requestId}`) | A malformed uuid from a client throws `22P02` and surfaces as a 500. `lib/scope.ts` and the rooms page now guard this with `isUuid`; the two request paths do not. No injection and no leak — values are parameterised — but it is an uncaught throw any client can trigger, and it fills the log with stack traces. |
-| POLISH | `app/api/staff/folio.csv/route.ts` | The export window is built from the app server's clock and compared against `created_at`, written by Postgres `now()`. Measured skew here was 291ms, and a charge posted immediately before an export was missed from it. Build the window in SQL. |
-| POLISH | `db/schema.sql` (rooms comment) | The comment says the QR token is "rotated at checkout so a previous guest's photo of the QR stops working". It is not — `checkOut` leaves `token` untouched. No live exposure, because the 4-digit code is the real gate and that *is* cleared. But a comment describing a defence that does not exist is how a later change ends up relying on it. Either implement it or delete the sentence. |
+What is still open lives in §8.
 
 ---
 
@@ -125,7 +107,9 @@ nothing. They reopen on focus and on every safety poll.
 - **An unavailable item.** No row in the seed has `available = false`, so the
   guest app's unavailable branch has never been exercised.
 - **A modifier group at its maximum.** The only multi-select group has `max: 3`
-  and exactly three options, so the limit is unreachable with this data.
+  and exactly three options, so the limit is unreachable with this data — which
+  also means the new "that is all 3 — tap one off to swap" state and the
+  disabled options behind it have never been seen on screen.
 - **Multi-property anything.** The one organisation owns one property, so the
   property pickers, the board's property filter, and "copy catalogue from"
   are only lightly covered.
@@ -220,9 +204,28 @@ Still open from this pass:
 | DECIDE | `app/staff/(app)/rooms/Rooms.tsx` | The collapsed row applies on the reception monitor too, so the access code and the guest name are one click away rather than a column you read across. Fifteen-plus rooms on screen at once is the compensation. If the desk misses the columns, keep the accordion below `sm` and restore the grid above it. |
 | POLISH | `app/staff/(app)/board/Board.tsx` `Card` | The 6px coloured left stripe is the pattern the craft floor refuses. It is kept deliberately: it is the only thing that separates on-time from amber at a glance across a lobby, which is what principle 2 asks for. Revisit only if the card surface starts carrying that state instead. |
 | POLISH | `app/staff/(app)/board/Board.tsx` toolbar | At 375px the overdue count and the alerts button wrap to their own right-aligned line once the Requests tab carries a number. Ragged, not broken. |
-| MINOR | `lib/admin.ts`, `lib/guest.ts` | The `icon` column is now written by nothing and read by nothing. The two admin fields were removed and existing values ride along untouched on save. Drop the column when the schema is next migrated. |
+| MINOR | `lib/admin.ts`, `lib/guest.ts` | The `icon` column is written by nothing and read by nothing. The two admin fields were removed and existing values ride along untouched on save. Deliberately not dropped in the 15 September migration: dropping it destroys the seeded values for no gain. Drop it when something else needs a migration anyway. |
+| CHECK | `app/r/[token]/GuestApp.tsx` | The guest breathability pass was verified at source level, type-check, lint and detector — but the four-digit gate means I cannot open the guest app myself, so nobody has seen these particular changes rendered. First thing to look at. |
 
 Three `react-hooks/set-state-in-effect` errors that §2 used to list are gone.
 Two were restructured — the chat poll also stopped letting the previous room's
 reply land in the open thread — and one, the sign-in clock, carries a documented
 `eslint-disable` because a clock has to start empty on the server.
+
+---
+
+## 9. From the low-priority pass, 15 September
+
+Commit `45eb136`. §2 went to zero. The database gained one column
+(`audit_log.organisation_id`), which `npm run db:push` has already applied and
+backfilled here — anyone deploying elsewhere needs to run it.
+
+The guest screens were the other half of this pass. They were described as
+feeling cluttered, and the three things actually doing it were: a section
+heading printed directly under the rail whose selected pill already said the
+same word, item rows running to four lines of text each, and 160px reserved at
+the foot of every screen for a basket bar that only exists when there is a
+basket. All three are gone. The rest of the guest changes were the open
+findings — a tile with no control on it, a button that said "Choose" over a
+sheet with nothing to choose, a modifier group that went silent at its maximum,
+and a one-tap cancel with nothing between it and gone.
