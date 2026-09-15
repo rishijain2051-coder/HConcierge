@@ -489,3 +489,27 @@ drop trigger if exists staff_phone_reset on staff;
 create trigger staff_phone_reset before update of phone on staff
   for each row when (old.phone is distinct from new.phone)
   execute function staff_phone_changed();
+
+-- --------------------------------------------------------- outbound messages
+-- A queue for when the app cannot reach the WhatsApp gateway directly.
+--
+-- Tailscale Funnel does not serve this tailnet (WHATSAPP-TESTING-PLAN.md §2),
+-- so Vercel cannot call the gateway on the laptop. Rather than expose anything,
+-- the direction is reversed: the app writes a row here and a drainer running
+-- beside the gateway picks it up. Nothing inbound, nothing to install.
+--
+-- Only used when OPENWA_OUTBOX=1. Off, lib/notify.ts sends inline as before.
+create table if not exists outbound_messages (
+  id         uuid primary key default gen_random_uuid(),
+  phone      text not null,
+  body       text not null,
+  created_at timestamptz not null default now(),
+  claimed_at timestamptz,
+  sent_at    timestamptz,
+  attempts   int not null default 0,
+  last_error text
+);
+
+-- The drainer's one query: oldest unsent first.
+create index if not exists outbound_pending_idx
+  on outbound_messages (created_at) where sent_at is null;

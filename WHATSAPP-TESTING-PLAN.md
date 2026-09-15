@@ -188,6 +188,30 @@ runs.
 
 ---
 
+## 2a. What replaced the Funnel — a queue, not a tunnel
+
+Funnel does not serve (§2) and nothing may be installed in its place, so the direction is
+reversed instead. With `OPENWA_OUTBOX=1` the app writes the message to
+`outbound_messages` and returns; `node --env-file=.env.local db/outbox.mjs` runs beside the
+gateway and drains it. Nothing is exposed, nothing is installed, and a laptop that is
+asleep delays a message rather than losing it.
+
+The drainer claims rows in the same statement it reads them, because two drainers sending
+the same row is a duplicate on somebody's phone. A claim older than two minutes is treated
+as a dead drainer and retried. A failed send clears the claim so the next pass picks it up
+immediately rather than waiting the stale window out.
+
+**The ceiling, recorded in the code too:** in outbox mode nothing else fires, so an
+unattended queue is a silent backlog — exactly the failure the Twilio fallback in §3 exists
+to prevent, reintroduced by a different route. It is acceptable while somebody is watching
+a test. If this outlives the experiment, the drainer should hand rows older than a few
+minutes to Twilio.
+
+Verified: a sweep with the flag on queued two rows and sent neither; one drainer pass
+delivered both, one attempt each; a second pass claimed nothing.
+
+---
+
 ## 3. Transport — one branch in `sendMessage`
 
 `lib/notify.ts` `sendMessage(to, body)` is the only place any message leaves the app.

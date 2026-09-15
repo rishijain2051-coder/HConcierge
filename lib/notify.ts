@@ -122,6 +122,26 @@ async function viaTwilio(to: string, body: string): Promise<boolean> {
  * right trade while the gateway is an experiment.
  */
 export async function sendMessage(to: string, body: string): Promise<boolean> {
+  // OPENWA_OUTBOX reverses the direction: write the message down and let a
+  // drainer beside the gateway pick it up. This exists because Tailscale Funnel
+  // does not serve this tailnet, so Vercel cannot reach the gateway at all —
+  // see WHATSAPP-TESTING-PLAN.md §2. Queueing also means a laptop that is asleep
+  // delays a message rather than losing it.
+  //
+  // ponytail: nothing else fires in this mode, so an unattended queue is a
+  // silent backlog. Run `node db/outbox.mjs` beside the gateway; if this ever
+  // outlives the experiment, have the drainer fall back to Twilio on rows older
+  // than a few minutes.
+  if (process.env.OPENWA_OUTBOX === '1') {
+    try {
+      await sql`insert into outbound_messages (phone, body) values (${to}, ${body})`
+      return true
+    } catch (err) {
+      console.error('[notify] could not queue a message', err)
+      // Fall through — a broken queue must not be quieter than no queue.
+    }
+  }
+
   if (await viaGateway(to, body)) return true
   if (await viaTwilio(to, body)) return true
   console.log(`[notify] (undelivered, no transport succeeded) → ${to}: ${body}`)
