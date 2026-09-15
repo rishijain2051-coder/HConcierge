@@ -1,7 +1,7 @@
 import { randomInt, timingSafeEqual } from 'node:crypto'
 import { sql } from './db'
 import { audit } from './audit'
-import { sendMessage } from './notify'
+import { linkBase, sendMessage } from './notify'
 import type { Staff } from './auth'
 
 /**
@@ -67,11 +67,16 @@ export async function sendPhoneCode(staffId: string): Promise<CodeResult> {
            phone_code_locked_until = null
      where id = ${staffId}`
 
+  // The link matters: without it the only way to the form was a menu item the
+  // person holding the phone has no reason to look for. It is an ordinary page
+  // behind a login, not a capability — the code is what proves the handset.
+  const base = await linkBase()
+  const where = base ? ` Enter it at ${base}/staff/phone after signing in.` : ''
   const sent = await sendMessage(
     target.phone,
     `HConcierge: ${code} is your code to receive job alerts on this number` +
-      `${target.property ? ` for ${target.property}` : ''}. It expires in ${CODE_MINUTES} minutes. ` +
-      `If you were not expecting this, ignore it.`,
+      `${target.property ? ` for ${target.property}` : ''}.${where}` +
+      ` It expires in ${CODE_MINUTES} minutes. If you were not expecting this, ignore it.`,
   )
   if (!sent) return { ok: false, error: 'Could not send the code. Check the number and the gateway.' }
 

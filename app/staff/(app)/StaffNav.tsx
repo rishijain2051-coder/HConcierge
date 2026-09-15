@@ -114,6 +114,13 @@ export default function StaffNav({
               >
                 Password
               </Link>
+              <Link
+                href="/staff/phone"
+                onClick={() => setOpen(false)}
+                className="text-muted hover:bg-paper/60 flex min-h-12 items-center rounded-xl px-3 text-[15px] font-medium transition"
+              >
+                Phone
+              </Link>
               <form action={logout}>
                 <button className="border-line text-muted hover:text-ink min-h-12 w-full rounded-xl border px-3 text-[15px] font-medium">
                   Sign out

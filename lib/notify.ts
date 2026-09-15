@@ -156,7 +156,7 @@ type Recipient = { id: string; name: string; phone: string; phone_verified_at: D
  * arrives without its link still gets somebody to the room, and one that never
  * arrives does not.
  */
-async function linkBase(): Promise<string | null> {
+export async function linkBase(): Promise<string | null> {
   try {
     return await baseUrl()
   } catch {

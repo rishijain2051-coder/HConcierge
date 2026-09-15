@@ -71,6 +71,15 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             >
               Password
             </Link>
+            {/* Without this the verification page had no way in at all: a manager
+                could send the code from Manage → Staff and the person holding the
+                phone had nowhere to type it. */}
+            <Link
+              href="/staff/phone"
+              className="text-faint hover:text-ink -mx-1.5 rounded-lg px-1.5 py-2 text-[12px] font-medium"
+            >
+              Phone
+            </Link>
             <form action={logout}>
               <button className="border-line text-muted hover:text-ink rounded-lg border px-2.5 py-1.5 text-[12px] font-medium">
                 Sign out
