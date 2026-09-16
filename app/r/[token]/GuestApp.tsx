@@ -1,6 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { hotelTime, wallClockNow } from '@/lib/clock'
 import { rupees } from '@/lib/money'
 import { minutesRemaining, since } from '@/lib/sla'
 import { useLive } from '@/lib/use-live'
@@ -293,6 +294,7 @@ export default function GuestApp({
       {cartOpen && (
         <CartSheet
           token={token}
+          timezone={property.timezone}
           cart={cart}
           total={cartTotal}
           onClose={() => setCartOpen(false)}
@@ -459,7 +461,15 @@ function Home({
       {open.length > 0 && (
         <div className="space-y-3">
           {open.map((r) => (
-            <OrderTracker key={r.id} request={r} now={now} token={token} onChanged={onRefresh} onToast={onToast} />
+            <OrderTracker
+              key={r.id}
+              request={r}
+              now={now}
+              timezone={property.timezone}
+              token={token}
+              onChanged={onRefresh}
+              onToast={onToast}
+            />
           ))}
         </div>
       )}
@@ -551,12 +561,14 @@ function useClock(active: boolean, serverNow: number) {
 function OrderTracker({
   request,
   now,
+  timezone,
   token,
   onChanged,
   onToast,
 }: {
   request: GuestRequest
   now: number
+  timezone: string
   token: string
   onChanged: () => void
   onToast: (t: Toast) => void
@@ -589,6 +601,9 @@ function OrderTracker({
           <p className="text-[16px] leading-snug font-semibold tracking-[-0.01em] break-words">{title}</p>
           <p className="text-faint mt-0.5 text-[12px]">
             #{request.ref} · {since(request.created_at, new Date(now))}
+            {/* The hour they asked for, on the hotel's clock. Without it a
+                guest whose phone is on another zone has nothing to check. */}
+            {request.scheduled_for && ` · for ${hotelTime(request.scheduled_for, timezone)}`}
           </p>
         </div>
         {request.total_paise > 0 && (
@@ -1070,6 +1085,7 @@ function SheetStep({
 
 function CartSheet({
   token,
+  timezone,
   cart,
   total,
   onClose,
@@ -1078,6 +1094,7 @@ function CartSheet({
   onError,
 }: {
   token: string
+  timezone: string
   cart: CartEntry[]
   total: number
   onClose: () => void
@@ -1091,11 +1108,15 @@ function CartSheet({
   const timed = cart.filter((e) => e.item.needs_time)
   const needsTime = timed.length > 0
   // A wake-up call for yesterday is a typo the server already refuses. The
-  // picker should not offer it in the first place. Read once when the basket
-  // opens — a clock read during render is not a function of the props.
-  const [earliest] = useState(() =>
-    new Date(Date.now() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16),
-  )
+  // picker should not offer it in the first place — and the floor is the
+  // hotel's clock, not the phone's, or a guest still on home time is offered
+  // hours the hotel has already lived through and refused the ones it has not.
+  //
+  // Read once when the basket opens, which is safe here: this sheet only
+  // mounts on a tap, never during SSR, so there is no server HTML for it to
+  // disagree with. Seeding it from `serverNow` would instead put the floor as
+  // far in the past as the guest spent reading the menu.
+  const [earliest] = useState(() => wallClockNow(timezone))
 
   function setQty(key: string, qty: number) {
     onChange(qty <= 0 ? cart.filter((e) => e.key !== key) : cart.map((e) => (e.key === key ? { ...e, qty } : e)))
@@ -1112,7 +1133,9 @@ function CartSheet({
         modifiers: e.modifiers.map((m) => ({ group: m.group, name: m.name })),
         note: e.note || null,
       })),
-      { note: note || null, scheduledFor: when ? new Date(when).toISOString() : null },
+      // Sent as the bare wall clock the picker gave us. Resolving it here
+      // would pin it to the phone's zone; the server reads it in the hotel's.
+      { note: note || null, scheduledFor: when || null },
     )
     setBusy(false)
     if (res.ok) {
@@ -1160,7 +1183,12 @@ function CartSheet({
 
           {needsTime && (
             <div className="mt-4">
-              <label className="mb-1.5 block text-[13px] font-semibold">What time?</label>
+              {/* "Hotel time" is not decoration. A traveller's phone is often
+                  still on home time, the input itself shows no zone at all,
+                  and the guest is the only one who can catch it being wrong. */}
+              <label className="mb-1.5 block text-[13px] font-semibold">
+                What time? <span className="text-faint font-normal">· hotel time</span>
+              </label>
               <input
                 type="datetime-local"
                 value={when}

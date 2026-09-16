@@ -106,6 +106,8 @@ export type Property = {
   address: string | null
   phone: string | null
   brand_color: string
+  // IANA zone. Every scheduled time is read and written in it — see lib/clock.ts.
+  timezone: string
 }
 
 export type Room = {
@@ -246,6 +248,7 @@ export type BoardRequest = GuestRequest & {
   assigned_to: string | null
   assigned_name: string | null
   property_name: string
+  property_timezone: string
   property_id: string
   unread_messages: number
 }

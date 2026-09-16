@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { staffFromLinkToken } from '@/lib/auth'
 import { loadBoard } from '@/lib/board'
+import { hotelTime } from '@/lib/clock'
 import { since, slaState } from '@/lib/sla'
 import { departmentLabel } from '@/lib/types'
 import { actOnJob } from './actions'
@@ -103,6 +104,14 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
                 </div>
 
                 <p className="text-muted mt-1 text-[14px] leading-snug">{summary}</p>
+                {/* The hour, on the hotel's clock. It is the one thing on this
+                    card that cannot be read off `since()`, and this page opens
+                    on shared handsets set to whatever they were set to. */}
+                {req.scheduled_for && (
+                  <p className="text-warn mt-1 text-[13px] font-semibold">
+                    For {hotelTime(req.scheduled_for, req.property_timezone)}
+                  </p>
+                )}
                 <p className="text-faint mt-1 text-[12px]">
                   #{req.ref} · {STATUS_LABEL[req.status]}
                   {req.assigned_name ? ` · ${req.assigned_name}` : ''}

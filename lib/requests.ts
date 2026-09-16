@@ -1,6 +1,7 @@
 import { after } from 'next/server'
 import { sql } from './db'
 import { audit } from './audit'
+import { isWallClock } from './clock'
 import { isUuid } from './scope'
 import { notifyNewRequest } from './notify'
 import type { Item, ModifierGroup, RequestKind } from './types'
@@ -94,6 +95,27 @@ export async function createRequests(
      where i.id = any(${ids}) and i.property_id = ${property.id}`
   const byId = new Map(items.map((i) => [i.id, i]))
 
+  // A `datetime-local` value carries no offset, and only one reading of it is
+  // ever what the guest meant: the clock in the building they are standing in.
+  // Their phone is often still on home time and this function can run in any
+  // region, so neither of those clocks gets a vote — the property's zone is
+  // what turns the string into an instant, in Postgres, which owns the tz
+  // database and its DST history.
+  let when: Date | null = null
+  if (opts.scheduledFor) {
+    if (!isWallClock(opts.scheduledFor)) return { ok: false, error: 'That time is not valid.' }
+    // Both `::text` casts are load-bearing, however redundant they look.
+    // With `prepare: false` postgres.js asks the server what type each
+    // parameter is and then serialises to it — given a bare `::timestamp` it
+    // decides the string is a date and rewrites it through *this process's*
+    // timezone before sending, which lands the result 5½ hours out and is the
+    // same class of bug this function exists to fix. Sent as text it arrives
+    // verbatim, and Postgres performs the only conversion.
+    const [row] = await sql<{ at: Date }[]>`
+      select (${opts.scheduledFor}::text)::timestamp at time zone (${property.timezone}::text) as at`
+    when = row.at
+  }
+
   type Prepared = {
     item: ItemRow
     qty: number
@@ -113,9 +135,7 @@ export async function createRequests(
       return { ok: false, error: `Choose between 1 and ${MAX_QTY} of ${item.name}.` }
     }
     if (item.needs_time) {
-      if (!opts.scheduledFor) return { ok: false, error: `Please pick a time for ${item.name}.` }
-      const when = new Date(opts.scheduledFor)
-      if (Number.isNaN(when.getTime())) return { ok: false, error: 'That time is not valid.' }
+      if (!when) return { ok: false, error: `Please pick a time for ${item.name}.` }
       // A minute of slack for a slow thumb; beyond that, a wake-up call
       // scheduled for yesterday is a typo nobody will act on.
       if (when.getTime() < Date.now() - 60_000) {
@@ -156,7 +176,7 @@ export async function createRequests(
     const kind = KIND_BY_CATEGORY[lines[0].item.category_kind] ?? 'other'
     // The time belongs to the item that asked for one. One wake-up call in the
     // basket used to schedule the towels and the biryani for seven tomorrow.
-    const scheduledFor = lines.some((l) => l.item.needs_time) ? opts.scheduledFor || null : null
+    const scheduledFor = lines.some((l) => l.item.needs_time) ? when : null
 
     const [request] = await sql<{ id: string; ref: string }[]>`
       insert into requests (property_id, room_id, kind, department, note, scheduled_for,

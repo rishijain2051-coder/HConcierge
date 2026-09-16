@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { randomBytes } from 'node:crypto'
 import { sql } from './db'
 import { audit } from './audit'
+import { isTimeZone } from './clock'
 import { sendPhoneCode } from './staff-phone'
 import { scopeTo } from './scope'
 import { listTeams } from './departments'
@@ -470,6 +471,11 @@ export async function createProperty(
   if (!/^[a-z0-9-]{3,60}$/.test(slug)) return fail('Slugs use 3–60 lowercase letters, numbers and dashes.')
   if (!/^#[0-9a-fA-F]{6}$/.test(input.brandColor)) return fail('Brand colour must be a hex value like #0F766E.')
 
+  // Nothing read this column until scheduling did, so a typo in it used to be
+  // harmless. It now decides what hour a wake-up call happens at.
+  const timezone = input.timezone?.trim() || 'Asia/Kolkata'
+  if (!isTimeZone(timezone)) return fail(`“${timezone}” is not a timezone we know.`)
+
   const [clash] = await sql`select 1 from properties where slug = ${slug}`
   if (clash) return fail(`The slug “${slug}” is taken.`)
 
@@ -482,7 +488,7 @@ export async function createProperty(
   const [property] = await sql<{ id: string }[]>`
     insert into properties (organisation_id, slug, name, address, phone, brand_color, timezone)
     values (${orgId}, ${slug}, ${name}, ${input.address?.trim() || null}, ${input.phone?.trim() || null},
-            ${input.brandColor}, ${input.timezone || 'Asia/Kolkata'})
+            ${input.brandColor}, ${timezone})
     returning id`
 
   if (copyCatalogFrom && !(await canManageProperty(actor, copyCatalogFrom))) {
@@ -534,13 +540,16 @@ export async function updateProperty(actor: Staff, id: string, input: PropertyIn
   if (!input.name.trim()) return fail('Enter a name.')
   if (!/^#[0-9a-fA-F]{6}$/.test(input.brandColor)) return fail('Brand colour must be a hex value like #0F766E.')
 
+  const timezone = input.timezone?.trim() || 'Asia/Kolkata'
+  if (!isTimeZone(timezone)) return fail(`“${timezone}” is not a timezone we know.`)
+
   await sql`
     update properties
        set name = ${input.name.trim().slice(0, 120)},
            address = ${input.address?.trim() || null},
            phone = ${input.phone?.trim() || null},
            brand_color = ${input.brandColor},
-           timezone = ${input.timezone || 'Asia/Kolkata'}
+           timezone = ${timezone}
      where id = ${id}`
 
   await audit({

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { hotelTime } from '@/lib/clock'
 import { rupees } from '@/lib/money'
 import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
@@ -488,11 +489,10 @@ function Card({
         <span className="mt-2 flex flex-wrap items-center gap-1.5">
           <Tag>{team}</Tag>
           {r.total_paise > 0 && <Tag>{rupees(r.total_paise)}</Tag>}
-          {r.scheduled_for && (
-            <Tag tone="warn">
-              for {new Date(r.scheduled_for).toLocaleString([], { hour: 'numeric', minute: '2-digit', day: 'numeric', month: 'short' })}
-            </Tag>
-          )}
+          {/* The property's clock, not the reader's: a group admin has Mumbai
+              and Pune on one board, and a reception laptop can be set to
+              anything at all. */}
+          {r.scheduled_for && <Tag tone="warn">for {hotelTime(r.scheduled_for, r.property_timezone)}</Tag>}
           {r.escalated_at && <Tag tone="late">Escalated</Tag>}
           {r.unread_messages > 0 && (
             <Tag tone="warn">
@@ -694,7 +694,7 @@ function RequestDetail({
       {r.scheduled_for && (
         <p className="text-[14px]">
           <span className="text-muted">Scheduled for </span>
-          <span className="font-semibold">{new Date(r.scheduled_for).toLocaleString()}</span>
+          <span className="font-semibold">{hotelTime(r.scheduled_for, r.property_timezone)}</span>
         </p>
       )}
 

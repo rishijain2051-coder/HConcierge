@@ -13,11 +13,12 @@ export type RoomContext = { room: Room; property: Property }
  */
 export async function readRoom(token: string): Promise<RoomContext | null> {
   if (!token || token.length > 64) return null
-  const rows = await sql<(Room & { p_id: string; p_slug: string; p_name: string; p_address: string | null; p_phone: string | null; p_brand: string })[]>`
+  const rows = await sql<(Room & { p_id: string; p_slug: string; p_name: string; p_address: string | null; p_phone: string | null; p_brand: string; p_timezone: string })[]>`
     select r.id, r.property_id, r.number, r.floor, r.room_type, r.token, r.occupied,
            r.guest_name, r.checked_in_at,
            p.id as p_id, p.slug as p_slug, p.name as p_name,
-           p.address as p_address, p.phone as p_phone, p.brand_color as p_brand
+           p.address as p_address, p.phone as p_phone, p.brand_color as p_brand,
+           p.timezone as p_timezone
       from rooms r join properties p on p.id = r.property_id
      where r.token = ${token} limit 1`
 
@@ -31,7 +32,7 @@ export async function readRoom(token: string): Promise<RoomContext | null> {
     },
     property: {
       id: r.p_id, slug: r.p_slug, name: r.p_name,
-      address: r.p_address, phone: r.p_phone, brand_color: r.p_brand,
+      address: r.p_address, phone: r.p_phone, brand_color: r.p_brand, timezone: r.p_timezone,
     },
   }
 }

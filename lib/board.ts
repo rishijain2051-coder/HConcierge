@@ -34,7 +34,7 @@ export async function loadBoard(staff: Staff, propertyId?: string | null): Promi
            r.total_paise, r.sla_minutes, r.created_at, r.updated_at, r.acknowledged_at,
            r.completed_at, r.escalated_at, r.cancel_reason, r.assigned_to, r.property_id, r.room_id,
            rm.number as room_number, rm.floor as room_floor, r.guest_name,
-           s.name as assigned_name, p.name as property_name,
+           s.name as assigned_name, p.name as property_name, p.timezone as property_timezone,
            (select count(*)::int from messages m
              where m.room_id = r.room_id and m.sender = 'guest' and m.read_at is null) as unread_messages
       from requests r
