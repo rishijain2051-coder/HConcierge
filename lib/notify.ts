@@ -282,6 +282,19 @@ type FiredRow = {
  * 4am when no board is open). See db/cron.sql.
  */
 export async function sweepEscalations(propertyId?: string): Promise<number> {
+  /**
+   * When a request's clock starts: the hour it was booked for, or the moment it
+   * arrived. The same rule as startsAt() in lib/sla.ts, which names this sweep
+   * as one of the three places that decide lateness and have to agree.
+   *
+   * Measuring from created_at woke a duty manager for work that was not due
+   * yet. Observed on the running app: a spa treatment booked at 17:02 for
+   * 19:06 with a 20-minute target escalated at 17:22 — one hour forty-four
+   * minutes before anybody could have started it. A 7am wake-up call ordered
+   * at midnight escalates at ten past twelve.
+   */
+  const dueFrom = sql`coalesce(r.scheduled_for, r.created_at)`
+
   const fired = await sql<FiredRow[]>`
     with due as (
       select distinct on (r.id)
@@ -289,7 +302,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
              r.sla_minutes, rm.number as room_number, r.note as summary, d.name as team,
              p.name as property,
              e.id as rule_id, e.step, e.notify_managers, e.notify_admins,
-             extract(epoch from (now() - r.created_at)) / 60 as minutes_waiting
+             extract(epoch from (now() - ${dueFrom})) / 60 as minutes_waiting
         from requests r
         join rooms rm on rm.id = r.room_id
         join properties p on p.id = r.property_id
@@ -305,7 +318,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
            or (e.applies_to = 'unfinished' and r.status in ('ack','in_progress'))
            or (e.applies_to = 'any'        and r.status in ('new','ack','in_progress'))
          )
-         and now() >= r.created_at + ((r.sla_minutes + e.after_minutes) || ' minutes')::interval
+         and now() >= ${dueFrom} + ((r.sla_minutes + e.after_minutes) || ' minutes')::interval
        where r.status in ('new','ack','in_progress')
          and ${propertyId ? sql`r.property_id = ${propertyId}` : sql`true`}
        order by r.id, e.step desc
