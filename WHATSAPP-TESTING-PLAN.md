@@ -232,6 +232,17 @@ the same row is a duplicate on somebody's phone. A claim older than two minutes 
 as a dead drainer and retried. A failed send clears the claim so the next pass picks it up
 immediately rather than waiting the stale window out.
 
+**A heartbeat on every start.** With `BRIDGE_ALERT_PHONE` set, the drainer sends one
+WhatsApp the first time it finds the session able to send. It is the only signal that the
+whole local half works — gateway answering, session linked, credentials still accepted, a
+real message to a real phone — without opening the dashboard. It exists because of the two
+silent stops this design has already produced: a session that never auto-started, and a
+Startup entry pointing at a deleted folder. In both, production kept enqueueing and nobody
+knew. One message after a reboot means it recovered by itself; no message means look.
+
+The number lives in `.env.local`, not in git, and the notice is sent directly rather than
+queued — queueing a message that says "the queue works" would be answering its own question.
+
 **The ceiling, recorded in the code too:** in outbox mode nothing else fires, so an
 unattended queue is a silent backlog — exactly the failure the Twilio fallback in §3 exists
 to prevent, reintroduced by a different route. It is acceptable while somebody is watching

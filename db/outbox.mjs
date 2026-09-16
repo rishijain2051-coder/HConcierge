@@ -81,15 +81,19 @@ async function drain() {
     // Logged only when the reason changes, so an hour of downtime is one line
     // rather than seven hundred.
     if (state.why !== lastSkip) {
-      console.error(`waiting  ${state.why} — holding the queue`)
+      console.error(`waiting  ${state.why} - holding the queue`)
       lastSkip = state.why
     }
     return 0
   }
   if (lastSkip) {
-    console.log(`ready    ${state.why} — draining`)
+    console.log(`ready    ${state.why} - draining`)
     lastSkip = ''
   }
+  // Here rather than at startup: at startup the session is usually still
+  // connecting, and a notice that fails because nothing was listening yet is
+  // worse than no notice.
+  await announceOnce()
 
   // Claim and read in one statement, so two drainers cannot send the same
   // message twice — a duplicate here is a duplicate on somebody's phone.
@@ -120,15 +124,48 @@ async function drain() {
   return batch.length
 }
 
+/**
+ * One message, the first time this process finds the session able to send.
+ *
+ * It is the only signal that proves the whole local half works — gateway up,
+ * session linked, credentials still accepted, a real message out to a real
+ * phone — without anyone opening the dashboard. The failure this catches is the
+ * quiet one: a bridge that came back but cannot deliver looks exactly like a
+ * night with no requests.
+ *
+ * Off unless BRIDGE_ALERT_PHONE is set, and the number lives in .env.local
+ * rather than in git. Sent directly rather than queued: queueing a notice that
+ * says "the queue works" would be answering its own question.
+ */
+const ALERT_PHONE = process.env.BRIDGE_ALERT_PHONE
+let announced = false
+
+async function announceOnce() {
+  if (announced || !ALERT_PHONE || once) return
+  announced = true
+
+  const [{ pending: waiting }] = await sql`
+    select count(*)::int as pending from outbound_messages where sent_at is null`
+  const when = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+  const result = await send(
+    ALERT_PHONE,
+    `HConcierge bridge is up — ${when}.\n\n` +
+      `Gateway answering, WhatsApp session linked, and this message proves it can send. ` +
+      `${waiting === 0 ? 'Queue empty.' : `${waiting} message${waiting === 1 ? '' : 's'} waiting, going out now.`}\n\n` +
+      `Nothing to do. You get this on every bridge start, so one of these after a reboot means it recovered by itself.`,
+  )
+  console.log(result.ok ? `startup notice sent to ${ALERT_PHONE}` : `startup notice failed: ${result.error}`)
+}
+
 const [{ pending }] = await sql`select count(*)::int as pending from outbound_messages where sent_at is null`
-console.log(`outbox → ${gateway} (session ${session.slice(0, 8)}…), ${pending} pending`)
+console.log(`outbox -> ${gateway} (session ${session.slice(0, 8)}), ${pending} pending`)
 
 if (once) {
   const n = await drain()
   console.log(`one pass: ${n} claimed`)
   await sql.end()
 } else {
-  console.log(`polling every ${INTERVAL_MS / 1000}s — Ctrl+C to stop`)
+  console.log(`polling every ${INTERVAL_MS / 1000}s - Ctrl+C to stop`)
   for (;;) {
     try {
       await drain()
