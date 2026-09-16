@@ -35,10 +35,6 @@ in Mumbai: a ~230ms round trip, and a page that makes five of them spends over
 a second on network alone. This is the largest single performance factor in the
 project and it cannot be verified from a development machine.
 
-**Restart the production server on 3100.** Confirmed still up on 15 September
-and serving a build from before that day's work. The code on disk is current;
-the process is not.
-
 **Run `npm run db:push` wherever this deploys.** Already applied to the shared
 development database, so it is a no-op there — but the schema moved four times
 on 15 September and a fresh environment needs all of it: the settlement columns
