@@ -88,19 +88,21 @@ export default function DemoStage() {
     minuteRef.current = minute
   }, [minute])
 
-  // Kill the clock when the stage is off-screen or the tab is hidden. A pitch
-  // page should not be burning a laptop battery three sections down.
+  // Kill the clock when the stage scrolls off-screen. A pitch page should not
+  // be burning a laptop battery three sections down.
+  //
+  // This ref means one thing only: is the stage on screen. Whether the tab is
+  // hidden is read live in the tick below, because that is a fact that comes
+  // back. Folding both into this ref latched it off: hiding the tab set it
+  // false, and returning could not set it true again, since the observer only
+  // fires when intersection *changes*. A visitor who switched tabs once came
+  // back to a dead clock — no countdown, no late, no escalation — for good.
   useEffect(() => {
     const el = stage.current
     if (!el) return
     const io = new IntersectionObserver(([e]) => (running.current = e.isIntersecting), { threshold: 0.05 })
     io.observe(el)
-    const onVis = () => (running.current = document.visibilityState === 'visible' && running.current)
-    document.addEventListener('visibilitychange', onVis)
-    return () => {
-      io.disconnect()
-      document.removeEventListener('visibilitychange', onVis)
-    }
+    return () => io.disconnect()
   }, [])
 
   useEffect(() => {
