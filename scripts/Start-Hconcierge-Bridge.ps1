@@ -26,8 +26,13 @@ param([switch]$Supervise)
 
 $ErrorActionPreference = 'Continue'
 
-$repo    = 'D:\concierge-wa'
-$gateway = 'D:\OPENWA'
+# Derived from this script's own location, never hardcoded. The first version
+# pinned D:\concierge-wa — a git worktree — and when that folder was cleared the
+# Startup entry pointed at a path that no longer existed. The bridge simply did
+# not come back, and because messages queue rather than fail, nothing said so.
+# A script that knows where it lives cannot be orphaned by moving the checkout.
+$repo    = Split-Path -Parent $PSScriptRoot
+$gateway = if ($env:HCONCIERGE_GATEWAY) { $env:HCONCIERGE_GATEWAY } else { 'D:\OPENWA' }
 $logs    = Join-Path $repo '.logs'
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 

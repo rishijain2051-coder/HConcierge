@@ -203,6 +203,19 @@ runs.
 
 ## 2a. What replaced the Funnel — a queue, not a tunnel
 
+> **Do not host the bridge out of a git worktree.** The first version of
+> `scripts/Start-Hconcierge-Bridge.ps1` hardcoded `D:\concierge-wa`, the throwaway worktree
+> it was written in, and the Startup entry pointed at the same path. Clearing that folder
+> left the Startup entry aimed at nothing: the bridge did not come back, and because this
+> design queues rather than fails, **nothing said so** — the gateway was up, production kept
+> enqueueing, and delivery had simply stopped. The script now derives `$repo` from
+> `$PSScriptRoot`, so moving the checkout cannot orphan it, and `.env.local` must carry
+> `OPENWA_URL`/`OPENWA_SESSION`/`OPENWA_KEY` wherever it runs from.
+>
+> This is the failure mode of the whole §2a design in one incident: a silent stop looks
+> exactly like a quiet night.
+
+
 Funnel does not serve (§2) and nothing may be installed in its place, so the direction is
 reversed instead. With `OPENWA_OUTBOX=1` the app writes the message to
 `outbound_messages` and returns; `node --env-file=.env.local db/outbox.mjs` runs beside the
@@ -540,7 +553,10 @@ Still open:
 1. **Tailscale Funnel.** Does not serve this tailnet (§2), so Vercel cannot call the gateway
    directly. Nothing depends on it any more — the queue in §2a replaced it — but it is a
    Tailscale-side failure rather than a configuration one, and only they can fix it.
-2. **Surviving a logout, as opposed to a reboot.** A cold start *was* tested, by stopping
+2. **Surviving a logout, as opposed to a reboot.** A real power cycle has now been tested:
+   a message was parked in the queue with nothing running to send it, the machine was shut
+   down, and after logon it delivered itself on the first attempt — queued 12:04 one day,
+   sent 10:25 the next, untouched by hand. A cold start was also tested, by stopping
    the gateway, drainer and supervisor and then running the Startup entry exactly as logon
    does: gateway back in 5s, drainer in 15s, session `ready` in 5s, and a backlog queued
    while everything was down delivered on the first attempt. What is still untested is a
