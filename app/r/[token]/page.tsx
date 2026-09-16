@@ -61,6 +61,7 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
       directory={directory}
       info={info}
       initialState={state}
+      serverNow={Date.now()}
     />
   )
 }

@@ -70,6 +70,7 @@ export default function GuestApp({
   directory,
   info,
   initialState,
+  serverNow,
 }: {
   token: string
   room: Room
@@ -77,6 +78,10 @@ export default function GuestApp({
   directory: Category[]
   info: InfoPage[]
   initialState: GuestState
+  // The server's clock. Threaded down to useClock and greeting so the first
+  // client render matches the server-rendered HTML instead of re-reading the
+  // clock and tripping hydration.
+  serverNow: number
 }) {
   const [tab, setTab] = useState<Tab>('home')
   // Which section of each catalogue is open. Held here rather than inside
@@ -89,7 +94,7 @@ export default function GuestApp({
   const [billOpen, setBillOpen] = useState(false)
   const [toast, setToast] = useState<Toast | null>(null)
   // Everything from the desk after this is unread. Set when the guest looks.
-  const [chatSeenAt, setChatSeenAt] = useState(() => Date.now())
+  const [chatSeenAt, setChatSeenAt] = useState(serverNow)
 
   // Pushed from the server the moment anything in this room changes.
   const { state, refresh, gone } = useLive<GuestState>({
@@ -207,6 +212,7 @@ export default function GuestApp({
             onBump={bump}
             onToast={setToast}
             onRefresh={refresh}
+            serverNow={serverNow}
           />
         )}
         {tab === 'dining' && (
@@ -384,6 +390,7 @@ function Home({
   onBump,
   onToast,
   onRefresh,
+  serverNow,
 }: {
   room: Room
   property: Property
@@ -395,6 +402,7 @@ function Home({
   onBump: (i: Item, by: number) => void
   onToast: (t: Toast) => void
   onRefresh: () => void
+  serverNow: number
 }) {
   const [freeform, setFreeform] = useState('')
   const [sending, setSending] = useState(false)
@@ -403,7 +411,7 @@ function Home({
   // here so a tick re-renders the trackers rather than the whole app. Read
   // before it is used: a render that calls Date.now() itself is not a function
   // of its props, and React is right to complain.
-  const now = useClock(state.requests.length > 0)
+  const now = useClock(state.requests.length > 0, serverNow)
 
   // A finished order stays on the tracker for a few minutes, so the guest
   // actually sees it reach "Delivered" instead of it vanishing into Earlier.
@@ -444,7 +452,7 @@ function Home({
   return (
     <div className="space-y-8 px-4 pt-7">
       <h1 className="text-[28px] leading-[1.08] font-semibold tracking-[-0.03em] text-balance">
-        {greeting()}
+        {greeting(new Date(now))}
         {room.guest_name ? `, ${room.guest_name.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.)\s*/, '')}` : ''}
       </h1>
 
@@ -507,8 +515,12 @@ function Home({
 }
 
 /** Ticks the "12m ago" labels without re-fetching, and only while it matters. */
-function useClock(active: boolean) {
-  const [now, setNow] = useState(() => Date.now())
+function useClock(active: boolean, serverNow: number) {
+  // Seeded, not read. This hook is server-rendered too, so reading the clock
+  // here produced one value in the HTML and another at hydration, and every
+  // age label derived from it became a mismatch. The tick below corrects it a
+  // moment later.
+  const [now, setNow] = useState(serverNow)
   useEffect(() => {
     if (!active) return
     const tick = () => setNow(Date.now())

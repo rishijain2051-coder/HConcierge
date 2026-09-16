@@ -28,6 +28,7 @@ export default async function BoardPage() {
       assignable={assignable}
       initialRequests={requests}
       initialChats={chats}
+      serverNow={Date.now()}
     />
   )
 }

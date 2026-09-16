@@ -25,6 +25,7 @@ export default function Board({
   assignable,
   initialRequests,
   initialChats,
+  serverNow,
 }: {
   me: Me
   visibleDepartments: string[]
@@ -35,6 +36,9 @@ export default function Board({
   assignable: { id: string; name: string; department: string }[]
   initialRequests: BoardRequest[]
   initialChats: ChatRoom[]
+  // The server's clock, so the first client render agrees with the HTML it is
+  // hydrating. See the useState below.
+  serverNow: number
 }) {
   const router = useRouter()
   const [requests, setRequests] = useState(initialRequests)
@@ -45,7 +49,16 @@ export default function Board({
   const [openId, setOpenId] = useState<string | null>(null)
   const [chatRoom, setChatRoom] = useState<{ id: string; number: string } | null>(null)
   const [alerts, setAlerts] = useState(false)
-  const [now, setNow] = useState(() => Date.now())
+  // Seeded from the server, not from Date.now().
+  //
+  // Every age label on this board is derived from this value, and a client
+  // component is server-rendered too. Reading the clock here read it twice —
+  // once server-side, once at hydration — so any card sitting on a rounding
+  // boundary rendered "just now" in the HTML and "1m" in the browser, and
+  // React threw the whole tree away and rebuilt it. The interval below takes
+  // over a moment later, so the only cost is that the first paint can be up to
+  // one tick stale, which is invisible at minute granularity.
+  const [now, setNow] = useState(serverNow)
   const [stale, setStale] = useState(false)
 
   const seen = useRef(new Set(initialRequests.map((r) => r.id)))
@@ -332,7 +345,7 @@ export default function Board({
           </Column>
         </div>
       ) : (
-        <Messages chats={chats} onOpen={(c) => setChatRoom({ id: c.room_id, number: c.room_number })} />
+        <Messages chats={chats} now={now} onOpen={(c) => setChatRoom({ id: c.room_id, number: c.room_number })} />
       )}
 
       {openRequest && (
@@ -767,7 +780,7 @@ function RequestDetail({
 
 /* -------------------------------------------------------------- messages */
 
-function Messages({ chats, onOpen }: { chats: ChatRoom[]; onOpen: (c: ChatRoom) => void }) {
+function Messages({ chats, now, onOpen }: { chats: ChatRoom[]; now: number; onOpen: (c: ChatRoom) => void }) {
   if (chats.length === 0) {
     return (
       <div className="bg-surface border-line rounded-2xl border px-4 py-16 text-center">
@@ -784,7 +797,7 @@ function Messages({ chats, onOpen }: { chats: ChatRoom[]; onOpen: (c: ChatRoom) 
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
               <span className="truncate text-[13px] font-medium">{c.guest_name ?? 'Guest'}</span>
-              <span className="text-faint shrink-0 text-[11px]">{since(c.last_at)}</span>
+              <span className="text-faint shrink-0 text-[11px]">{since(c.last_at, new Date(now))}</span>
             </span>
             <span className={`mt-0.5 block truncate text-[13px] ${c.unread > 0 ? 'text-ink font-medium' : 'text-muted'}`}>
               {c.last_sender === 'staff' ? 'You: ' : ''}
