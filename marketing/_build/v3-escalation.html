@@ -1,0 +1,127 @@
+<!doctype html><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kit.css">
+<style>
+  .wrap{width:1400px}
+  h1{font-size:120px;margin:0;text-align:center}
+  .sub{font-size:40px;color:var(--muted);font-weight:400;text-align:center}
+  .nots{display:flex;justify-content:center;gap:0;align-items:baseline}
+  .nots div{font-size:78px;font-weight:500;color:var(--faint);padding:0 44px;position:relative}
+  .nots div + div::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:1px;background:var(--line)}
+  .esc{display:flex;align-items:center;gap:26px;background:var(--late-soft);
+       border:1px solid rgba(185,28,28,.28);border-radius:16px;padding:30px 36px;margin-top:38px}
+  .mark{width:140px;height:140px;border-radius:34px;background:var(--ink);position:relative;margin:0 auto}
+  .mark i{position:absolute;background:var(--paper)}
+  .wordmark{font-size:74px;font-weight:600;letter-spacing:-2px;margin-top:40px;text-align:center}
+</style>
+
+<div class="stage">
+  <div class="layer" id="l1"><div class="wrap">
+    <h1 class="serif" id="l1a">A phone call leaves no trace.</h1>
+  </div></div>
+
+  <div class="layer" id="l2"><div class="wrap">
+    <div class="nots">
+      <div id="n1">No owner.</div>
+      <div id="n2">No clock.</div>
+      <div id="n3">No record.</div>
+    </div>
+  </div></div>
+
+  <div class="layer" id="l3"><div class="wrap">
+    <div class="sub" id="l3h" style="margin:0 0 46px;color:var(--ink);font-weight:500;font-size:46px">
+      Here, every request carries its own target time.
+    </div>
+
+    <div class="card" id="card" style="padding:44px 52px 44px 62px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:54px;font-weight:600" class="tnum">Room 401</div>
+        <div style="font-size:28px;color:var(--faint)" class="tnum" id="age">#128 &middot; just now</div>
+      </div>
+      <div style="font-size:40px;margin-top:18px">Bath towels</div>
+      <div style="margin-top:22px">
+        <span class="tag" style="font-size:26px;padding:10px 22px">Housekeeping</span>
+        <span class="tag" id="stat" style="font-size:26px;padding:10px 22px;margin-left:12px">Not accepted</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:30px;margin-top:36px">
+        <span class="track" id="track" style="flex:1;height:14px"><i id="trk" style="width:0%"></i></span>
+        <span class="tnum" id="mins" style="font-size:34px;font-weight:600;color:var(--ok);width:340px;text-align:right">15 min left of 15</span>
+      </div>
+    </div>
+
+    <div class="esc" id="esc">
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#b91c1c" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 9v4"/><path d="M12 17h.01"/>
+        <path d="M10.3 3.9 2.4 17.3A1.9 1.9 0 0 0 4 20.2h16a1.9 1.9 0 0 0 1.6-2.9L13.7 3.9a1.9 1.9 0 0 0-3.4 0Z"/>
+      </svg>
+      <div>
+        <div style="font-size:38px;font-weight:600;color:var(--late)">Escalated to the duty manager</div>
+        <div style="font-size:28px;color:var(--late);opacity:.8;margin-top:8px">
+          Room 401 &middot; #128 &middot; nobody accepted it inside 15 minutes
+        </div>
+      </div>
+    </div>
+
+    <div class="sub" id="l3s" style="margin-top:46px;font-size:44px;color:var(--ink)">
+      Nobody had to be watching a screen.
+    </div>
+  </div></div>
+
+  <div class="layer" id="l4"><div class="wrap">
+    <div id="m4">
+      <div class="mark">
+        <i style="left:37px;top:39px;width:14px;height:62px;border-radius:7px"></i>
+        <i style="right:37px;top:39px;width:14px;height:62px;border-radius:7px"></i>
+        <i style="left:51px;top:62px;width:38px;height:15px;opacity:.45"></i>
+        <i style="left:51px;top:62px;width:24px;height:15px"></i>
+      </div>
+      <div class="wordmark">HConcierge</div>
+    </div>
+    <div class="sub" id="l4s" style="margin-top:32px;font-size:42px">Routed. Timed. Escalated on its own.</div>
+  </div></div>
+</div>
+
+<script src="kit.js"></script>
+<script>
+var $ = function (id) { return document.getElementById(id) }
+var SLA = 15
+
+window.__render = function (t) {
+  apply($('l1'), inOut(t, { in: 0.30, out: 2.95 }))
+  apply($('l1a'), inOut(t, { in: 0.30 }))
+
+  apply($('l2'), inOut(t, { in: 3.35, out: 6.25 }))
+  apply($('n1'), inOut(t, { in: 3.35, rise: 18 }))
+  apply($('n2'), inOut(t, { in: 4.00, rise: 18 }))
+  apply($('n3'), inOut(t, { in: 4.65, rise: 18 }))
+
+  apply($('l3'), inOut(t, { in: 6.65, out: 21.35 }))
+  apply($('l3h'), inOut(t, { in: 6.65 }))
+  apply($('card'), inOut(t, { in: 7.00, rise: 40 }))
+
+  // A clock is linear: easing a countdown would be a lie about the clock.
+  var elapsed = 18 * seg(t, 7.40, 16.60)
+  var left = SLA - elapsed
+  var tone = elapsed >= SLA ? 'late' : elapsed >= SLA * 0.6 ? 'warn' : 'ok'
+
+  $('card').className = 'card' + (tone === 'ok' ? '' : ' ' + tone)
+  $('track').className = 'track' + (tone === 'ok' ? '' : ' ' + tone)
+  $('trk').style.width = Math.min(100, (elapsed / SLA) * 100).toFixed(1) + '%'
+  $('mins').style.color = 'var(--' + tone + ')'
+  $('mins').textContent = left > 0
+    ? Math.ceil(left) + ' min left of ' + SLA
+    : '+' + Math.floor(-left) + ' min over'
+  var mins = Math.floor(elapsed)
+  $('age').textContent = '#128 · ' + (mins < 1 ? 'just now' : mins + 'm')
+  $('stat').textContent = 'Not accepted'
+
+  // It goes late at 15 elapsed; the ladder fires a beat later, unprompted.
+  apply($('esc'), inOut(t, { in: 15.90, rise: 24 }))
+  apply($('l3s'), inOut(t, { in: 18.70 }))
+
+  apply($('l4'), inOut(t, { in: 21.70, rise: 20 }))
+  apply($('m4'), inOut(t, { in: 21.70, rise: 30 }))
+  apply($('l4s'), inOut(t, { in: 22.20 }))
+}
+</script>
