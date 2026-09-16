@@ -191,11 +191,21 @@ path available.
 
 ---
 
-## 7. Session conveniences you may want to remove
+## 7. Session conveniences
 
-- `.claude/launch.json` gained an `hconcierge-prod` entry (`next start` on
-  3100). It is there so production timings can be measured against the dev
-  server without stopping it. Harmless; delete it if it is clutter.
+Cleared on 16 September. `.claude/launch.json` had grown to three server
+entries — `hconcierge` on 3000, `hconcierge-prod` on 3100 for measuring
+production timings without stopping the dev server, and `concierge-wa` on 3200
+so the WhatsApp session could run a second dev server alongside the first. Both
+extras existed only because two things were being worked at once. Only
+`hconcierge` remains.
+
+Still on disk and no longer needed:
+
+- **The `D:\concierge-wa` worktree and its `whatsapp-links` branch.** Fully
+  merged into main and the working tree is clean, so nothing is lost by
+  removing them: `git worktree remove D:/concierge-wa` then
+  `git branch -d whatsapp-links`. Left in place rather than removed for you.
 
 ---
 

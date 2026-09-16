@@ -2,18 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "concierge-wa",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev",
-        "--",
-        "-p",
-        "3200"
-      ],
-      "port": 3200
-    },
-    {
       "name": "hconcierge",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
@@ -21,17 +9,6 @@
         "dev"
       ],
       "port": 3000
-    },
-    {
-      "name": "hconcierge-prod",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": [
-        "next",
-        "start",
-        "-p",
-        "3100"
-      ],
-      "port": 3100
     }
   ]
 }
