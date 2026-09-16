@@ -1,7 +1,7 @@
 # WhatsApp escalation — testing plan
 
-**Status: running unattended in production, 2026-09-15.** On branch `whatsapp-links`, not
-merged.
+**Status: running unattended in production.** Merged to `main`. A real power cycle has been
+survived — see §7.
 
 Production sends WhatsApp by itself: Supabase pg_cron every ten minutes → the deployed app
 → a queue in Postgres → a supervised drainer beside the gateway on the laptop → Baileys. No
@@ -42,18 +42,23 @@ recipient to *do* with the message other than go and find a laptop.
 ## Shape
 
 ```
-guest request → Vercel (hconcierge.vercel.app) → Tailscale Funnel → laptop
-                       ↑                                              │
-                       │                                       OpenWA + Baileys
-                 staff taps link                                      │
-                       │                                              ↓
-                  staff's phone ←────────── WhatsApp ────────── staff's phone
+guest request → Vercel (hconcierge.vercel.app)
+                       │
+                       ↓  writes a row
+              outbound_messages  (Supabase Postgres)
+                       ↑  polls every 5s
+              db/outbox.mjs on the laptop
+                       │
+                       ↓
+              OpenWA + Baileys → WhatsApp → staff phone
+                       ┊
+                 staff taps link ──→ back to Vercel, which is already public
 ```
 
-Two directions, and only the first needs any plumbing:
+Nothing ever connects *to* the laptop. Both ends reach Postgres outbound, which is why no
+tunnel is needed — §2 is the record of trying one and failing, §2a is what replaced it.
 
-- **Outbound.** Vercel calls the gateway on the laptop to send a message. The laptop has
-  no public address, so this goes through Tailscale Funnel.
+- **Outbound.** Vercel cannot reach the gateway, so it enqueues and the laptop drains.
 - **Inbound.** There is none. Tapping the link is a plain HTTPS request from the staff
   member's phone to `hconcierge.vercel.app`, which is already public. WhatsApp is not in
   that path, the gateway never needs to receive a webhook, and no message-id bookkeeping
