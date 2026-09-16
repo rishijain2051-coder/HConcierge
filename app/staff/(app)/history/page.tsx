@@ -174,8 +174,9 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
             </thead>
             <tbody className="divide-line divide-y">
               {rows.map((r) => {
-                const late =
-                  r.resolve_minutes !== null && r.status === 'done' && r.resolve_minutes > r.sla_minutes
+                // The same test as the on-time figure above the table, decided
+                // once in SQL — see DUE_FROM in lib/history.ts.
+                const late = r.status === 'done' && !r.on_time
                 return (
                   <tr key={r.id} className="hover:bg-paper/60">
                     <Td className="text-faint tabular-nums">#{r.ref}</Td>

@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { hotelTime, wallClockNow } from '@/lib/clock'
 import { rupees } from '@/lib/money'
-import { minutesRemaining, since } from '@/lib/sla'
+import { minutesRemaining, notDueYet, since } from '@/lib/sla'
 import { useLive } from '@/lib/use-live'
 import {
   guestStep,
@@ -580,6 +580,10 @@ function OrderTracker({
   const steps = guestSteps(request.department)
   const step = guestStep(request.status)
   const left = minutesRemaining(request, new Date(now))
+  // Nothing is running late before the hour the guest picked. The countdown
+  // used to start when they booked, so a wake-up call ordered at midnight for
+  // seven promised "About 10 min to go" and then said it had been flagged.
+  const waiting = notDueYet(request, new Date(now))
   const title = request.items.length
     ? request.items.map((i) => `${i.qty > 1 ? `${i.qty}× ` : ''}${i.name}`).join(', ')
     : request.note || 'Request'
@@ -660,9 +664,11 @@ function OrderTracker({
         <p className="text-muted text-[12.5px]">
           {request.status === 'done'
             ? `${steps[3]} — thank you`
-            : left > 0
-              ? `About ${left} min to go`
-              : 'Taking longer than usual — we have flagged it'}
+            : waiting
+              ? 'Booked for the time you picked'
+              : left > 0
+                ? `About ${left} min to go`
+                : 'Taking longer than usual — we have flagged it'}
         </p>
         {(request.status === 'new' || request.status === 'ack') &&
           (confirming ? (

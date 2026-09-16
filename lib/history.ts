@@ -3,6 +3,14 @@ import { visibleDepartments, type Staff } from './auth'
 import { scopeTo } from './scope'
 import type { RequestStatus } from './types'
 
+/**
+ * When a request's clock starts, the same way lib/sla.ts starts it: the hour it
+ * was booked for, or the moment it arrived. Counting a 7am wake-up call from
+ * when the guest ordered it at midnight scored every one of them as hours late,
+ * and a team that never missed a spa slot read as a team that missed all of them.
+ */
+const DUE_FROM = sql`coalesce(r.scheduled_for, r.created_at)`
+
 export type HistoryFilters = {
   propertyId?: string | null
   department?: string | null
@@ -24,6 +32,8 @@ export type HistoryRow = {
   note: string | null
   total_paise: number
   sla_minutes: number
+  /** Finished inside its target, counted from when it was due. */
+  on_time: boolean
   room_number: string
   guest_name: string | null
   property_name: string
@@ -65,7 +75,12 @@ export async function loadHistory(staff: Staff, f: HistoryFilters, limit = 300):
            (select string_agg(ri.qty || '× ' || ri.name, ', ' order by ri.name)
               from request_items ri where ri.request_id = r.id) as summary,
            round(extract(epoch from (r.acknowledged_at - r.created_at)) / 60)::int as response_minutes,
-           round(extract(epoch from (r.completed_at - r.created_at)) / 60)::int as resolve_minutes
+           round(extract(epoch from (r.completed_at - r.created_at)) / 60)::int as resolve_minutes,
+           -- Decided here rather than by comparing resolve_minutes to the
+           -- target in the page, which called every booked-ahead request late
+           -- while the on-time figure above the table said otherwise.
+           (r.status = 'done'
+            and r.completed_at <= ${DUE_FROM} + (r.sla_minutes || ' minutes')::interval) as on_time
       from requests r
       join rooms rm on rm.id = r.room_id
       join properties p on p.id = r.property_id
@@ -83,8 +98,11 @@ export async function loadStats(staff: Staff, f: HistoryFilters): Promise<Histor
            count(*) filter (where r.escalated_at is not null)::int as escalated,
            count(*) filter (
              where r.completed_at is not null and r.status = 'done'
-               and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval
+               and r.completed_at <= ${DUE_FROM} + (r.sla_minutes || ' minutes')::interval
            )::int as within_sla,
+           -- Response stays measured from arrival: "how quickly did somebody
+           -- pick this up" is a question about the moment it landed, not about
+           -- an hour the guest chose.
            round(avg(extract(epoch from (r.acknowledged_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_response,
            -- Only what actually finished. A cancelled request keeps its
            -- completed_at, so without this filter a cancellation counts as a
@@ -110,7 +128,7 @@ export async function loadByDepartment(staff: Staff, f: HistoryFilters) {
            count(*) filter (where r.status = 'done')::int as done,
            count(*) filter (
              where r.status = 'done'
-               and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval
+               and r.completed_at <= ${DUE_FROM} + (r.sla_minutes || ' minutes')::interval
            )::int as within_sla,
            -- Same filter as within_sla above, for the same reason: a team
            -- with one cancelled request read "1 request · 1.7 min average"

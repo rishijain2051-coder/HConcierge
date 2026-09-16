@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hotelTime } from '@/lib/clock'
 import { rupees } from '@/lib/money'
-import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
+import { formatAge, minutesRemaining, notDueYet, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { IconAlarm, IconChat, IconClose } from '@/components/icons'
@@ -451,6 +451,13 @@ function Card({
 }) {
   const state = slaState(r, new Date(now))
   const left = minutesRemaining(r, new Date(now))
+  // How long until a scheduled request is due, or null once it is. formatAge
+  // is the same minutes-to-"7h 10m" formatter the age labels use, read the
+  // other way round: from now, to the hour the guest picked.
+  const until =
+    r.scheduled_for && notDueYet(r, new Date(now))
+      ? formatAge(new Date(now), new Date(r.scheduled_for))
+      : null
   const stripe = { late: 'bg-late', warn: 'bg-warn', ok: 'bg-ok', done: 'bg-line' }[state]
   const summary = r.items.length
     ? r.items.map((i) => `${i.qty > 1 ? `${i.qty}× ` : ''}${i.name}`).join(', ')
@@ -508,11 +515,18 @@ function Card({
 
         {state !== 'done' && (
           <span className={`mt-1.5 block text-[11px] font-medium ${state === 'late' ? 'text-late' : 'text-muted'}`}>
-            {left > 0
-              ? `${left} min left of ${r.sla_minutes}`
-              : left === 0
+            {/* A request booked for seven has no countdown running at midnight,
+                and this read "430 min left of 10". What a shift wants off a
+                scheduled row is how long it has, not a budget nobody spent. */}
+            {until
+              ? until === 'just now'
                 ? 'due now'
-                : `${Math.abs(left)} min over`}
+                : `due in ${until}`
+              : left > 0
+                ? `${left} min left of ${r.sla_minutes}`
+                : left === 0
+                  ? 'due now'
+                  : `${Math.abs(left)} min over`}
           </span>
         )}
       </button>
