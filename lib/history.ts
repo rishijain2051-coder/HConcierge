@@ -86,7 +86,10 @@ export async function loadStats(staff: Staff, f: HistoryFilters): Promise<Histor
                and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval
            )::int as within_sla,
            round(avg(extract(epoch from (r.acknowledged_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_response,
-           round(avg(extract(epoch from (r.completed_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_resolve,
+           -- Only what actually finished. A cancelled request keeps its
+           -- completed_at, so without this filter a cancellation counts as a
+           -- fast completion and drags the headline average down.
+           round(avg(extract(epoch from (r.completed_at - r.created_at)) / 60) filter (where r.status = 'done')::numeric, 1)::float8 as avg_resolve,
            coalesce(sum(r.total_paise) filter (where r.status = 'done'), 0)::int as revenue_paise
       from requests r
       join rooms rm on rm.id = r.room_id
@@ -109,7 +112,10 @@ export async function loadByDepartment(staff: Staff, f: HistoryFilters) {
              where r.status = 'done'
                and r.completed_at <= r.created_at + (r.sla_minutes || ' minutes')::interval
            )::int as within_sla,
-           round(avg(extract(epoch from (r.completed_at - r.created_at)) / 60)::numeric, 1)::float8 as avg_resolve
+           -- Same filter as within_sla above, for the same reason: a team
+           -- with one cancelled request read "1 request · 1.7 min average"
+           -- directly beside "none finished yet".
+           round(avg(extract(epoch from (r.completed_at - r.created_at)) / 60) filter (where r.status = 'done')::numeric, 1)::float8 as avg_resolve
       from requests r
       join rooms rm on rm.id = r.room_id
      where ${scopes(staff, f)}

@@ -52,6 +52,11 @@ export default function Rooms({
   // The only action here that cannot be undone and cannot be seen until
   // somebody walks to the room. It was a single tap on a grid of room numbers.
   const [rotating, setRotating] = useState<RoomRow | null>(null)
+  // Checking out ends the stay: it clears the code, so every device that stay
+  // used is signed out. Reissuing the QR asked before doing its damage and
+  // this did not, which was backwards — this is the one a mis-tap on a phone
+  // actually reaches, because it sits in the same row.
+  const [checkingOut, setCheckingOut] = useState<RoomRow | null>(null)
   // One room at a time: opening a second closes the first, so the list never
   // grows back into the thing it replaced.
   const [openId, setOpenId] = useState<string | null>(null)
@@ -207,20 +212,7 @@ export default function Rooms({
                               Settle {rupees(r.balance_paise)}
                             </Mini>
                           )}
-                          <Mini
-                            onClick={() =>
-                              run(async () => {
-                                const res = await checkOut(r.id)
-                                if (!res.ok && typeof res.outstanding === 'number') {
-                                  setOwing({ room: r, amount: res.outstanding })
-                                  return { ok: true }
-                                }
-                                return res
-                              })
-                            }
-                            disabled={pending}
-                            tone="late"
-                          >
+                          <Mini onClick={() => setCheckingOut(r)} disabled={pending} tone="late">
                             Check out
                           </Mini>
                         </>
@@ -384,6 +376,32 @@ export default function Rooms({
             </button>
           </form>
         </Modal>
+      )}
+
+      {checkingOut && (
+        <Confirm
+          title={`Check out Room ${checkingOut.number}?`}
+          body={
+            checkingOut.guest_name
+              ? `${checkingOut.guest_name} is signed in on this room's code. Checking out clears it, so any phone they are using loses access straight away. The printed QR card stays valid for the next guest.`
+              : "Checking out clears this room's code, so any phone using it loses access straight away. The printed QR card stays valid for the next guest."
+          }
+          confirmLabel="Check out"
+          onConfirm={() => {
+            const room = checkingOut
+            run(async () => {
+              const res = await checkOut(room.id)
+              // A balance is a refusal, not a failure: surface it as the owing
+              // dialog rather than an error banner, exactly as before.
+              if (!res.ok && typeof res.outstanding === 'number') {
+                setOwing({ room, amount: res.outstanding })
+                return { ok: true }
+              }
+              return res
+            })
+          }}
+          onClose={() => setCheckingOut(null)}
+        />
       )}
 
       {rotating && (

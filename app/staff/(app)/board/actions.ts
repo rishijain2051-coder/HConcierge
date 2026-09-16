@@ -3,6 +3,7 @@
 import { requireStaff } from '@/lib/auth'
 import {
   assignRequest,
+  loadQuickReplies,
   loadRoomThread,
   markThreadRead,
   replyToRoom,
@@ -25,6 +26,15 @@ export async function openThread(roomId: string) {
   const messages = await loadRoomThread(staff, roomId)
   await markThreadRead(staff, roomId)
   return messages
+}
+
+/**
+ * Kept separate from openThread rather than folded into it: openThread is
+ * also the poll, and these do not change between polls.
+ */
+export async function quickReplies(roomId: string) {
+  const staff = await requireStaff()
+  return loadQuickReplies(staff, roomId)
 }
 
 export async function reply(roomId: string, body: string) {

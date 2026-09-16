@@ -59,9 +59,14 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           </nav>
 
           <div className="ml-auto hidden items-center gap-3 sm:flex">
-            <div className="text-right">
+            {/* The subtitle is what gives way when the row runs short of
+                width. Between sm and lg it wrapped onto a third line and shoved
+                the account controls out of alignment; the name never wraps.
+                Nothing is lost by dropping it — the phone drawer heads itself
+                with the same line, and a reception monitor is well past lg. */}
+            <div className="text-right whitespace-nowrap">
               <p className="text-[13px] leading-tight font-medium">{staff.name}</p>
-              <p className="text-faint text-[11px] leading-tight">{subtitle}</p>
+              <p className="text-faint hidden text-[11px] leading-tight lg:block">{subtitle}</p>
             </div>
             {/* No `title` here: it replaced the visible word as the accessible
                 name, so "Password" was not what anything announced or matched. */}

@@ -106,6 +106,31 @@ export async function loadRoomThread(staff: Staff, roomId: string): Promise<Chat
      limit 200`
 }
 
+export type QuickReply = { id: string; label: string; body: string }
+
+/**
+ * The desk's canned replies for this room's property.
+ *
+ * quick_replies has been seeded per property since the beginning, and
+ * lib/admin.ts copies it when a property starts from another's catalogue — but
+ * nothing ever read it. Eight written-out sentences sat in the database while
+ * staff typed "someone is on the way to your room now" by hand.
+ *
+ * Scoped through the room, not through the staff member's own property, and
+ * guarded exactly as the thread above is: these are one customer's words.
+ */
+export async function loadQuickReplies(staff: Staff, roomId: string): Promise<QuickReply[]> {
+  const [room] = await sql<{ property_id: string; organisation_id: string | null }[]>`
+    select r.property_id, p.organisation_id
+      from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
+  if (!room || !canTouchProperty(staff, propRef(room))) return []
+
+  return sql<QuickReply[]>`
+    select id, label, body from quick_replies
+     where property_id = ${room.property_id}
+     order by sort, label`
+}
+
 export async function markThreadRead(staff: Staff, roomId: string): Promise<void> {
   const [room] = await sql<{ property_id: string; organisation_id: string | null }[]>`
     select r.property_id, p.organisation_id

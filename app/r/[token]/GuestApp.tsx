@@ -609,7 +609,11 @@ function OrderTracker({
             const done = i <= step
             const current = i === step && request.status !== 'done'
             return (
-              <li key={label} className="flex w-1/4 flex-col items-center gap-1.5">
+              <li
+                key={label}
+                aria-current={current ? 'step' : undefined}
+                className="flex w-1/4 flex-col items-center gap-1.5"
+              >
                 <span className="relative grid h-3 w-3 place-items-center">
                   {current && (
                     <span
@@ -630,6 +634,7 @@ function OrderTracker({
                 >
                   {label}
                 </span>
+                {done && !current && <span className="sr-only">done</span>}
               </li>
             )
           })}
@@ -791,8 +796,14 @@ function ItemRow({
         ) : isSimple(item) ? (
           <Stepper qty={qty} onAdd={() => onBump(item, 1)} onSub={() => onBump(item, -1)} label={item.name} />
         ) : (
+          /* Its siblings announce as "Add Idli Sambar"; this announced as
+             "Choose", identically for every item with options. The label is
+             only set while it is a bare verb: once it reads "Add · 2 in
+             basket" the visible text has to stay the accessible name, per
+             WCAG 2.5.3 Label in Name. */
           <button
             onClick={() => onTap(item)}
+            aria-label={qty > 0 ? undefined : `${item.modifier_groups?.length ? 'Choose' : 'Add'} ${item.name}`}
             className="brand-text brand-border ease-glide rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition duration-300 active:scale-[0.96]"
           >
             {qty > 0 ? `Add · ${qty} in basket` : item.modifier_groups?.length ? 'Choose' : 'Add'}
@@ -958,6 +969,7 @@ function ItemSheet({
                 <button
                   key={o.name}
                   onClick={() => toggle(g, o)}
+                  aria-pressed={on}
                   disabled={full}
                   className={`ease-glide flex w-full items-center justify-between rounded-[16px] px-3.5 py-2.5 text-left text-[15px] transition duration-300 disabled:opacity-35 ${
                     on

@@ -8,7 +8,7 @@ import { formatAge, minutesRemaining, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { IconAlarm, IconChat, IconClose } from '@/components/icons'
-import { assign, openThread, reply, updateStatus } from './actions'
+import { assign, openThread, quickReplies, reply, updateStatus } from './actions'
 
 // The board is pushed, not polled — see /api/staff/board/live. This is the
 // seatbelt: it covers a dropped stream, and it is what knocks on the server to
@@ -393,6 +393,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
   return (
     <button
       onClick={onClick}
+      aria-pressed={on}
       className={`shrink-0 rounded-xl border px-3 py-2 text-[13px] font-medium whitespace-nowrap transition ${
         on ? 'bg-ink border-ink text-white' : 'border-line bg-surface text-muted hover:text-ink'
       }`}
@@ -507,7 +508,11 @@ function Card({
 
         {state !== 'done' && (
           <span className={`mt-1.5 block text-[11px] font-medium ${state === 'late' ? 'text-late' : 'text-muted'}`}>
-            {left > 0 ? `${left} min left of ${r.sla_minutes}` : `${Math.abs(left)} min over`}
+            {left > 0
+              ? `${left} min left of ${r.sla_minutes}`
+              : left === 0
+                ? 'due now'
+                : `${Math.abs(left)} min over`}
           </span>
         )}
       </button>
@@ -819,6 +824,7 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
+  const [canned, setCanned] = useState<{ id: string; label: string; body: string }[]>([])
   const bottom = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -839,6 +845,16 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
     return () => {
       live = false
       clearInterval(t)
+    }
+  }, [roomId])
+
+  useEffect(() => {
+    let live = true
+    quickReplies(roomId).then((rs) => {
+      if (live) setCanned(rs)
+    })
+    return () => {
+      live = false
     }
   }, [roomId])
 
@@ -893,22 +909,39 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
 
       {/* Pinned: on a thread long enough to scroll, the reply box used to
           scroll away with the messages. */}
-      <form onSubmit={send} className="border-line bg-surface sticky bottom-0 flex gap-2 border-t p-3">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="Reply to the room…"
-          maxLength={1000}
-          className="border-line bg-surface focus:border-ink flex-1 rounded-xl border px-3 py-2.5 text-[14px] outline-none"
-        />
-        <button
-          type="submit"
-          disabled={!draft.trim() || busy}
-          className="bg-ink min-h-11 shrink-0 rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white disabled:opacity-30"
-        >
-          Send
-        </button>
-      </form>
+      <div className="border-line bg-surface sticky bottom-0 border-t">
+        {canned.length > 0 && (
+          <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-3 pt-3">
+            {canned.map((q) => (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => setDraft(q.body)}
+                title={q.body}
+                className="border-line text-muted hover:text-ink hover:border-ink shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium whitespace-nowrap transition"
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <form onSubmit={send} className="flex gap-2 p-3">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="Reply to the room…"
+            maxLength={1000}
+            className="border-line bg-surface focus:border-ink flex-1 rounded-xl border px-3 py-2.5 text-[14px] outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!draft.trim() || busy}
+            className="bg-ink min-h-11 shrink-0 rounded-xl px-4 py-2.5 text-[14px] font-semibold text-white disabled:opacity-30"
+          >
+            Send
+          </button>
+        </form>
+      </div>
     </div>
   )
 }
