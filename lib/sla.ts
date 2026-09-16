@@ -21,9 +21,25 @@ export type SlaInput = {
   sla_minutes: number
   status: string
   completed_at?: string | Date | null
+  /**
+   * The property's amber threshold, as a percentage of the target.
+   *
+   * Configurable per property in Manage → Escalation, which wrote the column
+   * and then nothing read it: an admin could move the threshold to 80% and
+   * every board, tracker and job list carried on turning amber at 60. Optional
+   * because the marketing mock has no property behind it.
+   */
+  warn_at_percent?: number | null
 }
 
+/** The fallback when no property says otherwise, and what the mock uses. */
 export const WARN_AT = 0.6 // amber once 60% of the promised time is gone
+
+/** The property's threshold as a fraction, or the default. */
+function warnAt(r: SlaInput): number {
+  const pct = r.warn_at_percent
+  return pct == null || !Number.isFinite(pct) || pct <= 0 || pct > 100 ? WARN_AT : pct / 100
+}
 
 export function minutesElapsed(from: string | Date, to: Date = new Date()): number {
   return (to.getTime() - new Date(from).getTime()) / 60000
@@ -44,7 +60,7 @@ export function slaState(r: SlaInput, now: Date = new Date()): SlaState {
   const elapsed = minutesElapsed(startsAt(r), now)
   const budget = r.sla_minutes || 15
   if (elapsed >= budget) return 'late'
-  if (elapsed >= budget * WARN_AT) return 'warn'
+  if (elapsed >= budget * warnAt(r)) return 'warn'
   return 'ok'
 }
 

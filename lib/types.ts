@@ -249,6 +249,7 @@ export type BoardRequest = GuestRequest & {
   assigned_name: string | null
   property_name: string
   property_timezone: string
+  warn_at_percent: number
   property_id: string
   unread_messages: number
 }
