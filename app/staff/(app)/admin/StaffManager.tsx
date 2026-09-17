@@ -254,7 +254,18 @@ export default function StaffManager({
               name="department"
               defaultValue={editing?.department ?? teams[0]?.value ?? 'front_desk'}
               options={[...teams, { value: 'all', label: 'All teams' }]}
-              hint="A staff account sees this team's board. Managers and admins see every team."
+              // Role-aware because this field means two different things. For a
+              // staff account it scopes the board. For anyone above that it
+              // scopes nothing — teamsVisibleTo() returns unscoped for every
+              // non-staff role — and only decides which new-request alerts they
+              // get. An admin moving a duty manager onto one team could
+              // reasonably fear they were taking the rest of the property away
+              // from them; they are not, and nothing here used to say so.
+              hint={
+                role === 'staff'
+                  ? "This account's board shows this team. “All teams” is for someone who genuinely works all of them."
+                  : 'They see every team’s board whatever this says. It only picks which new-request alerts they get — lateness still reaches them through escalation.'
+              }
             />
 
             {/* The head of housekeeping who also runs the laundry used to have
