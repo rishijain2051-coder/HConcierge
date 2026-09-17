@@ -235,9 +235,10 @@ Indian digit grouping.
 that look like bugs but are not, and what has never been tested. Read it before
 picking the project back up.
 
-[`ROADMAP.md`](ROADMAP.md) is the forward one: ten proposals sized and ordered,
-each checked against the source first — including the four that turned out to
-rest on something the code does not do, and why they are not worth building.
+[`ROADMAP.md`](ROADMAP.md) is the forward one, and it is deliberately two items
+long: an append-only audit log and rate limiting on the guest endpoints. Eight
+other proposals were assessed and dropped; that write-up is in commit
+`6259306` if one is ever wanted back.
 
 [`docs/qa-2026-09-14/`](docs/qa-2026-09-14/) holds the reports from a four-agent
 testing pass — reproductions for everything it found, and a *Verified working*
