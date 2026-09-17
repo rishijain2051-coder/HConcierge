@@ -6,7 +6,16 @@ import { useState, useTransition } from 'react'
 import { rupees } from '@/lib/money'
 import { IconChevron } from '@/components/icons'
 import { Confirm, Field, Modal } from '../ui'
-import { addRoom, checkIn, checkOut, newAccessCode, rotateToken, settleBill, unlockRoomCode } from './actions'
+import {
+  addRoom,
+  checkIn,
+  checkOut,
+  newAccessCode,
+  rotateToken,
+  sendWelcomeCard,
+  settleBill,
+  unlockRoomCode,
+} from './actions'
 
 export type RoomRow = {
   id: string
@@ -26,6 +35,7 @@ export type RoomRow = {
   code_locked_until: string | null
   settle_requested_at: string | null
   balance_paise: number
+  guest_phone: string | null
 }
 
 export default function Rooms({
@@ -49,6 +59,8 @@ export default function Rooms({
   const [issued, setIssued] = useState<{ room: RoomRow; code: string } | null>(null)
   // Checkout refuses over an unpaid balance rather than writing it off quietly.
   const [owing, setOwing] = useState<{ room: RoomRow; amount: number } | null>(null)
+  const [sending, setSending] = useState<RoomRow | null>(null)
+  const [sent, setSent] = useState<string | null>(null)
   // The only action here that cannot be undone and cannot be seen until
   // somebody walks to the room. It was a single tap on a grid of room numbers.
   const [rotating, setRotating] = useState<RoomRow | null>(null)
@@ -186,6 +198,14 @@ export default function Rooms({
                       {r.occupied ? (
                         <>
                           <PrintLink href={`/staff/rooms/print?room=${r.id}&slip=1`}>Print welcome card</PrintLink>
+                          {/* Only offered when there is a number to send to.
+                              A disabled button here would just be a question
+                              the desk cannot answer from this screen. */}
+                          {r.guest_phone && (
+                            <Mini onClick={() => setSending(r)} disabled={pending}>
+                              Send by WhatsApp
+                            </Mini>
+                          )}
                           {locked && (
                             <Mini onClick={() => run(() => unlockRoomCode(r.id))} disabled={pending}>
                               Unlock the code
@@ -271,14 +291,53 @@ export default function Rooms({
         </Modal>
       )}
 
+      {/* The number is shown in full, and that is the entire point of this
+          dialog. The message carries the room's access code, so one mistyped
+          digit hands a stranger working access to an occupied room — the person
+          who typed it is the only one who can catch it, and they can only catch
+          it if they are shown it. */}
+      {sending && (
+        <Confirm
+          title={`Send Room ${sending.number}'s card?`}
+          body={`It goes by WhatsApp to ${sending.guest_phone}, and carries the access code ${
+            sending.access_code ?? '—'
+          } as well as the link. Check the number is right: anyone who receives it can get into the room until the code is reissued.`}
+          confirmLabel="Send it"
+          onConfirm={() =>
+            run(async () => {
+              const res = await sendWelcomeCard(sending.id)
+              if (res.ok) setSent(res.to)
+              return res
+            })
+          }
+          onClose={() => setSending(null)}
+        />
+      )}
+
+      {sent && (
+        <Modal title="Sent" onClose={() => setSent(null)}>
+          <p className="text-muted text-[14px] leading-relaxed">
+            The welcome card is on its way to <span className="text-ink font-semibold">{sent}</span>. If that is not
+            the guest&rsquo;s number, issue a new code now — the one in that message will stop working.
+          </p>
+          <button
+            onClick={() => setSent(null)}
+            className="bg-ink mt-5 w-full rounded-xl px-4 py-3 text-[14px] font-semibold text-white"
+          >
+            Done
+          </button>
+        </Modal>
+      )}
+
       {checkingIn && (
         <Modal title={`Check in — Room ${checkingIn.number}`} onClose={() => setCheckingIn(null)}>
           <form
             action={(form) => {
               const name = String(form.get('guest') ?? '')
               const until = String(form.get('until') ?? '')
+              const phone = String(form.get('phone') ?? '')
               run(async () => {
-                const res = await checkIn(checkingIn.id, name, until || null)
+                const res = await checkIn(checkingIn.id, name, until || null, phone || null)
                 if (res.ok) {
                   setIssued({ room: { ...checkingIn, guest_name: name, occupied: true }, code: res.code })
                   setCheckingIn(null)
@@ -290,6 +349,13 @@ export default function Rooms({
           >
             <Field name="guest" label="Guest name" placeholder="Mr. Kabir Anand" autoFocus required />
             <Field name="until" label="Expected checkout" type="datetime-local" />
+            <Field
+              name="phone"
+              label="Guest phone (optional)"
+              type="tel"
+              placeholder="+91 98765 43210"
+              hint="Only used to send the welcome card by WhatsApp. Cleared at checkout."
+            />
             <p className="text-faint text-xs leading-relaxed">
               A fresh four-digit code is issued on check-in. The room&rsquo;s QR card stays as it is.
             </p>

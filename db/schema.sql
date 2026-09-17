@@ -543,3 +543,10 @@ drop trigger if exists audit_append_only on audit_log;
 create trigger audit_append_only
   before update or delete on audit_log
   for each row execute function audit_is_append_only();
+
+-- ------------------------------------------------------------- guest contact
+-- Optional, taken at check-in, and the only reason it exists is to send the
+-- welcome card to the phone the guest will actually use it on. Cleared on
+-- checkout alongside everything else about that stay, so the hotel is not
+-- quietly accumulating a marketing list out of a room-service product.
+alter table rooms add column if not exists guest_phone text;

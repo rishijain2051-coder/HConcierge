@@ -28,7 +28,18 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  * without any token state to revoke.
  */
 
-const VERSION = 1
+/**
+ * Every signed link in the product lives in this file, and that is deliberate
+ * rather than tidy: the version byte is the type tag, all of them are signed
+ * with the same key, and two families defined in two files would eventually
+ * pick the same number and start verifying against each other. Adding a link
+ * type means adding a constant here.
+ *
+ *   1  a staff member's job list  (/w/…)
+ *   2  a guest's welcome card     (/c/…)
+ */
+const V_STAFF = 1
+const V_CARD = 2
 const MAC_BYTES = 10
 const BODY_BYTES = 21
 const TOKEN_BYTES = BODY_BYTES + MAC_BYTES
@@ -48,12 +59,12 @@ function mac(body: Buffer): Buffer {
   return createHmac('sha256', secret()).update(body).digest().subarray(0, MAC_BYTES)
 }
 
-export function signStaffLink(staffId: string, hours = DEFAULT_HOURS): string {
-  if (!UUID.test(staffId)) throw new Error('signStaffLink needs a uuid')
+function sign(version: number, id: string, hours: number): string {
+  if (!UUID.test(id)) throw new Error('a signed link needs a uuid')
 
   const body = Buffer.alloc(BODY_BYTES)
-  body.writeUInt8(VERSION, 0)
-  Buffer.from(staffId.replace(/-/g, ''), 'hex').copy(body, 1)
+  body.writeUInt8(version, 0)
+  Buffer.from(id.replace(/-/g, ''), 'hex').copy(body, 1)
   // Unix seconds, so the expiry costs 4 bytes rather than the 8 a millisecond
   // timestamp would. Good until 2106.
   body.writeUInt32BE(Math.floor(Date.now() / 1000) + hours * 3600, 17)
@@ -61,8 +72,7 @@ export function signStaffLink(staffId: string, hours = DEFAULT_HOURS): string {
   return Buffer.concat([body, mac(body)]).toString('base64url')
 }
 
-/** The staff id this token names, or null — expired, forged, or the wrong token family. */
-export function readStaffLink(token: string): { staffId: string; expiresAt: Date } | null {
+function read(version: number, token: string): { id: string; expiresAt: Date } | null {
   let raw: Buffer
   try {
     raw = Buffer.from(token, 'base64url')
@@ -78,14 +88,48 @@ export function readStaffLink(token: string): { staffId: string; expiresAt: Date
   const given = raw.subarray(BODY_BYTES)
   if (!timingSafeEqual(given, expected)) return null
 
-  if (body.readUInt8(0) !== VERSION) return null
+  // The type check, and the reason every family is defined in this one file.
+  if (body.readUInt8(0) !== version) return null
 
   const exp = body.readUInt32BE(17) * 1000
   if (exp <= Date.now()) return null
 
   const hex = body.subarray(1, 17).toString('hex')
-  const staffId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
-  return { staffId, expiresAt: new Date(exp) }
+  const id = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+  return { id, expiresAt: new Date(exp) }
+}
+
+export function signStaffLink(staffId: string, hours = DEFAULT_HOURS): string {
+  return sign(V_STAFF, staffId, hours)
+}
+
+/** The staff id this token names, or null — expired, forged, or the wrong token family. */
+export function readStaffLink(token: string): { staffId: string; expiresAt: Date } | null {
+  const r = read(V_STAFF, token)
+  return r && { staffId: r.id, expiresAt: r.expiresAt }
+}
+
+/**
+ * The link behind "send the welcome card by WhatsApp".
+ *
+ * Three days, not twelve hours: a guest may check in on Friday and want their
+ * code again on Sunday, and the message stays in their chat history the whole
+ * stay. The expiry is the backstop, not the control — `app/c/[token]` re-reads
+ * the room on every open and refuses once the room is no longer occupied, so
+ * checking out kills the link the moment it happens rather than three days
+ * later. Same property the guest cookie has, for the same reason.
+ */
+export function signCardLink(roomId: string, hours = 72): string {
+  return sign(V_CARD, roomId, hours)
+}
+
+export function readCardLink(token: string): { roomId: string; expiresAt: Date } | null {
+  const r = read(V_CARD, token)
+  return r && { roomId: r.id, expiresAt: r.expiresAt }
+}
+
+export function cardLinkUrl(base: string, token: string): string {
+  return `${base}/c/${token}`
 }
 
 /**

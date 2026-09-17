@@ -8,6 +8,8 @@ import { canTouchProperty, requireManager, type Staff } from '@/lib/auth'
 import { propRef } from '@/lib/scope'
 import { generateAccessCode } from '@/lib/guest-session'
 import { roomFolioTotal, settleRoom } from '@/lib/folio'
+import { linkBase, sendMessage } from '@/lib/notify'
+import { cardLinkUrl, signCardLink } from '@/lib/staff-link'
 
 const newToken = () => randomBytes(8).toString('base64url')
 
@@ -27,7 +29,12 @@ async function roomFor(staff: Staff, roomId: string) {
  * the room and meant reprinting one per check-in. The card is now permanent and
  * the code is the part that changes with the guest.
  */
-export async function checkIn(roomId: string, guestName: string, checkoutAt: string | null) {
+export async function checkIn(
+  roomId: string,
+  guestName: string,
+  checkoutAt: string | null,
+  guestPhone: string | null = null,
+) {
   const staff = await requireManager()
   const room = await roomFor(staff, roomId)
   if (!room) return { ok: false as const, error: 'Not your room.' }
@@ -35,11 +42,16 @@ export async function checkIn(roomId: string, guestName: string, checkoutAt: str
   const name = guestName.trim().slice(0, 120)
   if (!name) return { ok: false as const, error: 'Enter the guest name.' }
 
+  const phone = guestPhone?.trim().slice(0, 32) || null
+  if (phone && phone.replace(/\D/g, '').length < 10) {
+    return { ok: false as const, error: 'That phone number is too short to send to. Leave it blank to skip.' }
+  }
+
   const code = generateAccessCode()
   await sql`
     update rooms
        set occupied = true, guest_name = ${name}, checked_in_at = now(),
-           checkout_at = ${checkoutAt || null},
+           checkout_at = ${checkoutAt || null}, guest_phone = ${phone},
            access_code = ${code}, code_set_at = now(),
            code_attempts = 0, code_locked_until = null
      where id = ${roomId}`
@@ -55,6 +67,65 @@ export async function checkIn(roomId: string, guestName: string, checkoutAt: str
   })
   revalidatePath('/staff/rooms')
   return { ok: true as const, code }
+}
+
+/**
+ * Send this stay's welcome card to the guest's own phone.
+ *
+ * The message carries the code as well as the link, which was a deliberate
+ * call: it is what makes the thing useful at the moment of check-in. It also
+ * means one mistyped digit hands a stranger working access to an occupied room,
+ * which is why the desk confirms the full number on screen before this runs and
+ * why the number is echoed back in the result for the toast to repeat.
+ *
+ * `newAccessCode` and `checkOut` both invalidate every card link already sent,
+ * the first because the code in the message stops matching and the second
+ * because `app/c/[token]` refuses an unoccupied room.
+ */
+export async function sendWelcomeCard(roomId: string) {
+  const staff = await requireManager()
+  const room = await roomFor(staff, roomId)
+  if (!room) return { ok: false as const, error: 'Not your room.' }
+
+  const [full] = await sql<
+    { guest_phone: string | null; guest_name: string | null; access_code: string | null; occupied: boolean; property: string }[]
+  >`select r.guest_phone, r.guest_name, r.access_code, r.occupied, p.name as property
+      from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
+
+  if (!full?.occupied) return { ok: false as const, error: 'Check the guest in first.' }
+  if (!full.guest_phone) return { ok: false as const, error: 'No phone number on this stay. Add one from Check in.' }
+  if (!full.access_code) return { ok: false as const, error: 'This room has no code. Issue a new one first.' }
+
+  const base = await linkBase()
+  if (!base) return { ok: false as const, error: 'Could not work out this site’s address, so the link would be dead.' }
+
+  const url = cardLinkUrl(base, signCardLink(roomId))
+  const sent = await sendMessage(
+    full.guest_phone,
+    [
+      `*Welcome · Room ${room.number}*`,
+      full.property,
+      `Your code: *${full.access_code}*`,
+      url,
+    ].join('\n'),
+  )
+  if (!sent) {
+    return { ok: false as const, error: 'WhatsApp would not take it. Check the number and the gateway.' }
+  }
+
+  await audit({
+    propertyId: room.property_id,
+    staffId: staff.id,
+    actor: staff.name,
+    action: 'room.card_sent',
+    entity: 'room',
+    entityId: roomId,
+    // The number is part of the record: if a code has to be reissued because it
+    // went to the wrong phone, this is the row that says where it went.
+    meta: { room: room.number, to: full.guest_phone },
+  })
+  revalidatePath('/staff/rooms')
+  return { ok: true as const, to: full.guest_phone }
 }
 
 /**
@@ -104,7 +175,7 @@ export async function checkOut(roomId: string, settleOutstanding = false) {
     update rooms
        set occupied = false, guest_name = null, checked_in_at = null, checkout_at = null,
            access_code = null, code_set_at = null, code_attempts = 0, code_locked_until = null,
-           settle_requested_at = null
+           settle_requested_at = null, guest_phone = null
      where id = ${roomId}`
   await sql`
     update requests set status = 'cancelled', cancel_reason = 'Guest checked out', completed_at = now()
