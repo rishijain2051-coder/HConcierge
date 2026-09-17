@@ -1,6 +1,8 @@
 # What's left
 
-Written 14 September 2026 and updated through 15 September 2026.
+Written 14 September 2026, updated through 15 September, and re-checked against
+the running system on **17 September 2026**. Where this file said something that
+had stopped being true, it now says what is.
 
 The first session added bill viewing and settling, live order tracking, in-place
 quantity steppers and a speed pass, and ran four testing agents over the whole
@@ -18,14 +20,23 @@ Full reports with reproductions: [`docs/qa-2026-09-14/`](docs/qa-2026-09-14/).
 
 ## 1. Do this before the next deploy
 
-**Rotate three credentials.** The Supabase database password was pasted into a
-chat transcript early in the project's life; it lives only in `.env.local`,
-which is gitignored, and has never been committed, but it is in a transcript and
-has not been rotated. On 15 September the `hc.ops` and `rn.admin` passwords
-joined it there. All three are trial credentials on a demo database — rotate
-them anyway before this is in front of anyone. `npm run db:platform` for the
-platform account, Manage → Staff → Reset password for `rn.admin`, the Supabase
-dashboard for the database.
+**Rotate eight credentials, not three.** The Supabase database password was
+pasted into a chat transcript early in the project's life; it lives only in
+`.env.local`, which is gitignored, and has never been committed, but it is in a
+transcript and has not been rotated. `hc.ops` and `rn.admin` joined it on 15
+September, and on 16 September the one-time passwords for all five department
+accounts — `rn.frontdesk`, `rn.housekeeping`, `rn.kitchen`, `rn.maintenance`,
+`rn.spa` — were pasted in as well.
+
+There is no forced change on any of them: `db/schema.sql:41` drops
+`must_change_password` deliberately, and `resetStaffPassword` only writes a new
+hash. All eight are trial credentials on a demo database, but rotate them before
+this is in front of anyone. `npm run db:platform` for the platform account,
+Manage → Staff → Reset password for the rest, the Supabase dashboard for the
+database.
+
+The username is **`rn.maintenance`**. It has been written down elsewhere as
+`rn.maintainence`, which will not sign in.
 
 **Check the Vercel region actually took.** `vercel.json` asks for `bom1`. On
 Hobby, multi-region is not available and the setting may be ignored — confirm
@@ -42,11 +53,11 @@ and `hc_notify` triggers, `audit_log.organisation_id`, the `departments` table
 with its seed and the four dropped CHECK constraints, and `staff.extra_teams`.
 It is idempotent.
 
-**A production build has not been run since any of this.** `tsc`, `eslint` and
-the design detector are clean, and every screen was exercised against a running
-dev server — but `next build` was deliberately not run, because a second agent
-was working in the same tree and a build writes to the `.next` the dev server
-is using. Run it before deploying.
+~~A production build has not been run since any of this.~~ **Done, 17
+September.** `next build` passes: compiles, TypeScript clean, all 28 routes
+generated. `npm run lint` is at zero errors as well — it had been reporting 872,
+all but two of them coming from an agent worktree under `.claude/`, which is now
+ignored. Re-run the build after anything substantial; it takes about a minute.
 
 ---
 
@@ -74,7 +85,10 @@ What is still open lives in §8.
 
 ## 3. Decisions that look like bugs
 
-Leave these alone unless the reasoning changes.
+Leave these alone unless the reasoning changes. All four are also recorded in
+`PRODUCT.md` under Capabilities and Constraints, which is the canonical record
+— if the two ever disagree, `PRODUCT.md` wins. The reproductions live in the
+code comments at `lib/db.ts` and `lib/realtime.ts`.
 
 **Prepared statements are off, on purpose.** `prepare: true` measures a clean
 2.0x on every query — one statement in a loop, hundreds of executions, no
@@ -122,41 +136,44 @@ nothing. They reopen on focus and on every safety poll.
 - **Multi-property anything.** The one organisation owns one property, so the
   property pickers, the board's property filter, and "copy catalogue from"
   are only lightly covered.
-- **Twilio delivery.** Escalation subscriptions were verified; no message was
-  ever actually sent.
+- ~~**Twilio delivery.** Escalation subscriptions were verified; no message was
+  ever actually sent.~~ **Delivered since.** The WhatsApp path has sent 20
+  messages, and `sweepEscalations` fired a rung that arrived on a real handset —
+  see `WHATSAPP-TESTING-PLAN.md`. `rn.duty` carries a verified number.
 - **Real devices.** Everything was an emulated viewport.
 
 ---
 
-## 5. State of the database as of this session
+## 5. State of the database
 
-- One organisation (RN Hospitality), one property (RN Grand, Pune), 113 items,
-  7 info pages, 2 escalation rungs.
-- **Five teams**, since teams became rows: the four that were hardcoded plus
-  **Spa & wellness**, created on 15 September to prove a fifth one is possible.
-  Nothing is routed to it. Close it from Manage → Teams if it is noise.
-- **Five staff**, not two. `qa.multiteam` (Sunita Rao) is mine — Housekeeping,
-  also covering Spa & wellness, the demo of a person on two teams. Its one-time
-  password was never recorded, so nobody can sign in as it. `rn.duty` and
-  `wa.test` belong to the WhatsApp work in the other session, and `rn.duty` was
-  verified on a real handset.
-- Two staff carry the real access: `rn.admin` (admin) and `hc.ops` (platform). `hc.ops` was reset on
-  15 September with `npm run db:platform` to get into the staff screens, and
-  both passwords have since been typed into a chat transcript. They are trial
-  credentials on a demo database, but rotate them before this is in front of
-  anyone: `npm run db:platform` for the platform account, Manage → Staff →
-  Reset password for `rn.admin`.
-- Room 401 is checked in to **Naman**. That is not test data of mine, so I left
-  it. Three QA requests were created against it on 15 September to exercise the
-  three SLA states and the live push, and all three were deleted afterwards.
-- Every QA fixture — three test accounts, three checked-in rooms, a throwaway
-  second tenant, and all the requests, messages and charges they created — has
-  been removed.
-- **One thing was lost.** While cleaning up, the agent testing the admin panel
-  deleted the property's pre-existing 0-minute escalation rung along with its
-  own, and re-created it from how it read on screen. If that rung originally
-  named an individual rather than the duty managers, that naming is gone.
-  Worth a glance at Manage → Escalation.
+Counted against the live database on 17 September, not remembered.
+
+- One organisation (RN Hospitality), one property (RN Grand, Pune), **118
+  items**, 7 info pages, 2 escalation rungs, 22 rooms.
+- **Six teams**, five of them open: the four that were hardcoded, plus **Spa &
+  wellness** (10 items routed to it) and **Valet desk**, which was created to
+  prove the flow and then closed. Closed teams stay as rows on purpose — four
+  tables point at a team and last month's requests still have to read.
+- **Eight staff, all active.** `rn.admin` (admin), `hc.ops` (platform),
+  `rn.duty` (manager, phone verified, receives the escalations), and the five
+  department accounts. The two test accounts this file used to list —
+  `qa.multiteam` and `wa.test` — were hard-deleted on 17 September, which is
+  also the first real use of the delete button added that morning.
+- Room 401 is checked in to **Naman** and is the demo stay. **Room 102** is the
+  disposable one; it currently holds a guest called "Test personal", ₹220
+  unsettled and one message in its thread marked "Please ignore". None of that
+  is real, and checking 102 out clears all three — but the balance has to be
+  settled or voided first, because an unpaid folio blocks a checkout.
+- Room 401 carries **₹260 unsettled** and an unread staff reply about a late
+  checkout. Both are deliberate: they are the folio and the message thread,
+  demonstrated.
+- `warn_at_percent` 60, timezone Asia/Kolkata, nothing pending in the WhatsApp
+  outbox.
+- **One thing was lost, back in September.** While cleaning up, the agent
+  testing the admin panel deleted the property's pre-existing 0-minute
+  escalation rung along with its own, and re-created it from how it read on
+  screen. If that rung originally named an individual rather than the duty
+  managers, that naming is gone. Worth a glance at Manage → Escalation.
 
 ---
 
@@ -198,10 +215,16 @@ extras existed only because two things were being worked at once. Only
 
 Still on disk and no longer needed:
 
-- **The `D:\concierge-wa` worktree and its `whatsapp-links` branch.** Fully
-  merged into main and the working tree is clean, so nothing is lost by
-  removing them: `git worktree remove D:/concierge-wa` then
-  `git branch -d whatsapp-links`. Left in place rather than removed for you.
+- **`D:\concierge-wa`.** Both the worktree registration and the
+  `whatsapp-links` branch are already gone — `git worktree list` shows only
+  `D:/Concierge`, and the branch is on neither the local repo nor the remote.
+  That work is on `main` as `2e88cc9`. What is left is an orphaned directory, so
+  the old instruction here (`git worktree remove`) would now fail; it is a plain
+  `rm -rf` if you want it gone. **Check the OpenWA gateway is not holding its
+  log files first** — it was, and killing it sends nothing but breaks the
+  bridge.
+- The `.claude/worktrees/` agent worktree was removed on 17 September, along
+  with its merged `claude/sla-scheduled-requests` branch.
 
 ---
 
@@ -302,9 +325,24 @@ Things a later change should not undo:
 
 | | Where | What |
 |---|---|---|
-| MINOR | `lib/notify.ts` | `notifyNewRequest` matches a staff member's main team only, so somebody whose *extra* team a request belongs to is not messaged. Their board is correct either way. The fix is one clause — matching the request's department against `extra_teams` as well — and it was left to the session that owns that file. |
+| DONE | `lib/notify.ts` | `notifyNewRequest` used to match a staff member's main team only, so somebody whose *extra* team a request belonged to was never messaged. Fixed: `lib/notify.ts:245` now also matches `${department} = any(extra_teams)`. |
 | POLISH | Manage → Teams | No reordering. `sort` exists and is respected; nothing sets it after creation, so teams appear in the order they were added. |
 | DECIDE | roles | Roles are still the four permission levels, deliberately. Making them data means letting an admin define permissions, and the first thing that gets used for is a role that can do what its author cannot. If a customer wants "Duty Manager" as a *title*, that is a display field and a much smaller change than it sounds. |
+
+---
+
+## 12. From the 16–17 September sessions
+
+Six commits on 16 September (the clock fixes, the marketing films, the
+escalation and SLA work) and four on 17 September (the staff delete, the lint
+clear-out, the branded 404, the vertical film cuts and the walkthrough). What
+those left behind:
+
+| | Where | What |
+|---|---|---|
+| DECIDE | `lib/sla.ts`, `lib/history.ts`, `lib/notify.ts` | "When the clock starts" now exists in three places: `startsAt()`, `DUE_FROM`, and `dueFrom`. The follow-up is **collapse to two, not one** — `lib/sla.ts` is imported by three client components and `lib/db.ts:4` throws at module load without `DATABASE_URL`, so importing `sql` there puts the postgres client in the browser bundle. |
+| MINOR | `app/r/[token]/not-found.tsx` | `notFound()` returns HTTP 200 with the correct 404 body: metadata resolves and the shell starts streaming before it throws. Next.js behaviour, cosmetic here, and the route is `noindex` anyway. |
+| NOTE | verification | Modals render outside `<main>`, so `get_page_text` misses them and an open dialog reads exactly like a click that did nothing. Use `read_page` or a screenshot. Two sessions lost time to this independently. |
 
 ---
 
