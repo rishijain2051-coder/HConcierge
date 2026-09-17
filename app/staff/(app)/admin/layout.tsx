@@ -39,6 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: '/staff/admin/catalog', label: 'Directory' },
         { href: '/staff/admin/escalation', label: 'Escalation' },
         { href: '/staff/admin/info', label: 'Hotel info' },
+        { href: '/staff/admin/import', label: 'Import' },
         { href: '/staff/admin/audit', label: 'Activity' },
       ]
 
