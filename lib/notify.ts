@@ -180,9 +180,9 @@ export async function linkBase(): Promise<string | null> {
 function actionLine(base: string | null, who: Recipient, ref: string): string {
   const board = 'Open the board to accept.'
   if (!base) return board
-  if (!who.phone_verified_at) {
-    return `${board} (This number is not verified for one-tap actions — ask your manager.)`
-  }
+  // Shorter than it was. The old version spent a parenthetical explaining
+  // verification to somebody holding a phone in a corridor.
+  if (!who.phone_verified_at) return `${board} (Number not verified for one-tap.)`
   try {
     return staffLinkUrl(base, signStaffLink(who.id), ref)
   } catch (err) {
@@ -192,20 +192,46 @@ function actionLine(base: string | null, who: Recipient, ref: string): string {
 }
 
 /**
- * Who the message is from, and about which hotel.
+ * Every message the product sends, in one shape.
  *
- * The property has to be in the text because it is not in the sender. Today the
- * sender is an unknown number, so "HConcierge" is what makes the message
- * trustworthy; on Meta's Cloud API it becomes one verified HConcierge business
- * account serving every hotel, at which point the sender says the brand and
- * still not the building. Either way the room number alone is ambiguous the
- * moment one person covers two properties — and an organisation's admin already
- * receives escalations from every property in it.
+ *   *Late · Room 401*
+ *   Bath towels · Housekeeping · RN Grand
+ *   13 min old, target 10. Nobody has picked it up.
+ *   <link>
  *
- * Drop the "HConcierge ·" half once the sender carries the brand itself.
+ * The first line is the whole point: WhatsApp's notification preview truncates
+ * at around forty characters, and the old format spent twenty-two of them on
+ * "HConcierge · RN Grand:" before reaching the room number. A duty manager
+ * glancing at a lock screen now reads the status and the room without opening
+ * anything.
+ *
+ * "HConcierge" is gone from the body entirely. It was there to make an unknown
+ * sender trustworthy, but the recipient has had the same number messaging them
+ * all week — repeating the brand on every line is the clutter, not the trust.
+ * The property stays, because one person covering two hotels cannot read a room
+ * number alone, but it moves to the facts line where it belongs.
+ *
+ * Bold with single asterisks: WhatsApp renders it, and Twilio SMS degrades to
+ * literal asterisks, which still reads as emphasis.
  */
-function sender(property: string): string {
-  return `HConcierge · ${property}:`
+function headline(status: string, room: string, ref: string): string {
+  return `*${status} · Room ${room} · #${ref}*`
+}
+
+/**
+ * The which-and-where line. Deduplicated, because a request with no note falls
+ * back to its team name for a summary, and "Housekeeping · Housekeeping · RN
+ * Grand" is exactly the kind of line this rewrite exists to remove.
+ */
+function facts(...parts: (string | null | undefined)[]): string {
+  return [...new Set(parts.filter((p): p is string => Boolean(p && p.trim())))].join(' · ')
+}
+
+/** Plain English for a status, rather than the column value. */
+function waiting(status: string): string {
+  if (status === 'new') return 'Nobody has picked it up.'
+  if (status === 'ack') return 'Accepted, not started.'
+  return 'In progress.'
 }
 
 /**
@@ -365,9 +391,11 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
     }
 
     const waited = Math.round(r.minutes_waiting)
-    const text =
-      `${sender(r.property)} Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} ` +
-      `(#${r.ref}) is ${waited} min old, past its ${r.sla_minutes} min target and still ${r.status}.`
+    const text = [
+      headline('Late', r.room_number, r.ref),
+      facts(r.summary || teamName(r.team, r.department), teamName(r.team, r.department), r.property),
+      `${waited} min old, target ${r.sla_minutes}. ${waiting(r.status)}`,
+    ].join('\n')
     const base = await linkBase()
     await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
   }
@@ -392,7 +420,13 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
 
   const targets = await teamRecipients(r.property_id, r.department)
 
-  const text = `${sender(r.property)} new ${teamName(r.team, r.department)} request from Room ${r.room_number} (#${r.ref}). ${r.note ?? ''}`.trim()
+  const text = [
+    headline('New', r.room_number, r.ref),
+    facts(teamName(r.team, r.department), r.property),
+    r.note ? `“${r.note}”` : null,
+  ]
+    .filter(Boolean)
+    .join('\n')
   const base = await linkBase()
   await Promise.all(targets.map((t) => sendMessage(t.phone, `${text}\n${actionLine(base, t, r.ref)}`)))
 }
@@ -440,9 +474,14 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
 
   const targets = await teamRecipients(r.property_id, r.department)
 
-  const money = r.total_paise > 0 ? ` ${rupees(r.total_paise)} to the room folio.` : ''
-  const text =
-    `${sender(r.property)} Room ${r.room_number} — ${r.summary || teamName(r.team, r.department)} (#${r.ref}) ` +
-    `is done${r.finished_by ? `, by ${r.finished_by}` : ''}.${money}`
+  const text = [
+    headline('Done', r.room_number, r.ref),
+    facts(r.summary, teamName(r.team, r.department), r.property),
+    [r.finished_by ? `By ${r.finished_by}.` : null, r.total_paise > 0 ? `${rupees(r.total_paise)} to the room folio.` : null]
+      .filter(Boolean)
+      .join(' ') || null,
+  ]
+    .filter(Boolean)
+    .join('\n')
   await Promise.all(targets.map((t) => sendMessage(t.phone, text)))
 }

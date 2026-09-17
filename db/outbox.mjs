@@ -149,10 +149,12 @@ async function announceOnce() {
   const when = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
   const result = await send(
     ALERT_PHONE,
-    `HConcierge bridge is up — ${when}.\n\n` +
-      `Gateway answering, WhatsApp session linked, and this message proves it can send. ` +
-      `${waiting === 0 ? 'Queue empty.' : `${waiting} message${waiting === 1 ? '' : 's'} waiting, going out now.`}\n\n` +
-      `Nothing to do. You get this on every bridge start, so one of these after a reboot means it recovered by itself.`,
+    [
+      '*Bridge is up*',
+      when,
+      waiting === 0 ? 'Queue empty.' : `${waiting} message${waiting === 1 ? '' : 's'} going out now.`,
+      'Nothing to do — you get this on every start.',
+    ].join('\n'),
   )
   console.log(result.ok ? `startup notice sent to ${ALERT_PHONE}` : `startup notice failed: ${result.error}`)
 }

@@ -71,13 +71,18 @@ export async function sendPhoneCode(staffId: string): Promise<CodeResult> {
   // The link matters: without it the only way to the form was a menu item the
   // person holding the phone has no reason to look for. It is an ordinary page
   // behind a login, not a capability — the code is what proves the handset.
+  // Same shape as every other message: the thing you need on the first line,
+  // because that is the line a lock screen shows. A six-digit code read out of
+  // a notification without unlocking the phone is the whole job here.
   const base = await linkBase()
-  const where = base ? ` Enter it at ${base}/staff/phone after signing in.` : ''
   const sent = await sendMessage(
     target.phone,
-    `HConcierge: ${code} is your code to receive job alerts on this number` +
-      `${target.property ? ` for ${target.property}` : ''}.${where}` +
-      ` It expires in ${CODE_MINUTES} minutes. If you were not expecting this, ignore it.`,
+    [
+      `*${code}*`,
+      `Your code to get job alerts on this number${target.property ? ` · ${target.property}` : ''}.`,
+      `Expires in ${CODE_MINUTES} min.${base ? ` Enter it at ${base}/staff/phone` : ''}`,
+      'Not expecting this? Ignore it.',
+    ].join('\n'),
   )
   if (!sent) return { ok: false, error: 'Could not send the code. Check the number and the gateway.' }
 
