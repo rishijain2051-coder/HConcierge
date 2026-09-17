@@ -1,5 +1,9 @@
 /* Deterministic animation helpers. Nothing reads the wall clock: every scene is
-   a pure function of t, so the same t always produces the same pixels. */
+   a pure function of t, so the same t always produces the same pixels.
+
+   Loaded with a plain <script src>, not imported — so everything below is a
+   global that the scene files call, and nothing in here looks used from here. */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x)
 
 /* The product's one easing curve, cubic-bezier(.32,.72,0,1), solved properly

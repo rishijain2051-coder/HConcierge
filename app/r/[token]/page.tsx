@@ -47,6 +47,12 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
     return <CodeGate token={token} room={ctx.room} property={ctx.property} />
   }
 
+  // The clock has to start from the server's reading, not the phone's. This is
+  // a force-dynamic server component — one render per request — and the purity
+  // rule is written for client components that re-render.
+  // eslint-disable-next-line react-hooks/purity
+  const serverNow = Date.now()
+
   const [directory, info, state] = await Promise.all([
     loadDirectory(ctx.property.id),
     loadInfoPages(ctx.property.id),
@@ -61,7 +67,7 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
       directory={directory}
       info={info}
       initialState={state}
-      serverNow={Date.now()}
+      serverNow={serverNow}
     />
   )
 }

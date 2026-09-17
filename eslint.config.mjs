@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Agent worktrees are whole copies of this repo, `.next` and all, and the
+    // ignores above are anchored to this file — so a single worktree buried
+    // two real errors under twelve thousand of its own.
+    ".claude/**",
   ]),
 ]);
 
