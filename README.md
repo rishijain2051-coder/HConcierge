@@ -235,6 +235,10 @@ Indian digit grouping.
 that look like bugs but are not, and what has never been tested. Read it before
 picking the project back up.
 
+[`ROADMAP.md`](ROADMAP.md) is the forward one: ten proposals sized and ordered,
+each checked against the source first — including the four that turned out to
+rest on something the code does not do, and why they are not worth building.
+
 [`docs/qa-2026-09-14/`](docs/qa-2026-09-14/) holds the reports from a four-agent
 testing pass — reproductions for everything it found, and a *Verified working*
 list at the end of each, which is what you want when something resurfaces.
