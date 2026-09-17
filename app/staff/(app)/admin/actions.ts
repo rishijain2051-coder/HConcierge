@@ -61,6 +61,14 @@ export async function setStaffActive(id: string, active: boolean) {
   return res
 }
 
+/** Admin-only, but enforced in lib/admin so a manager gets a sentence rather than a redirect. */
+export async function deleteStaff(id: string) {
+  const actor = await requireManager()
+  const res = await admin.deleteStaff(actor, id)
+  if (res.ok) touched()
+  return res
+}
+
 export async function resetStaffPassword(id: string) {
   const actor = await requireManager()
   const res = await admin.resetStaffPassword(actor, id)

@@ -4,7 +4,15 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { teamLabel } from '@/lib/types'
 import type { StaffRow } from '@/lib/admin'
-import { createStaff, resetStaffPassword, sendPhoneCode, setStaffActive, unlockStaff, updateStaff } from './actions'
+import {
+  createStaff,
+  deleteStaff,
+  resetStaffPassword,
+  sendPhoneCode,
+  setStaffActive,
+  unlockStaff,
+  updateStaff,
+} from './actions'
 import { Button, Check, Confirm, Err, Field, Modal, Panel, PasswordOnce, Select, Tag } from '../ui'
 
 type Me = { id: string; role: string; propertyId: string | null }
@@ -48,6 +56,7 @@ export default function StaffManager({
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null)
   const [confirming, setConfirming] = useState<StaffRow | null>(null)
+  const [deleting, setDeleting] = useState<StaffRow | null>(null)
   // Only a department account can cover extra teams — a manager and an admin
   // already see all of them — so the form has to know which role is selected,
   // not only which one it opened with.
@@ -56,6 +65,10 @@ export default function StaffManager({
   // Whoever you are editing keeps their own role as an option, even if you
   // could not grant it. Without this, an admin editing an admin saw a select
   // with no "admin" in it, and saving quietly demoted them to staff.
+  // Deleting is not a manager's to do — they can deactivate, which is the
+  // reversible half of the same idea. lib/admin says the same thing again.
+  const canDelete = me.role === 'admin' || me.role === 'platform'
+
   const allowed = ASSIGNABLE[me.role] ?? ['staff']
   const roleOptions = ROLES.filter(
     (r) => allowed.includes(r.value) || r.value === editing?.role,
@@ -172,6 +185,11 @@ export default function StaffManager({
                     Reactivate
                   </Button>
                 )}
+                {canDelete && (
+                  <Button variant="danger" onClick={() => setDeleting(s)} disabled={pending || s.id === me.id}>
+                    Delete
+                  </Button>
+                )}
               </div>
             </div>
           )
@@ -182,7 +200,8 @@ export default function StaffManager({
 
       <p className="text-faint mt-3 text-[12px] leading-relaxed">
         Deactivating signs someone out immediately — the session is checked against this table on every request, not
-        just at login. Accounts are never deleted, so their name stays readable on the requests they handled.
+        just at login — and keeps their name readable on the requests they handled. Deleting removes the account for
+        good: the work stays on record, but their name comes off it.
       </p>
 
       {(adding || editing) && (
@@ -295,6 +314,16 @@ export default function StaffManager({
           confirmLabel="Deactivate"
           onConfirm={() => run(() => setStaffActive(confirming.id, false))}
           onClose={() => setConfirming(null)}
+        />
+      )}
+
+      {deleting && (
+        <Confirm
+          title={`Delete ${deleting.name}?`}
+          body={`${deleting.username} is removed for good and cannot be reactivated. The requests they handled and the messages they sent stay on record, but stop carrying their name, and they come off any escalation rule that paged them. Deactivate instead if you want their name kept on their work.`}
+          confirmLabel="Delete permanently"
+          onConfirm={() => run(() => deleteStaff(deleting.id))}
+          onClose={() => setDeleting(null)}
         />
       )}
     </Panel>

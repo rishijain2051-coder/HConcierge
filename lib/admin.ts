@@ -363,6 +363,71 @@ export async function setStaffActive(actor: Staff, id: string, active: boolean):
   return { ok: true }
 }
 
+/**
+ * Deleting is not deactivating. A deactivated admin can be switched back on,
+ * so `activeAdminCount` can read zero and there still be a way in; once the
+ * row is gone there is not. The question for a delete is whether any account
+ * of that kind survives at all.
+ */
+async function remainingPeers(role: 'admin' | 'platform', organisationId: string | null, excluding: string) {
+  const [row] = await sql<{ n: number }[]>`
+    select count(*)::int as n from staff
+     where role = ${role}
+       and ${role === 'platform' ? sql`true` : sql`organisation_id is not distinct from ${organisationId}`}
+       and id <> ${excluding}`
+  return row.n
+}
+
+/**
+ * The account and its login, gone for good.
+ *
+ * Nothing they touched goes with it: every foreign key into `staff` is
+ * `on delete set null`, and the audit log keeps who did what in its own text
+ * column, so the history stays readable with the person merely unattributed.
+ * Their requests lose their owner's name and their messages lose the sender's;
+ * the rows themselves stay. The one cascade is `escalation_rule_staff` — they
+ * drop off any rule that used to page them, which is the point.
+ *
+ * Deactivating is still the right answer for somebody who has left, because it
+ * keeps their name on their work. This is for the account typed in wrong and
+ * the person who never started. Admins only, and never your own.
+ */
+export async function deleteStaff(actor: Staff, id: string): Promise<Ok> {
+  if (id === actor.id) return fail('You cannot delete your own account.')
+  if (actor.role !== 'admin' && actor.role !== 'platform') {
+    return fail('Only an admin can delete an account. You can deactivate it instead.')
+  }
+
+  const [target] = await sql<
+    { role: Role; property_id: string | null; organisation_id: string | null; username: string }[]
+  >`select role, property_id, organisation_id, username from staff where id = ${id}`
+  if (!target) return fail('That account no longer exists.')
+  if (target.role === 'platform' && actor.role !== 'platform') return fail('Only HConcierge can do that.')
+  if (!(await canManageStaff(actor, target))) return fail('Not your account to manage.')
+  if (
+    (target.role === 'platform' || target.role === 'admin') &&
+    (await remainingPeers(target.role, target.organisation_id, id)) === 0
+  ) {
+    return fail(
+      target.role === 'platform'
+        ? 'This is the last HConcierge account. There would be no way back in.'
+        : 'This is the only admin account. There would be no way back in.',
+    )
+  }
+
+  await sql`delete from staff where id = ${id}`
+  await audit({
+    propertyId: target.property_id,
+    staffId: actor.id,
+    actor: actor.name,
+    action: 'staff.deleted',
+    entity: 'staff',
+    entityId: id,
+    meta: { username: target.username, role: target.role },
+  })
+  return { ok: true }
+}
+
 /** Makes the login screen's "your duty manager can reset it" actually true. */
 export async function resetStaffPassword(actor: Staff, id: string): Promise<Ok<{ password: string }>> {
   const [target] = await sql<
