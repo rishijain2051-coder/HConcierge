@@ -1,7 +1,7 @@
 # Roadmap
 
-Two items, agreed 17 September 2026. Both were checked against the source
-before being planned.
+**Both items are done, 17 September 2026.** Kept as the record of what was
+changed and why, and of what each one deliberately does not do.
 
 The other eight proposals assessed that day were dropped by decision, not by
 oversight. The full write-up — including why four of them rested on something
@@ -12,9 +12,9 @@ wanted back. Nothing here depends on them.
 
 ---
 
-## 1 · Make the audit log tamper-proof
+## 1 · Make the audit log tamper-proof — done
 
-**Status: not started.**
+**Shipped in `0989d62`.**
 
 ### What is already there
 
@@ -62,15 +62,16 @@ Against the live database, not by reading the SQL:
 - `lib/audit.ts` still records normally afterwards, through a real call path;
 - `db:push` is idempotent — running it twice is clean.
 
-The test rows get cleaned up, except that they cannot be deleted once the
-trigger exists. **Write the verification to use a throwaway action name and
-accept that its rows are permanent** — that is the feature working.
+All of it passed, plus a set-wide `update` to confirm `for each row` fires per
+row rather than once per statement. Two `zz.append_only_probe` rows are now
+permanent in the Activity log, which is the feature working — they cannot be
+deleted, by design.
 
 ---
 
-## 2 · Rate-limit the guest endpoints
+## 2 · Rate-limit the guest endpoints — done
 
-**Status: not started.**
+**Shipped in `0989d62`.**
 
 ### The threat, corrected
 
@@ -114,12 +115,18 @@ sets the tone for how to admit this.
 
 ### How it gets verified
 
-- A burst of requests with random tokens returns 429 without a query reaching
-  Postgres — confirmed by counting, not assumed.
-- A legitimate guest opening, closing and reopening a stream repeatedly is
-  never refused.
-- Opening streams past the ceiling refuses the excess and leaves the first ones
-  working.
-- The counter returns to zero after every stream closes, through each of the
-  four exit paths.
-- `next build` and `npm run lint` stay clean.
+Measured on a running server rather than reasoned about. Ninety requests with
+invented tokens: 71 answered, 19 refused with 429. And the timing is the proof
+that the reject is genuinely free — **a 429 takes ~5ms, a 404 takes ~250ms**,
+the difference being the round trip to ap-south-1. The refused requests never
+leave the process.
+
+The bucket and the counter are unit-tested for the cases that matter: burst
+capped at 60, per-key isolation, time-based refill, the fourth stream refused,
+a released slot reusable, and a double release not inflating the budget —
+because `shutdown` is reachable from four paths and more than one can fire.
+
+One bug found while building it. An `AbortSignal` that has *already* aborted
+never fires a listener added afterwards, so a request the client gave up on
+before the stream started would have held its slot for good. `sseStream` now
+checks `signal.aborted` straight after registering.
