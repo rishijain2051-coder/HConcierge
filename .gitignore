@@ -54,3 +54,10 @@ next-env.d.ts
 # now, so nothing under here is pushed again. Still on disk, and still in
 # history from 20b9d93 if it is ever needed back.
 /marketing
+
+# agent tooling — skills and audit scaffolding installed per machine, not part
+# of the product. .claude/launch.json stays tracked: it is how the dev server
+# is started here, and every session needs it.
+.agents/
+.claude/skills/
+skills-lock.json
