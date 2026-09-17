@@ -46,5 +46,11 @@ next-env.d.ts
 # local bridge logs
 .logs/
 
-# marketing build outputs — the scenes and brand source are tracked
-marketing/out/
+
+# godaudits output
+.godaudits/
+
+# marketing — the scenes, the brand source and the renderer are local-only
+# now, so nothing under here is pushed again. Still on disk, and still in
+# history from 20b9d93 if it is ever needed back.
+/marketing
