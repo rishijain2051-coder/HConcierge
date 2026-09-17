@@ -154,19 +154,23 @@ Counted against the live database on 17 September, not remembered.
   wellness** (10 items routed to it) and **Valet desk**, which was created to
   prove the flow and then closed. Closed teams stay as rows on purpose — four
   tables point at a team and last month's requests still have to read.
-- **Eight staff, all active.** `rn.admin` (admin), `hc.ops` (platform),
-  `rn.duty` (manager, phone verified, receives the escalations), and the five
-  department accounts. The two test accounts this file used to list —
-  `qa.multiteam` and `wa.test` — were hard-deleted on 17 September, which is
-  also the first real use of the delete button added that morning.
-- Room 401 is checked in to **Naman** and is the demo stay. **Room 102** is the
-  disposable one; it currently holds a guest called "Test personal", ₹220
-  unsettled and one message in its thread marked "Please ignore". None of that
-  is real, and checking 102 out clears all three — but the balance has to be
-  settled or voided first, because an unpaid folio blocks a checkout.
-- Room 401 carries **₹260 unsettled** and an unread staff reply about a late
-  checkout. Both are deliberate: they are the folio and the message thread,
-  demonstrated.
+- **Four staff, all active,** as of the evening of 17 September: `rn.admin`
+  (admin), `hc.ops` (platform), `rn.duty` (manager, **front_desk**, phone
+  verified, receives the escalations) and `rn.staff` (housekeeping, phone
+  verified). The five department accounts and the two test accounts have all
+  been deleted since — the delete button has had plenty of real use.
+- **Three teams have nobody with a phone**: F&B, maintenance and spa. That is
+  not a bug, but it means `notifyNewRequest` for those teams logs the
+  zero-recipient warning added on 17 September rather than reaching anyone.
+  Escalation still finds `rn.duty`, because a rung names managers by role.
+- Room 401 is checked in to **Naman** and is the only occupied room; 102 has
+  been checked out since.
+- Room 401 carries **₹2,060 unsettled** across two charges, and only one of
+  them is wanted. ₹260 for a Masala Dosa is the deliberate folio demonstration.
+  **₹1,800 for "Baby cot, Babysitting, Doctor on call, Pharmacy run" is test
+  data** from a WhatsApp verification run and should be voided before anybody
+  is shown the Rooms screen. Left in place only because another session may
+  still be using that request.
 - `warn_at_percent` 60, timezone Asia/Kolkata, nothing pending in the WhatsApp
   outbox.
 - **One thing was lost, back in September.** While cleaning up, the agent
@@ -343,6 +347,9 @@ those left behind:
 | DECIDE | `lib/sla.ts`, `lib/history.ts`, `lib/notify.ts` | "When the clock starts" now exists in three places: `startsAt()`, `DUE_FROM`, and `dueFrom`. The follow-up is **collapse to two, not one** — `lib/sla.ts` is imported by three client components and `lib/db.ts:4` throws at module load without `DATABASE_URL`, so importing `sql` there puts the postgres client in the browser bundle. |
 | MINOR | `app/r/[token]/not-found.tsx` | `notFound()` returns HTTP 200 with the correct 404 body: metadata resolves and the shell starts streaming before it throws. Next.js behaviour, cosmetic here, and the route is `noindex` anyway. |
 | NOTE | verification | Modals render outside `<main>`, so `get_page_text` misses them and an open dialog reads exactly like a click that did nothing. Use `read_page` or a screenshot. Two sessions lost time to this independently. |
+| NOTE | verification | **`tsc --noEmit` is not a sufficient gate.** A `{/* */}` comment beside an element inside a ternary branch gives that branch two roots; TypeScript accepted it and Turbopack refused it. Only `next build` catches that class, so run it before pushing anything with JSX in it. |
+| NOTE | lint | `npm run lint` covers the product only. `.claude/`, `.agents/` and `marketing/` are ignored in `eslint.config.mjs` — all three have buried real errors under hundreds of their own, twice. Anything reporting problems nobody here can fix belongs on that list. |
+| DECIDE | print | The welcome card was rebuilt to fill an A4 page on 17 September and **has never been seen on paper or in a print preview** — it needs a signed-in manager, which no agent session has. One look at Rooms → Print welcome card would close it. |
 
 ---
 

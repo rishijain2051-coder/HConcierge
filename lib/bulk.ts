@@ -299,7 +299,12 @@ export async function importStaffCsv(
     seen.add(u)
 
     if (!grantable.includes(r.role)) {
-      problems.push({ line: at(i), says: `you cannot create a “${r.role}” — only ${grantable.join(', ')}` })
+      // "a admin" — the one role in the set that takes "an".
+      const article = /^[aeiou]/i.test(r.role) ? 'an' : 'a'
+      problems.push({
+        line: at(i),
+        says: `you cannot create ${article} “${r.role}” — only ${grantable.join(', ')}`,
+      })
     }
     if (r.team !== 'all' && !teamSlugs.has(r.team)) {
       problems.push({ line: at(i), says: `no team called “${r.team}”` })

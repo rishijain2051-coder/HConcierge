@@ -116,7 +116,15 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
           </article>
         ))
       ) : (
-        <div className="grid grid-cols-2 gap-4 print:gap-0">
+        // `@page { margin: 0 }` in globals.css is what removes the browser's
+        // printed URL from the welcome card, but it applies to every printed
+        // page — so the desk cards have to supply their own margin or they land
+        // flush against a paper edge no consumer printer can reach, and the
+        // dashed cut lines get clipped. 10mm clears every printer.
+        //
+        // A line comment, not `{/* */}`: this branch of the ternary may hold
+        // exactly one expression, and a JSX comment beside the div is a second.
+        <div className="grid grid-cols-2 gap-4 print:gap-0 print:p-[10mm]">
           {cards.map((c) => (
             <article
               key={c.id}
