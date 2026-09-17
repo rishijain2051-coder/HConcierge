@@ -46,7 +46,5 @@ next-env.d.ts
 # local bridge logs
 .logs/
 
-# marketing build outputs and logs — the scenes and brand source are tracked
+# marketing build outputs — the scenes and brand source are tracked
 marketing/out/
-marketing/_build/battery.log
-marketing/_build/PAUSED-STATE.md
