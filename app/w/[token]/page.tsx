@@ -78,10 +78,12 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
         <ul className="mt-6 space-y-3">
           {open.map((req) => {
             const state = slaState(req)
-            const summary =
-              req.items.map((i) => (i.qty > 1 ? `${i.qty}× ${i.name}` : i.name)).join(', ') ||
-              req.note ||
-              departmentLabel(req.department)
+            // More than one thing is a list, the same as on the board and in
+            // the message that sent somebody here. Three jobs joined with
+            // commas read as one, and this page is opened one-handed in a
+            // corridor by whoever the escalation reached.
+            const lines = req.items.map((i) => (i.qty > 1 ? `${i.qty}× ${i.name}` : i.name))
+            const summary = lines.join(', ') || req.note || departmentLabel(req.department)
 
             return (
               <li
@@ -103,7 +105,23 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
                   </span>
                 </div>
 
-                <p className="text-muted mt-1 text-[14px] leading-snug">{summary}</p>
+                {lines.length > 1 ? (
+                  <ul className="text-muted mt-1 space-y-0.5 text-[14px] leading-snug">
+                    {lines.map((l) => (
+                      <li key={l} className="flex gap-1.5">
+                        <span className="text-faint select-none">·</span>
+                        <span>{l}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted mt-1 text-[14px] leading-snug">{summary}</p>
+                )}
+                {/* The guest's note, kept but below the work rather than
+                    standing in for it. */}
+                {req.note && lines.length > 0 && (
+                  <p className="text-muted mt-1 text-[13px] italic">&ldquo;{req.note}&rdquo;</p>
+                )}
                 {/* The hour, on the hotel's clock. It is the one thing on this
                     card that cannot be read off `since()`, and this page opens
                     on shared handsets set to whatever they were set to. */}

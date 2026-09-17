@@ -227,6 +227,25 @@ function facts(...parts: (string | null | undefined)[]): string {
   return [...new Set(parts.filter((p): p is string => Boolean(p && p.trim())))].join(' · ')
 }
 
+/**
+ * The items, as a line or as a list.
+ *
+ * One thing reads better inline. Three joined with commas is a run-on sentence
+ * somebody has to parse in a corridor — "2× Bath towels, Clean my room,
+ * Toiletries kit" is three jobs pretending to be one. The board learned this
+ * first; the message and the job-list page were still joining with commas,
+ * which is what a list on one screen and prose on another looks like.
+ *
+ * Bulleted with a middot rather than a hyphen: WhatsApp turns a leading "- "
+ * into its own list formatting on some clients and leaves it literal on
+ * others, and the inconsistency is worse than either.
+ */
+export function itemLines(items: string[] | null, fallback: string): string {
+  if (!items || items.length === 0) return fallback
+  if (items.length === 1) return items[0]
+  return items.map((i) => `• ${i}`).join('\n')
+}
+
 /** Plain English for a status, rather than the column value. */
 function waiting(status: string): string {
   if (status === 'new') return 'Nobody has picked it up.'
@@ -295,6 +314,7 @@ type FiredRow = {
   sla_minutes: number
   room_number: string
   summary: string | null
+  items: string[] | null
   team: string | null
   property: string
   rule_id: string
@@ -338,6 +358,15 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
       select distinct on (r.id)
              r.id, r.ref::text as ref, r.property_id, p.organisation_id, r.department, r.status,
              r.sla_minutes, rm.number as room_number, r.note as summary, d.name as team,
+             -- The items, as an array rather than a joined string, so the
+             -- message can decide between a line and a list. This query used to
+             -- select only the note, so a late three-item request named the
+             -- guest's comment and never what had actually been asked for.
+             -- (No backticks in here: this is inside a tagged template, and a
+             -- backtick in a SQL comment ends the template literal.)
+             (select array_agg(case when ri.qty > 1 then ri.qty || '× ' || ri.name else ri.name end
+                               order by ri.name)
+                from request_items ri where ri.request_id = r.id) as items,
              p.name as property,
              e.id as rule_id, e.step, e.notify_managers, e.notify_admins,
              extract(epoch from (now() - ${dueFrom})) / 60 as minutes_waiting
@@ -405,9 +434,16 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
     const waited = Math.round(r.minutes_waiting)
     const text = [
       headline('Late', r.room_number, r.ref),
-      facts(r.summary || teamName(r.team, r.department), teamName(r.team, r.department), r.property),
+      facts(teamName(r.team, r.department), r.property),
+      itemLines(r.items, r.summary || teamName(r.team, r.department)),
+      // The guest's own words, kept but subordinate. They used to be the
+      // summary line, which meant a late request named the comment and never
+      // the work.
+      r.items && r.items.length > 0 && r.summary ? `“${r.summary}”` : null,
       `${waited} min old, target ${r.sla_minutes}. ${waiting(r.status)}`,
-    ].join('\n')
+    ]
+      .filter(Boolean)
+      .join('\n')
     const base = await linkBase()
     await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
   }
@@ -466,8 +502,24 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
  * the stale-picture problem the single live link exists to avoid. It names who
  * closed it and what it cost, which is what makes it verifiable.
  */
+/**
+ * Off, in code, and not behind an environment variable.
+ *
+ * NOTIFY_ON_DONE was already off by default and three completion notices still
+ * went out, because one `NOTIFY_ON_DONE=1 npm run dev` in one terminal is all
+ * it takes — a flag in an environment nobody owns is not a decision anybody can
+ * rely on. lib/board.ts no longer calls this at all; this constant is the
+ * second lock, so restoring it is two deliberate edits.
+ *
+ * It bought the least of the three notifications anyway: the guest already
+ * watches the request move on their own screen, and the board shows the team
+ * what they just finished. The body below is kept as the shape a completion
+ * notice should have if a customer ever asks for one and agrees to pay for it.
+ */
+const COMPLETION_NOTICE = false
+
 export async function notifyRequestDone(requestId: string): Promise<void> {
-  if (process.env.NOTIFY_ON_DONE !== '1') return
+  if (!COMPLETION_NOTICE) return
   const [r] = await sql<
     {
       property_id: string
@@ -476,16 +528,16 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
       room_number: string
       total_paise: number
       finished_by: string | null
-      summary: string | null
+      items: string[] | null
       team: string | null
       property: string
     }[]
   >`
     select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.total_paise,
            s.name as finished_by, d.name as team, p.name as property,
-           (select string_agg(case when ri.qty > 1 then ri.qty || '× ' || ri.name else ri.name end,
-                              ', ' order by ri.name)
-              from request_items ri where ri.request_id = r.id) as summary
+           (select array_agg(case when ri.qty > 1 then ri.qty || '× ' || ri.name else ri.name end
+                             order by ri.name)
+              from request_items ri where ri.request_id = r.id) as items
       from requests r
       join rooms rm on rm.id = r.room_id
       join properties p on p.id = r.property_id
@@ -499,7 +551,8 @@ export async function notifyRequestDone(requestId: string): Promise<void> {
 
   const text = [
     headline('Done', r.room_number, r.ref),
-    facts(r.summary, teamName(r.team, r.department), r.property),
+    facts(teamName(r.team, r.department), r.property),
+    itemLines(r.items, teamName(r.team, r.department)),
     [r.finished_by ? `By ${r.finished_by}.` : null, r.total_paise > 0 ? `${rupees(r.total_paise)} to the room folio.` : null]
       .filter(Boolean)
       .join(' ') || null,

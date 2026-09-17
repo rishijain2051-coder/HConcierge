@@ -36,7 +36,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `DATABASE_URL` | yes | Postgres. Use Supabase's **pooler on port 6543**. |
 | `SESSION_SECRET` | yes | Signs the staff session cookie. Rotating it logs everyone out. |
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | no | WhatsApp or SMS escalation. Unset = escalations log to the console instead. |
-| `NOTIFY_ON_NEW` | no | `1` also messages staff on every new request, not just escalations. |
+| `NOTIFY_ON_NEW` | no | `1` also messages the team on every new request, not just escalations. **Off by default, and leave it off unless somebody is paying attention to the bill** — it is by far the largest source of message volume, since escalations are rare and new requests are not. |
+| `NOTIFY_ON_DONE` | — | **No longer read.** The completion notice is disabled in code — `lib/board.ts` does not call it and `COMPLETION_NOTICE` in `lib/notify.ts` is `false`. Setting this does nothing, on purpose: it was off by default and three still went out from one terminal that had it set. |
 | `CRON_SECRET` | in production | Shared with the pg_cron job. The route refuses to run unauthenticated once deployed. |
 | `NEXT_PUBLIC_BASE_URL` | no | Only needed if the QR origin cannot be read from the request. |
 

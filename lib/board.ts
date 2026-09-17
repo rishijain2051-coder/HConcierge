@@ -1,8 +1,6 @@
-import { after } from 'next/server'
 import { sql } from './db'
 import { audit } from './audit'
 import { postCharge, voidCharge } from './folio'
-import { notifyRequestDone } from './notify'
 import { canTouchDepartment, canTouchProperty, visibleDepartments, type Staff } from './auth'
 import { propRef, scopeTo } from './scope'
 import { departmentLabel } from './types'
@@ -238,14 +236,17 @@ export async function setRequestStatus(
     meta: reason ? { reason } : {},
   })
 
-  // after() rather than a bare promise. The transition is already written and
-  // charged, so a gateway hiccup must not fail it — but on serverless the
-  // function can be frozen the moment its response is sent, and an un-awaited
-  // fetch is simply abandoned. That is invisible: the status changes, the charge
-  // posts, and the message never leaves. after() holds the function open for it.
-  if (next === 'done') {
-    after(() => notifyRequestDone(requestId).catch((err) => console.error('[notify] done notice failed', err)))
-  }
+  // A completion notice used to fire here, behind NOTIFY_ON_DONE. It is gone
+  // on purpose rather than switched off: an env var set in one shell for one
+  // test run is enough to start billing for it again, and the flag being
+  // "off by default" did not stop three of these going out while somebody was
+  // testing the gateway. Removing the call is the only version of off that
+  // survives another session's terminal.
+  //
+  // It also bought the least of the three notifications: the guest already
+  // watches the request move on their own screen, and the board shows the team
+  // what they just finished. See notifyRequestDone in lib/notify.ts, kept for
+  // the record and hard-disabled there too.
 
   return { ok: true }
 }
