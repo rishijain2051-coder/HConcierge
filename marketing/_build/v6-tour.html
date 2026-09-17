@@ -1,0 +1,543 @@
+<!doctype html><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kit.css">
+<style>
+  /* The walkthrough. One chapter at a time: the features listed on the left,
+     a mock of the screen being described on the right. Everything below the
+     chrome is built from the CHAPTERS array at the bottom — there is no
+     hand-placed beat in this film, which is the only way eighty-odd of them
+     stay in step with the product. */
+
+  /* ---- chrome ---- */
+  .bar{position:absolute;left:0;right:0;top:0;height:4px;background:var(--line)}
+  .bar > i{display:block;height:100%;width:0;background:var(--ink)}
+  .head{position:absolute;left:96px;right:96px;top:58px}
+  .kicker{font-size:23px;color:var(--faint);font-weight:500;letter-spacing:.06em;text-transform:uppercase}
+  .chapter{font-size:62px;margin:14px 0 0;line-height:1}
+  .counter{position:absolute;right:0;top:4px;font-size:23px;color:var(--faint);font-weight:500}
+  .rule{position:absolute;left:96px;right:96px;top:216px;height:1px;background:var(--line)}
+
+  /* ---- the list ---- */
+  .list{position:absolute;left:96px;top:280px;width:770px}
+  .item{display:flex;gap:26px;margin-bottom:34px}
+  .item .dot{flex:none;width:15px;height:15px;border-radius:50%;background:var(--ink);margin-top:14px}
+  .item b{display:block;font-size:39px;font-weight:600;letter-spacing:-.6px;line-height:1.15}
+  .item span{display:block;font-size:27px;color:var(--muted);line-height:1.4;margin-top:9px}
+
+  /* ---- the mock ---- */
+  .mockwrap{position:absolute;left:964px;top:280px;width:860px;height:700px}
+  .mock{position:absolute;inset:0;display:grid;align-content:center}
+  .mock .phone{width:560px;margin:0 auto}
+  .mt{font-size:30px;font-weight:600}
+  .ms{font-size:23px;color:var(--faint);margin-top:6px}
+  .digit{width:96px;height:120px;border:2px solid var(--line);border-radius:14px;background:var(--surface);
+         display:grid;place-items:center;font-size:56px;font-weight:600}
+  .qr{width:230px;height:230px;display:grid;grid-template-columns:repeat(21,1fr);margin:0 auto}
+  .qr i{background:var(--ink)}
+  .stat{text-align:center;padding:0 40px;position:relative}
+  .stat + .stat::before{content:"";position:absolute;left:0;top:6px;bottom:10px;width:1px;background:var(--line)}
+  .stat b{display:block;font-size:72px;font-weight:600;letter-spacing:-2px;line-height:1}
+  .stat span{display:block;font-size:24px;color:var(--faint);margin-top:12px}
+  .frow{display:flex;justify-content:space-between;align-items:center;
+        padding:22px 0;border-bottom:1px solid var(--line);font-size:28px}
+  .frow:last-child{border-bottom:0}
+  .wa{background:#e7f6ea;border-radius:22px 22px 22px 6px;padding:28px 32px;max-width:640px;
+      font-size:27px;line-height:1.45;box-shadow:var(--shadow-float)}
+  .mark{width:132px;height:132px;border-radius:32px;background:var(--ink);position:relative;margin:0 auto}
+  .mark i{position:absolute;background:var(--paper)}
+  .wordmark{font-size:70px;font-weight:600;letter-spacing:-2px;margin-top:36px;text-align:center}
+  h1{font-size:104px;margin:0;text-align:center}
+  .sub{font-size:38px;color:var(--muted);font-weight:400;text-align:center}
+</style>
+
+<div class="stage">
+
+  <!-- ------------------------------------------------------------ opening -->
+  <div class="layer" id="open"><div style="width:1400px">
+    <h1 class="serif" id="opena">Every part of it, in eight minutes.</h1>
+    <div class="sub" id="openb" style="margin-top:44px">
+      A guest asks from their own phone. It routes, it is timed, and it escalates itself.
+    </div>
+  </div></div>
+
+  <!-- ---------------------------------------------------------- the frame -->
+  <div id="frame">
+    <div class="bar"><i id="barfill"></i></div>
+    <div class="head">
+      <div class="kicker" id="kicker">Chapter one</div>
+      <div class="counter" id="counter">1 / 7</div>
+      <h2 class="chapter serif" id="chapter">The card and the code</h2>
+    </div>
+    <div class="rule"></div>
+
+    <div class="list" id="list">
+      <div class="item" id="it0"><div class="dot"></div><div><b></b><span></span></div></div>
+      <div class="item" id="it1"><div class="dot"></div><div><b></b><span></span></div></div>
+      <div class="item" id="it2"><div class="dot"></div><div><b></b><span></span></div></div>
+      <div class="item" id="it3"><div class="dot"></div><div><b></b><span></span></div></div>
+      <div class="item" id="it4"><div class="dot"></div><div><b></b><span></span></div></div>
+    </div>
+
+    <div class="mockwrap">
+
+      <!-- 1 · the card and the code -->
+      <div class="mock" id="m1"><div>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:22px;
+                    box-shadow:var(--shadow-float);padding:44px;text-align:center;width:400px;margin:0 auto">
+          <div class="qr" data-seed="11"></div>
+          <div style="font-size:34px;font-weight:600;margin-top:28px">Room 401</div>
+          <div style="font-size:24px;color:var(--faint);margin-top:8px">Scan for anything you need</div>
+        </div>
+        <div style="display:flex;gap:20px;justify-content:center;margin-top:44px">
+          <div class="digit" style="width:78px;height:96px;font-size:44px">2</div>
+          <div class="digit" style="width:78px;height:96px;font-size:44px">7</div>
+          <div class="digit" style="width:78px;height:96px;font-size:44px">1</div>
+          <div class="digit" style="width:78px;height:96px;font-size:44px">9</div>
+        </div>
+        <div style="text-align:center;font-size:24px;color:var(--faint);margin-top:24px">
+          The card is permanent. These four change with every guest.
+        </div>
+      </div></div>
+
+      <!-- 2 · the guest's phone -->
+      <div class="mock" id="m2">
+        <div class="phone">
+          <div class="phone-top">
+            <div><div class="mt">Room 401</div><div class="ms" id="p2sub">Deluxe</div></div>
+            <div class="pill" id="p2pill" style="font-size:22px;padding:12px 22px">Bill</div>
+          </div>
+          <div id="p2body"></div>
+        </div>
+      </div>
+
+      <!-- 3 · the board -->
+      <div class="mock" id="m3"><div>
+        <div style="display:flex;gap:24px;margin-bottom:26px">
+          <span class="chip on" style="font-size:22px;padding:11px 24px">Housekeeping</span>
+          <span class="chip" style="font-size:22px;padding:11px 24px">Food &amp; beverage</span>
+          <span class="chip" style="font-size:22px;padding:11px 24px">Maintenance</span>
+        </div>
+        <div class="card" id="b1" style="padding:32px 36px 32px 46px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-size:40px;font-weight:600">Room 401</div>
+            <div class="tnum" style="font-size:24px;color:var(--faint)" id="b1age">#128 &middot; just now</div>
+          </div>
+          <div style="font-size:30px;margin-top:14px">Bath towels &middot; Toiletries kit</div>
+          <div style="font-size:24px;color:var(--faint);margin-top:10px">&ldquo;Leave them at the door, please.&rdquo;</div>
+          <div style="margin-top:20px">
+            <span class="tag" id="b1tag" style="font-size:22px;padding:9px 20px">Not accepted</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:24px;margin-top:28px">
+            <span class="track" id="b1track" style="flex:1;height:12px"><i id="b1trk" style="width:4%"></i></span>
+            <span class="tnum" id="b1mins" style="font-size:27px;font-weight:600;color:var(--ok);width:230px;text-align:right">10 min left</span>
+          </div>
+        </div>
+        <div class="card" style="padding:28px 34px 28px 44px;margin-top:22px;opacity:.55">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-size:34px;font-weight:600">Room 214</div>
+            <div class="tnum" style="font-size:22px;color:var(--faint)">#129 &middot; 2m</div>
+          </div>
+          <div style="font-size:27px;margin-top:12px">Extra pillows</div>
+        </div>
+      </div></div>
+
+      <!-- 4 · the front desk -->
+      <div class="mock" id="m4"><div style="background:var(--surface);border:1px solid var(--line);
+           border-radius:20px;overflow:hidden;box-shadow:var(--shadow-float)">
+        <div style="padding:10px 36px">
+          <div class="frow"><div><div class="mt">401 &middot; Naman</div><div class="ms">Code 2719 &middot; out tomorrow</div></div>
+            <div class="tnum" style="font-size:27px;font-weight:600">&#8377;260</div></div>
+          <div class="frow"><div><div class="mt">402</div><div class="ms">Vacant</div></div>
+            <span class="tag" style="font-size:21px;padding:8px 18px">Ready</span></div>
+          <div class="frow"><div><div class="mt">403 &middot; Sunita Rao</div><div class="ms">Code locked &middot; 5 wrong tries</div></div>
+            <span class="tag" style="font-size:21px;padding:8px 18px;color:var(--warn);border-color:var(--warn)">Unlock</span></div>
+          <div class="frow"><div><div class="mt">404 &middot; Arjun Mehta</div><div class="ms">Asked to settle</div></div>
+            <span class="tag" style="font-size:21px;padding:8px 18px;color:var(--ok);border-color:var(--ok)">Settle</span></div>
+        </div>
+      </div></div>
+
+      <!-- 5 · when it runs late -->
+      <div class="mock" id="m5"><div>
+        <div class="card late" style="padding:30px 34px 30px 44px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div style="font-size:38px;font-weight:600">Room 401</div>
+            <div class="tnum" style="font-size:24px;color:var(--late);font-weight:600">+3 min over</div>
+          </div>
+          <div style="font-size:28px;margin-top:12px">Bath towels &middot; nobody accepted it</div>
+        </div>
+        <div style="display:flex;justify-content:center;margin:30px 0">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#78716c" stroke-width="1.6"
+               stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m6 13 6 6 6-6"/></svg>
+        </div>
+        <!-- Word for word what lib/notify.ts sends, with the link line it
+             appends for a verified number. Inventing a nicer message here
+             would be teaching a format that does not exist. -->
+        <div class="wa" style="margin:0 auto">
+          <b style="font-weight:600">HConcierge &middot; The Grand:</b>
+          Room 401 &mdash; Housekeeping (#128) is 13 min old, past its 10 min target and still new.<br>
+          <span style="color:#15803d;font-weight:600">hconcierge.app/w/&hellip;?r=128</span>
+        </div>
+        <div style="text-align:center;font-size:23px;color:var(--faint);margin-top:26px">
+          The link opens this person&rsquo;s live work. No login on a shared handset.
+        </div>
+      </div></div>
+
+      <!-- 6 · history and money -->
+      <div class="mock" id="m6"><div>
+        <div style="display:flex;justify-content:center;margin-bottom:46px">
+          <div class="stat"><b class="tnum">128</b><span>requests</span></div>
+          <div class="stat"><b class="tnum">11.4</b><span>min average</span></div>
+          <!-- A count, not a rate. `within_sla` is a real column on this
+               screen, but a hit-rate on a marketing film reads as a measured
+               outcome, and nothing here has been measured. -->
+          <div class="stat"><b class="tnum">5</b><span>escalated</span></div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;
+                    padding:10px 34px;box-shadow:var(--shadow-float)">
+          <div class="frow"><span>401 &middot; Bath towels</span><span class="tnum" style="color:var(--faint)">6 min</span></div>
+          <div class="frow"><span>401 &middot; Masala Dosa</span><span class="tnum">&#8377;260.00</span></div>
+          <div class="frow"><span>214 &middot; Extra pillows</span><span class="tnum" style="color:var(--faint)">4 min</span></div>
+          <div class="frow"><span>308 &middot; Laundry &middot; 4 pieces</span><span class="tnum">&#8377;480.00</span></div>
+        </div>
+        <div style="text-align:center;font-size:23px;color:var(--faint);margin-top:26px">
+          Every column exports to CSV.
+        </div>
+      </div></div>
+
+      <!-- 7 · setting it up -->
+      <div class="mock" id="m7"><div style="background:var(--surface);border:1px solid var(--line);
+           border-radius:20px;padding:36px 40px;box-shadow:var(--shadow-float)">
+        <div style="font-size:32px;font-weight:600">Masala Dosa</div>
+        <div style="font-size:23px;color:var(--faint);margin-top:8px">Directory &rsaquo; All day dining</div>
+        <div style="margin-top:28px">
+          <div class="frow"><span style="color:var(--muted)">Price</span><span class="tnum" style="font-weight:600">&#8377;260</span></div>
+          <div class="frow"><span style="color:var(--muted)">Target</span><span class="tnum" style="font-weight:600">30 minutes</span></div>
+          <div class="frow"><span style="color:var(--muted)">Goes to</span><span style="font-weight:600">Food &amp; beverage</span></div>
+          <div class="frow"><span style="color:var(--muted)">Food marking</span><span style="font-weight:600;color:var(--ok)">Vegetarian</span></div>
+          <div class="frow"><span style="color:var(--muted)">Available to order</span><span style="font-weight:600">Yes</span></div>
+        </div>
+        <div style="font-size:23px;color:var(--faint);margin-top:26px;line-height:1.45">
+          Change the price and no past order moves. Each request keeps the name and
+          the price it was placed at.
+        </div>
+      </div></div>
+
+    </div>
+  </div>
+
+  <!-- -------------------------------------------------------------- close -->
+  <div class="layer" id="close"><div style="width:1200px">
+    <div id="closem">
+      <div class="mark">
+        <i style="left:35px;top:37px;width:13px;height:58px;border-radius:7px"></i>
+        <i style="right:35px;top:37px;width:13px;height:58px;border-radius:7px"></i>
+        <i style="left:48px;top:58px;width:36px;height:14px;opacity:.45"></i>
+        <i style="left:48px;top:58px;width:23px;height:14px"></i>
+      </div>
+      <div class="wordmark">HConcierge</div>
+    </div>
+    <div class="sub" id="closes" style="margin-top:30px;font-size:38px">
+      The phones stay on the nightstands. They just stop ringing.
+    </div>
+  </div></div>
+</div>
+
+<script src="kit.js"></script>
+<script>
+var $ = function (id) { return document.getElementById(id) }
+
+document.querySelectorAll('.qr').forEach(function (el) {
+  var s = Number(el.dataset.seed)
+  var rnd = function () { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff }
+  for (var r = 0; r < 21; r++) for (var c = 0; c < 21; c++) {
+    var a = r < 7 ? r : r - 14, b = c < 7 ? c : c - 14
+    var corner = (r < 7 || r >= 14) && (c < 7 || c >= 14) && !(r >= 14 && c >= 14)
+    var on = corner ? Math.min(Math.min(a, 6 - a), Math.min(b, 6 - b)) !== 1 : rnd() > 0.52
+    if (on) { var i = document.createElement('i'); i.style.gridArea = (r + 1) + '/' + (c + 1); el.appendChild(i) }
+  }
+})
+
+/* --------------------------------------------------------------------------
+   Every feature the hotel side of this product has. Read off the source, not
+   off a pitch deck: if a line here stops being true, the film is wrong.
+   The HConcierge platform console is deliberately not in this list.
+   -------------------------------------------------------------------------- */
+var CHAPTERS = [
+  {
+    title: 'The card and the code',
+    items: [
+      ['A printed card in every room', 'One QR on the desk, printed once. The card itself never has to change.'],
+      ['A four-digit code per stay', 'Handed over at check-in. Last week&rsquo;s photo of the QR opens nothing.'],
+      ['Nothing to install', 'It is a web page. The guest arrives with no app and no account.'],
+      ['No hardware in the room', 'No tablet, no dock, no wiring. The phone by the bed stays where it is.'],
+      ['No card number, anywhere', 'A guest can read a bill and ask to settle it. Payment happens at the desk.'],
+      ['Both screens are the real one', 'A reception monitor and a housekeeper&rsquo;s phone run the same board.'],
+    ],
+  },
+  {
+    title: 'What the guest can do',
+    items: [
+      ['Scan, then four digits', 'Too many wrong tries locks the code until the front desk clears it.'],
+      ['Home', 'Greets by the hour, by name, and shows what is already in flight for this room.'],
+      ['Shortcuts that stay right', 'The first item of each section, so they follow the hotel&rsquo;s own directory.'],
+      ['Ask in your own words', 'A plain text box for the thing no menu anticipated. It reaches the front desk.'],
+      ['Dining', 'The room-service menu, in the hotel&rsquo;s own sections rather than fixed ones.'],
+      ['Veg and non-veg marking', 'Set per item in the directory, shown on the menu row.'],
+      ['Choices on an item', 'Modifier groups with a minimum, a maximum, and options that can carry a price.'],
+      ['Items that are off', 'Still listed, marked unavailable, and not orderable.'],
+      ['A basket that stays in view', 'The count and the total sit at the bottom, so the menu reads in one pass.'],
+      ['A note for the team', 'Free text attached to the request, carried through to the board card.'],
+      ['Services', 'Amenities, paid services and front-desk asks, each in their own section.'],
+      ['Ask for a time', 'A wake-up call or a late checkout carries the hour the guest chose.'],
+      ['Hotel', 'Read-only pages: the wifi password, the checkout time, the pool hours.'],
+      ['Chat', 'Message the desk from the room. An unread reply raises a dot on the tab.'],
+      ['The bill, from the room', 'Itemised, live, to the paisa, without calling down to ask.'],
+      ['Ask to settle', 'Puts the room and its balance in front of the desk, as a flag they act on.'],
+      ['A tracker that moves on its own', 'Status arrives over a server-sent stream. No refresh, no pull-down.'],
+      ['Cancel, until work starts', 'New or newly accepted, the guest can withdraw it. In progress, they message the team.'],
+      ['One link for the whole stay', 'Checking out invalidates every device that stay signed in from.'],
+    ],
+  },
+  {
+    title: 'The board',
+    items: [
+      ['Sign in for a shift', 'Twelve hours, then it asks again. Five wrong tries locks the account.'],
+      ['One column per team', 'A staff account sees its own team&rsquo;s work and nothing else.'],
+      ['Cover a second team', 'The head of housekeeping who also runs the laundry sees both boards.'],
+      ['Managers see all of it', 'And they are the ones the escalation ladder reaches.'],
+      ['What a card carries', 'Room, reference, the items, the guest&rsquo;s note, and how long it has waited.'],
+      ['Its own target time', 'Set per item. A request inherits the slowest thing in it, not an average.'],
+      ['Green, amber, red', 'Amber arrives at a percentage the property sets, not a number baked in.'],
+      ['Accept', 'Puts a name on it. The clock was already running before anyone looked.'],
+      ['Start, then Done', 'Three taps is the whole life of a request, and a quick one can skip straight to done.'],
+      ['Assign it to someone', 'Or reassign it, when the person who took it is on another floor.'],
+      ['Cancel with a reason', 'Kitchen closed, guest checked out. The reason is kept on the record.'],
+      ['Done posts the charge', 'Straight to the room folio. Cancelling a charged request voids it.'],
+      ['Scheduled work waits its turn', 'A seven o&rsquo;clock wake-up call does not go amber at midnight.'],
+      ['The room&rsquo;s thread', 'Open the conversation from the card, without leaving the board.'],
+      ['Quick replies', 'The sentences reception types twenty times a day, on one tap.'],
+      ['Live, or it says so', 'Updates stream in. Nothing stale is ever presented as current.'],
+      ['Filter by team or property', 'An admin covering three hotels narrows to one without signing out.'],
+    ],
+  },
+  {
+    title: 'The front desk',
+    items: [
+      ['Every room at a glance', 'Occupied or vacant, who is in it, and what the room owes.'],
+      ['Check in', 'A name and a checkout date. A fresh four-digit code comes out of it.'],
+      ['Print the welcome card', 'The QR and the four digits on one page, for a room with a guest in it.'],
+      ['Print the QR card', 'A vacant room prints the permanent card alone. No code on it, because there is no stay.'],
+      ['A new code mid-stay', 'For the guest who forgets it, or the phone that went missing.'],
+      ['Unlock a locked code', 'After too many wrong tries, reception clears it in one tap.'],
+      ['Rotate the room&rsquo;s link', 'If a printed card goes astray, the old one stops working immediately.'],
+      ['Wants to settle', 'The guest&rsquo;s request to pay arrives here as a flag on the room.'],
+      ['Settle the bill', 'Closes the folio against the room and clears the balance.'],
+      ['Check out', 'Asks first, then ends every device that stay used. An unpaid balance stops it.'],
+      ['Open work closes with the stay', 'Anything still in flight is cancelled, with &ldquo;Guest checked out&rdquo; kept as the reason.'],
+      ['Add a room', 'Number, floor and type. It gets its own permanent card straight away.'],
+    ],
+  },
+  {
+    title: 'When something runs late',
+    items: [
+      ['A ladder, per property', 'Not one rule hardcoded for every hotel that ever signs up.'],
+      ['How long after the target', 'Counted from when the work was due, not from when it was booked.'],
+      ['Who hears about it', 'The duty managers, the admins, or people named one at a time.'],
+      ['Only if nobody picked it up', 'So a request already being worked on does not page anyone.'],
+      ['Which requests a step covers', 'All of them, or only the ones still sitting unaccepted.'],
+      ['Amber before red', 'The warning threshold is the property&rsquo;s to set, per hotel.'],
+      ['A WhatsApp message', 'The room, the reference, and exactly how late it is.'],
+      ['One tap to the work', 'The link names the person, never the request, so it is never out of date.'],
+      ['No login on a shared handset', 'A signed token, re-checked against the staff row on every open.'],
+      ['It runs on a schedule', 'Not only while somebody happens to have the board open.'],
+      ['It degrades quietly', 'With no messaging configured, escalation stays in the app and still works.'],
+    ],
+  },
+  {
+    title: 'History and money',
+    items: [
+      ['Everything that happened', 'Filtered by team, by status, and by how far back you want to look.'],
+      ['How many, and how fast', 'Average resolve time counts finished work only, never cancelled rows.'],
+      ['Broken down by team', 'Where the volume actually is, rather than where it feels like it is.'],
+      ['Raised, picked up, finished', 'Three timestamps on every row, rendered on the hotel&rsquo;s clock.'],
+      ['What it came to', 'The amount per request, held as integer paise so nothing rounds away.'],
+      ['Export to CSV', 'The front office&rsquo;s bridge until a real PMS integration exists.'],
+      ['Prices are snapshotted', 'Editing the menu never rewrites an order that has already been placed.'],
+      ['The hotel&rsquo;s own timezone', 'Times render where the hotel is, not where the browser happens to be.'],
+      ['Money accrues, it is never taken', 'Read from the room, settled by a person standing at the desk.'],
+    ],
+  },
+  {
+    title: 'Setting it up',
+    items: [
+      ['One property, or many', 'Each with its own rooms, directory, staff, branding and timezone.'],
+      ['Start from a copy', 'A second hotel begins with the first one&rsquo;s directory instead of a blank page.'],
+      ['Your own teams', 'Add the ones this hotel actually has. Four is a starting point, not a limit.'],
+      ['The directory', 'Sections, and everything a guest can ask for inside them.'],
+      ['Per item', 'Price, target minutes, which team it goes to, food marking, availability.'],
+      ['Hotel info pages', 'The questions that generate the most calls and need no request at all.'],
+      ['Staff accounts', 'Admin, manager or staff — and which team&rsquo;s board they open on.'],
+      ['A one-time password', 'Shown once, on creation and on every reset. Nobody emails it around.'],
+      ['Unlock, reset, deactivate', 'Everything a duty manager needs when somebody is locked out at 3am.'],
+      ['Delete for good', 'For the account typed in wrong. The work it touched keeps its record.'],
+      ['Change your own password', 'From the header, without asking anybody. A manager reset is the fallback, not the route.'],
+      ['Send a verification code', 'Six digits, over WhatsApp, to the number on the account.'],
+      ['The holder confirms it', 'They enter it on their own screen. Until then that number carries no one-tap links.'],
+      ['An activity log', 'Who did what, to what, and when. Filterable, and kept.'],
+    ],
+  },
+]
+
+/* --------------------------------------------------------------- timeline */
+var OPEN = 9.0, INTRO = 3.4, BEAT = 4.9, CLOSE = 13.0, PAGE = 5
+var TL = [], cursor = OPEN
+CHAPTERS.forEach(function (ch) {
+  var introEnd = cursor + INTRO
+  var feats = ch.items.map(function (_, i) {
+    return { in: introEnd + i * BEAT, out: introEnd + (i + 1) * BEAT }
+  })
+  TL.push({ in: cursor, introEnd: introEnd, feats: feats, out: introEnd + ch.items.length * BEAT })
+  cursor = TL[TL.length - 1].out
+})
+var FRAME_IN = OPEN - 0.6, FRAME_OUT = cursor, TOTAL = cursor + CLOSE
+var WORDS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven']
+
+/* The phone in chapter two follows the tour: which screen is up is a function
+   of which feature is being described, so the mock never contradicts the text. */
+function phoneScreen(i) {
+  if (i <= 0) return 'code'
+  if (i <= 3) return 'home'
+  if (i <= 9) return 'menu'
+  if (i <= 13) return 'services'
+  if (i <= 15) return 'bill'
+  return 'track'
+}
+var ROW = function (name, sub, right) {
+  return '<div class="row"><div><div style="font-size:27px;font-weight:500">' + name +
+    '</div><div style="font-size:21px;color:var(--faint);margin-top:6px">' + sub + '</div></div>' +
+    '<div style="font-size:25px;font-weight:600;color:var(--muted)">' + right + '</div></div>'
+}
+var SCREENS = {
+  code: '<div style="padding:54px 40px;text-align:center">' +
+    '<div style="font-size:26px;color:var(--muted);margin-bottom:34px">The four digits from check-in</div>' +
+    '<div style="display:flex;gap:18px;justify-content:center">' +
+    '<div class="digit"></div><div class="digit"></div><div class="digit"></div><div class="digit"></div></div></div>',
+  home: '<div style="padding:38px 34px">' +
+    '<div style="font-size:31px;font-weight:600;letter-spacing:-.5px">Good evening, Naman</div>' +
+    '<div style="border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-top:26px">' +
+    '<div style="font-size:24px;font-weight:500">Bath towels</div>' +
+    '<div style="font-size:20px;color:var(--faint);margin-top:8px">Someone is on their way &middot; 4 min left</div></div>' +
+    '<div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px">' +
+    '<span class="chip" style="font-size:20px;padding:11px 20px">Bath towels</span>' +
+    '<span class="chip" style="font-size:20px;padding:11px 20px">Drinking water</span>' +
+    '<span class="chip" style="font-size:20px;padding:11px 20px">Wake-up call</span></div>' +
+    '<div style="border:1px solid var(--line);border-radius:14px;padding:20px 24px;margin-top:22px;' +
+    'font-size:22px;color:var(--faint)">Ask for anything else&hellip;</div></div>',
+  menu:
+    ROW('Masala Dosa <span style="color:var(--ok)">&bull;</span>', 'Choose a spice level &middot; 30 min', '&#8377;260') +
+    ROW('Paneer Butter Masala <span style="color:var(--ok)">&bull;</span>', 'About 35 min', '&#8377;340') +
+    ROW('Chicken Biryani <span style="color:var(--late)">&bull;</span>', 'Unavailable tonight', '&#8377;420') +
+    ROW('Fresh Lime Soda <span style="color:var(--ok)">&bull;</span>', 'About 15 min', '&#8377;120'),
+  services:
+    ROW('Bath towels', 'Complimentary &middot; about 10 min', '+') +
+    ROW('Laundry &middot; per piece', 'Back by evening', '&#8377;120') +
+    ROW('Wake-up call', 'Pick a time', '+') +
+    ROW('Late checkout', 'Subject to availability', '+'),
+  bill:
+    ROW('Bath towels', 'Delivered &middot; 6 min', '&mdash;') +
+    ROW('Masala Dosa &middot; Mild', 'Delivered &middot; 22 min', '&#8377;260.00') +
+    '<div class="row" style="border-bottom:0"><div><div style="font-size:27px;font-weight:600">Charged to Room 401</div>' +
+    '<div style="font-size:21px;color:var(--faint);margin-top:6px">Settle at the desk</div></div>' +
+    '<div class="tnum" style="font-size:27px;font-weight:600">&#8377;260.00</div></div>',
+  track:
+    '<div style="padding:40px">' +
+    '<div style="font-size:27px;font-weight:600;margin-bottom:28px">Bath towels</div>' +
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">' +
+    '<span style="width:16px;height:16px;border-radius:50%;background:var(--ok)"></span>' +
+    '<span style="font-size:24px">Sent to housekeeping</span></div>' +
+    '<div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">' +
+    '<span style="width:16px;height:16px;border-radius:50%;background:var(--ok)"></span>' +
+    '<span style="font-size:24px">Someone is on their way</span></div>' +
+    '<div style="display:flex;align-items:center;gap:16px">' +
+    '<span style="width:16px;height:16px;border-radius:50%;border:2px solid var(--line)"></span>' +
+    '<span style="font-size:24px;color:var(--faint)">Done</span></div></div>',
+}
+var SUBS = { code: 'Enter to continue', home: 'Deluxe', menu: 'All day dining', services: 'Services', bill: 'Your bill', track: 'Your request' }
+
+/* Chapter three walks the hero card through a life, keyed off the feature. */
+function boardState(i) {
+  if (i <= 5) return { tone: 'ok', pct: 18, mins: '8 min left', tag: 'Not accepted', age: '#128 · 2m' }
+  if (i <= 6) return { tone: 'warn', pct: 72, mins: '3 min left', tag: 'Not accepted', age: '#128 · 7m' }
+  if (i <= 8) return { tone: 'ok', pct: 80, mins: '2 min left', tag: 'Priya · in progress', age: '#128 · 8m' }
+  if (i <= 12) return { tone: 'ok', pct: 100, mins: 'Done · 9 min', tag: 'Priya · done', age: '#128 · 9m' }
+  return { tone: 'ok', pct: 100, mins: 'Done · 9 min', tag: 'Priya · done', age: '#128 · 9m' }
+}
+
+var lastScreen = null
+window.__render = function (t) {
+  apply($('open'), inOut(t, { in: 0.35, out: OPEN - 1.0 }))
+  apply($('opena'), inOut(t, { in: 0.35 }))
+  apply($('openb'), inOut(t, { in: 1.5 }))
+
+  apply($('close'), inOut(t, { in: FRAME_OUT + 0.5, rise: 20 }))
+  apply($('closem'), inOut(t, { in: FRAME_OUT + 0.5, rise: 28 }))
+  apply($('closes'), inOut(t, { in: FRAME_OUT + 1.1 }))
+
+  apply($('frame'), inOut(t, { in: FRAME_IN, out: FRAME_OUT, rise: 0 }))
+  $('barfill').style.width = (clamp01((t - OPEN) / (FRAME_OUT - OPEN)) * 100).toFixed(2) + '%'
+
+  // Which chapter, and which feature inside it. Clamped at both ends so the
+  // opening and closing cards render over a settled frame rather than a blank.
+  var c = 0
+  for (var n = 0; n < TL.length; n++) if (t >= TL[n].in) c = n
+  var ch = CHAPTERS[c], tl = TL[c]
+
+  $('kicker').textContent = 'Chapter ' + WORDS[c]
+  $('counter').textContent = c + 1 + ' / ' + CHAPTERS.length
+  $('chapter').textContent = ch.title
+
+  var f = 0
+  for (var n = 0; n < tl.feats.length; n++) if (t >= tl.feats[n].in) f = n
+
+  // Five to a page. The page fades as a block; the lines inside arrive one by one.
+  var page = Math.floor(f / PAGE)
+  var first = page * PAGE
+  var lastOnPage = Math.min(first + PAGE, ch.items.length) - 1
+  var pageIn = tl.feats[first].in
+  var pageOut = tl.feats[lastOnPage].out
+  apply($('list'), inOut(t, { in: Math.max(pageIn - 0.25, tl.introEnd - 0.25), hold: 0.4, out: pageOut - 0.45, rise: 0 }))
+
+  for (var j = 0; j < PAGE; j++) {
+    var el = $('it' + j)
+    var idx = first + j
+    if (idx > lastOnPage) { el.style.opacity = 0; continue }
+    el.querySelector('b').innerHTML = ch.items[idx][0]
+    el.querySelector('span').innerHTML = ch.items[idx][1]
+    apply(el, inOut(t, { in: tl.feats[idx].in, hold: 0.42, rise: 20 }))
+  }
+
+  for (var n = 0; n < CHAPTERS.length; n++) {
+    apply($('m' + (n + 1)), n === c
+      ? inOut(t, { in: tl.in, hold: 0.55, out: tl.out - 0.5, rise: 22 })
+      : { opacity: 0, transform: 'translate3d(0,0,0)' })
+  }
+
+  if (c === 1) {
+    var s = phoneScreen(f)
+    if (s !== lastScreen) { $('p2body').innerHTML = SCREENS[s]; $('p2sub').textContent = SUBS[s]; lastScreen = s }
+    $('p2pill').textContent = s === 'bill' || s === 'track' ? '₹260' : 'Bill'
+  }
+
+  if (c === 2) {
+    var b = boardState(f)
+    $('b1').className = 'card' + (b.tone === 'ok' ? '' : ' ' + b.tone)
+    $('b1track').className = 'track' + (b.tone === 'ok' ? '' : ' ' + b.tone)
+    $('b1trk').style.width = b.pct + '%'
+    $('b1mins').style.color = 'var(--' + b.tone + ')'
+    $('b1mins').textContent = b.mins
+    $('b1tag').textContent = b.tag
+    $('b1age').textContent = b.age
+  }
+}
+window.__total = TOTAL
+</script>
