@@ -108,6 +108,17 @@ a.tap {
   }
 }
 
+/* A welcome card is one page, and the page is the design.
+   `margin: 0` is what removes the browser's own printed header and footer —
+   the document title at the top and the page URL at the bottom. Chrome has no
+   other way to suppress them from a stylesheet, and a guest's card with a
+   localhost URL along the bottom edge looks like a mistake. The card supplies
+   its own padding instead. */
+@page {
+  size: A4;
+  margin: 0;
+}
+
 /* ---------------------------------------------------------------------------
    Browser surfaces. Selection, caret, focus ring, scrollbar and underline
    offset all ship with defaults that belong to no design system. Theming them

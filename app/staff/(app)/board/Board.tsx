@@ -8,7 +8,7 @@ import { rupees } from '@/lib/money'
 import { formatAge, minutesRemaining, notDueYet, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
-import { IconAlarm, IconChat, IconClose } from '@/components/icons'
+import { IconAlarm, IconChat, IconChevron, IconClose } from '@/components/icons'
 import { assign, openThread, quickReplies, reply, updateStatus } from './actions'
 
 // The board is pushed, not polled — see /api/staff/board/live. This is the
@@ -485,10 +485,32 @@ function Card({
             #{r.ref} · {formatAge(r.created_at, new Date(now))}
           </span>
         </span>
-        {/* A guest can type 500 characters without a space. Below lg the grid
-            has no explicit columns, so one such note sized the whole board to
-            max-content and gave it 4,800px of sideways scroll. */}
-        <span className="mt-1.5 block text-[13px] leading-snug break-words">{summary}</span>
+        {/* One basket of towels, a room clean and a toiletries kit joined with
+            commas read as one long sentence, and the housekeeper had to parse
+            where each job ended. More than one thing is a list.
+
+            A guest can also type 500 characters without a space. Below lg the
+            grid has no explicit columns, so one such note sized the whole board
+            to max-content and gave it 4,800px of sideways scroll — hence
+            `break-words` on every branch here. */}
+        {r.items.length > 1 ? (
+          <span className="mt-1.5 block space-y-0.5">
+            {r.items.map((i) => (
+              <span key={i.id} className="flex gap-1.5 text-[13px] leading-snug break-words">
+                <span className="text-faint select-none">·</span>
+                <span>
+                  {i.qty > 1 && <span className="font-semibold tabular-nums">{i.qty}× </span>}
+                  {i.name}
+                  {i.modifiers.length > 0 && (
+                    <span className="text-muted"> · {i.modifiers.map((m) => m.name).join(', ')}</span>
+                  )}
+                </span>
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className="mt-1.5 block text-[13px] leading-snug break-words">{summary}</span>
+        )}
         {r.note && r.items.length > 0 && (
           <span className="text-muted mt-1 block text-[12px] break-words italic">“{r.note}”</span>
         )}
@@ -839,6 +861,7 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [canned, setCanned] = useState<{ id: string; label: string; body: string }[]>([])
+  const [repliesOpen, setRepliesOpen] = useState(false)
   const bottom = useRef<HTMLDivElement>(null)
 
   const load = useCallback(async () => {
@@ -924,19 +947,46 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
       {/* Pinned: on a thread long enough to scroll, the reply box used to
           scroll away with the messages. */}
       <div className="border-line bg-surface sticky bottom-0 border-t">
+        {/* These used to be one horizontally scrolling row with the scrollbar
+            hidden, so the fourth reply onwards was off the edge with nothing to
+            say it existed — unreachable entirely with a mouse and no sideways
+            wheel. And the sentence being sent lived only in `title`, so you
+            could not read what you were about to say to a guest without
+            hovering and waiting.
+
+            Now: a disclosure that stays out of the way until wanted, and the
+            body on screen rather than in a tooltip. */}
         {canned.length > 0 && (
-          <div className="no-scrollbar flex gap-1.5 overflow-x-auto px-3 pt-3">
-            {canned.map((q) => (
-              <button
-                key={q.id}
-                type="button"
-                onClick={() => setDraft(q.body)}
-                title={q.body}
-                className="border-line text-muted hover:text-ink hover:border-ink shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-medium whitespace-nowrap transition"
-              >
-                {q.label}
-              </button>
-            ))}
+          <div className="border-line border-b">
+            <button
+              type="button"
+              onClick={() => setRepliesOpen((o) => !o)}
+              aria-expanded={repliesOpen}
+              className="text-muted hover:text-ink flex w-full items-center justify-between gap-2 px-3 py-2.5 text-[12px] font-semibold transition"
+            >
+              <span>Quick replies · {canned.length}</span>
+              <IconChevron size={14} className={repliesOpen ? 'rotate-180 transition' : 'transition'} />
+            </button>
+            {repliesOpen && (
+              <div className="max-h-56 overflow-y-auto px-3 pb-3">
+                <div className="grid gap-1.5">
+                  {canned.map((q) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => {
+                        setDraft(q.body)
+                        setRepliesOpen(false)
+                      }}
+                      className="border-line hover:border-ink hover:bg-paper rounded-xl border px-3 py-2 text-left transition"
+                    >
+                      <span className="block text-[12px] font-semibold">{q.label}</span>
+                      <span className="text-muted mt-0.5 block text-[12px] leading-snug">{q.body}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         <form onSubmit={send} className="flex gap-2 p-3">
