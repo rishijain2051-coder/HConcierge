@@ -26,6 +26,37 @@
   .mark{width:140px;height:140px;border-radius:34px;background:var(--ink);position:relative;margin:0 auto}
   .mark i{position:absolute;background:var(--paper)}
   .wordmark{font-size:74px;font-weight:600;letter-spacing:-2px;margin-top:40px;text-align:center}
+  .pair{display:flex;gap:40px;justify-content:center}
+  /* The journey chrome gets a transform every frame, and a transformed element
+     becomes the containing block for everything absolute inside it. Left
+     static this div is 0px tall — every child of it is absolute — so `top`
+     worked and `bottom` silently resolved against nothing. It sits at 0,0 at
+     full width either way, so the 16:9 layout is unmoved: measured at 69dB
+     PSNR against the previous build, which is Chrome rasterising a new
+     compositing layer, not anything shifting. */
+  #journey{position:absolute;inset:0}
+
+  /* ---- 9:16 ---- See the note in v3: one scene, two shapes. */
+  @media (max-aspect-ratio: 1/1) {
+    .wrap{width:940px}
+    h1{font-size:86px}
+    /* The rail keeps all five stops — dropping one would change what the film
+       says — so it takes the width it needs and the labels come down to suit. */
+    .rail, .stops{left:50px;right:50px}
+    .stop{width:184px}
+    .stop label{font-size:22px;margin-top:16px}
+    /* With only `top` set this hangs from the rail, which leaves a 1920 stage
+       empty below the fold. Giving it a bottom makes it a box worth centring
+       in — and the centring has to be `align-content`, because the thing being
+       centred is the grid's single auto row, not an item inside a sized one.
+       `place-items` alone looks identical to no rule at all here. */
+    .panel{top:300px;bottom:120px;align-content:center}
+    .headline{font-size:60px;margin-bottom:40px}
+    .pair{flex-direction:column;align-items:center}
+    /* The card is the hero of its beat and was reading as a thumbnail with
+       this much frame around it. */
+    .qr{width:260px;height:260px}
+  }
 </style>
 
 <div class="stage">
@@ -77,7 +108,7 @@
 
     <div class="panel" id="p3"><div>
       <div class="headline">Owned in seconds. Done inside the target.</div>
-      <div style="display:flex;gap:40px;justify-content:center">
+      <div class="pair">
         <div class="card" style="width:520px;padding:32px 36px 32px 46px">
           <div style="font-size:34px;font-weight:600">Housekeeping</div>
           <div style="font-size:32px;margin-top:14px;color:var(--muted)">Bath towels</div>

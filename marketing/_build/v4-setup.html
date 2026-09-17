@@ -23,6 +23,26 @@
   .mark{width:140px;height:140px;border-radius:34px;background:var(--ink);position:relative;margin:0 auto}
   .mark i{position:absolute;background:var(--paper)}
   .wordmark{font-size:74px;font-weight:600;letter-spacing:-2px;margin-top:40px;text-align:center}
+  .teams{width:1080px;margin:0 auto}
+
+  /* ---- 9:16 ---- See the note in v3: one scene, two shapes. */
+  @media (max-aspect-ratio: 1/1) {
+    .wrap{width:940px}
+    h1{font-size:86px}
+    .step{margin-bottom:60px}
+    .step b{font-size:66px}
+    .step span{font-size:52px}
+    /* Four counters will not sit in a row 1080 wide. Two by two, and the
+       dividers go: a grid does not need rules to read as columns. */
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:54px 0}
+    .stats div{padding:0 24px}
+    .stats div + div::before{display:none}
+    /* Three cards at their full width come to 946 in a 940 wrap. */
+    .qrcard{width:272px;padding:28px}
+    .qr{width:200px;height:200px;margin-bottom:22px}
+    .cards{gap:32px}
+    .teams{width:100%}
+  }
 </style>
 
 <div class="stage">
@@ -53,7 +73,7 @@
 
   <div class="layer" id="l4"><div class="wrap">
     <div class="step" id="s3"><b>3</b><span>Sign your team in</span></div>
-    <div style="width:1080px;margin:0 auto">
+    <div class="teams">
       <div class="teamrow" id="t1">
         <span class="chip on" style="font-size:30px;padding:14px 28px">Housekeeping</span>
         <span style="font-size:34px;color:var(--muted);flex:1">sees the towels</span>

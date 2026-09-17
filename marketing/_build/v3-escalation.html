@@ -13,6 +13,28 @@
   .mark{width:140px;height:140px;border-radius:34px;background:var(--ink);position:relative;margin:0 auto}
   .mark i{position:absolute;background:var(--paper)}
   .wordmark{font-size:74px;font-weight:600;letter-spacing:-2px;margin-top:40px;text-align:center}
+  /* Out of the element's style attribute so 9:16 can reach it: an inline
+     declaration beats any selector, `!important` or a rewrite being the only
+     ways round it, and a rule here is the cheaper one. */
+  #l3h{font-size:46px}
+
+  /* ---- 9:16 ----
+     Same file, same timeline, same words. Only the things that are a row
+     because a 1920 stage is wide become a column, and the display type comes
+     down enough to break in a sensible place. Rendering this at 1080x1920 is
+     the whole difference — there is no second copy of the scene to keep in
+     step with this one. */
+  @media (max-aspect-ratio: 1/1) {
+    .wrap{width:940px}
+    h1{font-size:88px}
+    /* At 46 the last word fell to a line of its own. */
+    #l3h{font-size:39px}
+    .nots{flex-direction:column;align-items:center;gap:34px}
+    .nots div{padding:0}
+    /* The divider was the line between columns; it becomes the line between rows. */
+    .nots div + div::before{left:50%;right:auto;top:-18px;bottom:auto;
+                            width:130px;height:1px;transform:translateX(-50%)}
+  }
 </style>
 
 <div class="stage">
@@ -29,7 +51,7 @@
   </div></div>
 
   <div class="layer" id="l3"><div class="wrap">
-    <div class="sub" id="l3h" style="margin:0 0 46px;color:var(--ink);font-weight:500;font-size:46px">
+    <div class="sub" id="l3h" style="margin:0 0 46px;color:var(--ink);font-weight:500">
       Here, every request carries its own target time.
     </div>
 

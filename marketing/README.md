@@ -4,16 +4,39 @@ Five films, rendered from HTML. Nothing here is installed into the app: the
 pipeline uses the Chrome already on this machine plus `ffmpeg`, driven over the
 DevTools Protocol with Node's built-in `WebSocket`. `package.json` is untouched.
 
-| # | File | Ratio | Length | What it argues |
-|---|------|-------|--------|----------------|
-| 1 | `out/01-2am-vertical.mp4` | 9:16 | 16s | The room phone is the thing being replaced |
-| 2 | `out/02-fanout-vertical.mp4` | 9:16 | 15s | One basket becomes one request per team |
-| 3 | `out/03-escalation-wide.mp4` | 16:9 | 24s | A late request escalates itself — the differentiator |
-| 4 | `out/04-setup-wide.mp4` | 16:9 | 22s | Three steps, no app and no hardware |
-| 5 | `out/05-loop-wide.mp4` | 16:9 | 28s | Card on the desk to bill at checkout |
+| # | Scene | Ratios | Length | What it argues |
+|---|-------|--------|--------|----------------|
+| 1 | `v1-2am` | 9:16 | 16s | The room phone is the thing being replaced |
+| 2 | `v2-fanout` | 9:16 | 15s | One basket becomes one request per team |
+| 3 | `v3-escalation` | 16:9 · 9:16 | 24s | A late request escalates itself — the differentiator |
+| 4 | `v4-setup` | 16:9 · 9:16 | 22s | Three steps, no app and no hardware |
+| 5 | `v5-loop` | 16:9 · 9:16 | 28s | Card on the desk to bill at checkout |
 
-All five are silent and caption-first, because social autoplays muted. They end
-on the same card, so they read as a set.
+Eight files in `out/`: `NN-name-wide.mp4` at 1920×1080 and `NN-name-vertical.mp4`
+at 1080×1920. Films 1 and 2 were written vertical and have no wide cut.
+
+All of them are silent and caption-first, because social autoplays muted. They
+end on the same card, so they read as a set.
+
+## One scene, two shapes
+
+Films 3, 4 and 5 are a single HTML file each that renders at either size. The
+layout that only works on a wide stage is fenced behind
+`@media (max-aspect-ratio: 1/1)`, so rendering at 1080×1920 restacks it: the
+three denials in film 3 become a column, the four counters in film 4 become two
+by two, and the pair of team cards in film 5 sit one above the other. Nothing
+is cropped and no copy is cut — the words are identical in both cuts, which is
+the point of not keeping a second file per ratio.
+
+Two things to know before editing them:
+
+- An inline `style=` beats any selector, so a value the vertical cut needs to
+  change has to live in the stylesheet, not on the element.
+- `apply()` sets a transform every frame, and a transformed element becomes the
+  containing block for everything absolute inside it. `#journey` in film 5 is
+  0px tall for that reason — every child of it is absolutely positioned — so
+  `top` works there and `bottom` silently resolves against nothing. It is given
+  `position:absolute;inset:0` to make it a real box.
 
 ## What the copy is allowed to say
 
@@ -38,13 +61,20 @@ against the wall clock — so a render is deterministic and a re-render of
 unchanged copy produces identical bytes.
 
 ```bash
-cd marketing/_build
-node _render.mjs v3-escalation.html ../out/03-escalation-wide.mp4 1920 1080 24
+cd marketing/_build && node _render.mjs v3-escalation.html ../out/03-escalation-wide.mp4 1920 1080 24
 ```
 
-Arguments are `scene output width height seconds`, at 30fps. Editing copy means
-editing the HTML; the timeline lives in the `__render` function at the bottom of
-each file, in seconds.
+```bash
+cd marketing/_build && node _render.mjs v3-escalation.html ../out/03-escalation-vertical.mp4 1080 1920 24
+```
+
+Arguments are `scene output width height seconds`, at 30fps — the same scene,
+the size being the only difference between a wide cut and a vertical one.
+Editing copy means editing the HTML; the timeline lives in the `__render`
+function at the bottom of each file, in seconds.
+
+`render.mjs` also exports `still({ scene, out, width, height, t })`, which is
+how to check a layout at one moment without paying for a whole render.
 
 `kit.css` carries the design tokens copied from `app/globals.css`, and `kit.js`
 has the easing — `cubic-bezier(.32,.72,0,1)`, solved numerically rather than
