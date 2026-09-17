@@ -81,6 +81,8 @@ export function Field({
   min,
   max,
   step,
+  value,
+  onChange,
 }: {
   label: string
   name: string
@@ -93,6 +95,14 @@ export function Field({
   min?: number
   max?: number
   step?: string
+  /**
+   * Controlled, for the handful of fields something else has to read as it is
+   * typed — a confirmation that gates a button, rather than a value a form
+   * submit collects. Both optional, so every existing uncontrolled caller is
+   * untouched. `Select` already worked this way.
+   */
+  value?: string
+  onChange?: (v: string) => void
 }) {
   return (
     <label className="block">
@@ -100,7 +110,7 @@ export function Field({
       <input
         name={name}
         type={type}
-        defaultValue={defaultValue}
+        {...(onChange ? { value: value ?? '', onChange: (e) => onChange(e.target.value) } : { defaultValue })}
         placeholder={placeholder}
         required={required}
         autoFocus={autoFocus}

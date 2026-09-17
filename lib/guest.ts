@@ -19,8 +19,14 @@ export async function readRoom(token: string): Promise<RoomContext | null> {
            p.id as p_id, p.slug as p_slug, p.name as p_name,
            p.address as p_address, p.phone as p_phone, p.brand_color as p_brand,
            p.timezone as p_timezone
-      from rooms r join properties p on p.id = r.property_id
-     where r.token = ${token} limit 1`
+      from rooms r
+      join properties p on p.id = r.property_id
+      -- A suspended customer's guests get the not-found screen rather than a
+      -- working order form, because requests arriving for a hotel whose staff
+      -- can no longer sign in is worse than the door being shut. Left join: a
+      -- property with no organisation predates multi-tenancy and still works.
+      left join organisations o on o.id = p.organisation_id
+     where r.token = ${token} and o.suspended_at is null limit 1`
 
   const r = rows[0]
   if (!r) return null

@@ -17,18 +17,159 @@ export type OrganisationRow = {
   properties: number
   staff: number
   rooms: number
+  suspended_at: string | null
   created_at: string
 }
 
 export async function listOrganisations(actor: Staff): Promise<OrganisationRow[]> {
   if (actor.role !== 'platform') return []
   return sql<OrganisationRow[]>`
-    select o.id, o.slug, o.name, o.created_at,
+    select o.id, o.slug, o.name, o.created_at, o.suspended_at,
            (select count(*)::int from properties where organisation_id = o.id) as properties,
            (select count(*)::int from staff      where organisation_id = o.id) as staff,
            (select count(*)::int from rooms r join properties p on p.id = r.property_id
              where p.organisation_id = o.id)                                   as rooms
       from organisations o order by o.name`
+}
+
+/* ---------------------------------------------------------- off-boarding */
+
+export type Offboarding = {
+  name: string
+  slug: string
+  suspended_at: string | null
+  properties: number
+  rooms: number
+  occupied: number
+  staff: number
+  items: number
+  requests: number
+  messages: number
+  unsettled_paise: number
+}
+
+/**
+ * What deleting this customer would destroy, counted rather than estimated.
+ *
+ * Shown on screen before the confirmation, because "delete this organisation"
+ * is not a sentence anybody can consent to without knowing whether it means
+ * one empty test tenant or a hotel with guests in it.
+ */
+export async function offboardingSummary(actor: Staff, id: string): Promise<Offboarding | null> {
+  if (actor.role !== 'platform') return null
+  const [row] = await sql<Offboarding[]>`
+    select o.name, o.slug, o.suspended_at,
+           (select count(*)::int from properties where organisation_id = o.id) as properties,
+           (select count(*)::int from staff      where organisation_id = o.id) as staff,
+           (select count(*)::int from rooms r join properties p on p.id = r.property_id
+             where p.organisation_id = o.id) as rooms,
+           (select count(*)::int from rooms r join properties p on p.id = r.property_id
+             where p.organisation_id = o.id and r.occupied) as occupied,
+           (select count(*)::int from items i join properties p on p.id = i.property_id
+             where p.organisation_id = o.id) as items,
+           (select count(*)::int from requests q join properties p on p.id = q.property_id
+             where p.organisation_id = o.id) as requests,
+           (select count(*)::int from messages m join properties p on p.id = m.property_id
+             where p.organisation_id = o.id) as messages,
+           (select coalesce(sum(f.amount_paise), 0)::int
+              from folio_entries f
+              join rooms r on r.id = f.room_id
+              join properties p on p.id = r.property_id
+             where p.organisation_id = o.id
+               and f.voided_at is null and f.settled_at is null) as unsettled_paise
+      from organisations o where o.id = ${id}`
+  return row ?? null
+}
+
+/**
+ * Stop a customer using the product, reversibly.
+ *
+ * Bites in two places and both are load-bearing: `staffFromToken` refuses a
+ * suspended customer's staff on the next request, and `readRoom` refuses their
+ * guests, so nothing new arrives that nobody is going to answer. A hotel that
+ * has given notice wants exactly this — the data intact, the doors shut.
+ *
+ * A platform account is deliberately exempt, or HConcierge could suspend a
+ * customer and then be unable to reach them to undo it.
+ */
+export async function setOrganisationSuspended(actor: Staff, id: string, suspended: boolean): Promise<Ok> {
+  if (actor.role !== 'platform') return fail('Only HConcierge can suspend a customer.')
+
+  const [org] = await sql<{ name: string }[]>`select name from organisations where id = ${id}`
+  if (!org) return fail('That customer no longer exists.')
+
+  await sql`
+    update organisations set suspended_at = ${suspended ? sql`now()` : null} where id = ${id}`
+  await audit({
+    organisationId: id,
+    staffId: actor.id,
+    actor: actor.name,
+    action: suspended ? 'organisation.suspended' : 'organisation.restored',
+    entity: 'organisation',
+    entityId: id,
+    meta: { name: org.name },
+  })
+  return { ok: true }
+}
+
+/**
+ * Delete a customer and everything of theirs, for good.
+ *
+ * Three gates, none of them decoration. It is platform-only; the customer has
+ * to have been **suspended first**, so that ending a contract is always two
+ * deliberate acts on two separate occasions rather than one click on a list;
+ * and the exact name has to be typed, because a row in a list is easy to
+ * mis-click and a name is not easy to mistype.
+ *
+ * An unsettled balance refuses outright. Deleting a customer who still owes a
+ * room money loses the only record that they did, and no off-boarding is urgent
+ * enough to justify that — settle or void it first.
+ *
+ * Everything cascades: properties, rooms, requests, items, folio, teams, staff.
+ * The audit log does not. Its foreign keys are `on delete set null` and the
+ * trigger in db/schema.sql lets that one update through, so the trail of what
+ * HConcierge did for this customer survives the customer — including this row.
+ */
+export async function deleteOrganisation(actor: Staff, id: string, typedName: string): Promise<Ok> {
+  if (actor.role !== 'platform') return fail('Only HConcierge can delete a customer.')
+
+  const summary = await offboardingSummary(actor, id)
+  if (!summary) return fail('That customer no longer exists.')
+
+  if (!summary.suspended_at) {
+    return fail('Suspend this customer first. Deleting is meant to be the second decision, not the first.')
+  }
+  if (typedName.trim() !== summary.name) {
+    return fail(`That is not the name. Type “${summary.name}” exactly to confirm.`)
+  }
+  if (summary.unsettled_paise > 0) {
+    return fail(
+      `₹${(summary.unsettled_paise / 100).toFixed(2)} is still outstanding on their rooms. Settle or void it first — deleting now destroys the only record of it.`,
+    )
+  }
+
+  // Audited before the delete, not after: the row records the organisation it
+  // is about, and writing it afterwards would mean resolving a name that no
+  // longer exists. The FK releases itself when the parent goes.
+  await audit({
+    organisationId: id,
+    staffId: actor.id,
+    actor: actor.name,
+    action: 'organisation.deleted',
+    entity: 'organisation',
+    entityId: id,
+    meta: {
+      name: summary.name,
+      slug: summary.slug,
+      properties: summary.properties,
+      rooms: summary.rooms,
+      staff: summary.staff,
+      requests: summary.requests,
+    },
+  })
+
+  await sql`delete from organisations where id = ${id}`
+  return { ok: true }
 }
 
 /**

@@ -3,7 +3,15 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import type { OrganisationRow } from '@/lib/organisations'
-import { createOrganisation, enterOrganisation, updateOrganisation } from '../actions'
+import {
+  createOrganisation,
+  deleteOrganisation,
+  enterOrganisation,
+  offboardingSummary,
+  suspendOrganisation,
+  updateOrganisation,
+} from '../actions'
+import type { Offboarding } from '@/lib/organisations'
 import { Button, Err, Field, Modal, Panel, PasswordOnce } from '../../ui'
 
 const slugify = (s: string) =>
@@ -17,6 +25,10 @@ export default function OrganisationManager({ organisations }: { organisations: 
   const [error, setError] = useState<string | null>(null)
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null)
   const [nameDraft, setNameDraft] = useState('')
+  // Off-boarding is a two-stage thing, so the dialog holds both the counts it
+  // is about to destroy and what the operator has typed to confirm them.
+  const [offboarding, setOffboarding] = useState<{ id: string; summary: Offboarding } | null>(null)
+  const [typed, setTyped] = useState('')
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) {
     setError(null)
@@ -52,14 +64,49 @@ export default function OrganisationManager({ organisations }: { organisations: 
         {organisations.map((o) => (
           <div key={o.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5">
             <div className="min-w-[14rem] flex-1">
-              <p className="text-[14px] font-semibold">{o.name}</p>
-              <p className="text-faint text-[12px]">/{o.slug}</p>
+              <p className="text-[14px] font-semibold">
+                {o.name}
+                {o.suspended_at && <span className="text-late ml-2 text-[11px] font-semibold">Suspended</span>}
+              </p>
+              <p className="text-faint text-[12px]">
+                /{o.slug}
+                {o.suspended_at && ' · nobody here can sign in and no guest link opens'}
+              </p>
             </div>
             <p className="text-muted min-w-[15rem] text-[12px] tabular-nums">
               {o.properties} propert{o.properties === 1 ? 'y' : 'ies'} · {o.rooms} rooms · {o.staff} staff
             </p>
-            <div className="flex shrink-0 gap-1.5">
+            <div className="flex shrink-0 flex-wrap gap-1.5">
               <Button onClick={() => setEditing(o)}>Rename</Button>
+              {o.suspended_at ? (
+                <Button onClick={() => run(() => suspendOrganisation(o.id, false))} disabled={pending}>
+                  Restore
+                </Button>
+              ) : (
+                <Button variant="danger" onClick={() => run(() => suspendOrganisation(o.id, true))} disabled={pending}>
+                  Suspend
+                </Button>
+              )}
+              {/* Only offered once suspended. lib/organisations refuses it
+                  otherwise too — this just stops the button being a question
+                  the operator has to be told the answer to. */}
+              {o.suspended_at && (
+                <Button
+                  variant="danger"
+                  disabled={pending}
+                  onClick={() =>
+                    start(async () => {
+                      const summary = await offboardingSummary(o.id)
+                      if (summary) {
+                        setTyped('')
+                        setOffboarding({ id: o.id, summary })
+                      }
+                    })
+                  }
+                >
+                  Off-board
+                </Button>
+              )}
               <Button
                 variant="primary"
                 onClick={() =>
@@ -75,6 +122,85 @@ export default function OrganisationManager({ organisations }: { organisations: 
           <p className="text-faint px-4 py-12 text-center text-sm">No customers yet.</p>
         )}
       </div>
+
+      {/* The whole point of this dialog is that "delete this organisation" is
+          not a sentence anybody can consent to without knowing whether it means
+          an empty test tenant or a hotel with guests in it. So it counts, and
+          then it asks for the name in full. */}
+      {offboarding && (
+        <Modal wide title={`Off-board ${offboarding.summary.name}`} onClose={() => setOffboarding(null)}>
+          <p className="text-muted text-[14px] leading-relaxed">
+            This deletes the customer and everything of theirs, for good. There is no undo and no export — take
+            anything they are owed out first.
+          </p>
+
+          <div className="border-line divide-line mt-4 divide-y overflow-hidden rounded-xl border">
+            {(
+              [
+                ['Properties', offboarding.summary.properties],
+                ['Rooms', offboarding.summary.rooms],
+                ['Staff accounts', offboarding.summary.staff],
+                ['Directory items', offboarding.summary.items],
+                ['Requests, all of their history', offboarding.summary.requests],
+                ['Guest messages', offboarding.summary.messages],
+              ] as const
+            ).map(([label, n]) => (
+              <div key={label} className="flex justify-between px-3.5 py-2 text-[13px]">
+                <span className="text-muted">{label}</span>
+                <span className="font-semibold tabular-nums">{n}</span>
+              </div>
+            ))}
+          </div>
+
+          {offboarding.summary.occupied > 0 && (
+            <div className="mt-3">
+              <Err>
+                {offboarding.summary.occupied} room{offboarding.summary.occupied === 1 ? ' is' : 's are'} still
+                occupied. Those guests lose access the moment this completes.
+              </Err>
+            </div>
+          )}
+
+          {offboarding.summary.unsettled_paise > 0 && (
+            <div className="mt-3">
+              <Err>
+                ₹{(offboarding.summary.unsettled_paise / 100).toFixed(2)} is outstanding on their rooms. This will be
+                refused until it is settled or voided — deleting now destroys the only record of it.
+              </Err>
+            </div>
+          )}
+
+          <div className="mt-4">
+            <Field
+              label={`Type “${offboarding.summary.name}” to confirm`}
+              name="confirm"
+              value={typed}
+              onChange={setTyped}
+              autoFocus
+              placeholder={offboarding.summary.name}
+            />
+          </div>
+
+          <div className="mt-5 flex gap-2">
+            <Button full onClick={() => setOffboarding(null)}>
+              Keep it
+            </Button>
+            <Button
+              full
+              variant="danger"
+              disabled={pending || typed.trim() !== offboarding.summary.name}
+              onClick={() =>
+                run(
+                  () => deleteOrganisation(offboarding.id, typed),
+                  () => setOffboarding(null),
+                )
+              }
+            >
+              {pending ? 'Deleting…' : 'Delete for good'}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {adding && (
         <Modal wide title="Onboard a customer" onClose={() => setAdding(false)}>

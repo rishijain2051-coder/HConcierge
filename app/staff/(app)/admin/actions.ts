@@ -250,3 +250,24 @@ export async function setTeamActive(id: string, active: boolean) {
   if (res.ok) touched()
   return res
 }
+
+/* ------------------------------------------------------ off-boarding */
+
+export async function suspendOrganisation(id: string, suspended: boolean) {
+  const actor = await requirePlatform()
+  const res = await orgs.setOrganisationSuspended(actor, id, suspended)
+  if (res.ok) touched()
+  return res
+}
+
+export async function offboardingSummary(id: string) {
+  const actor = await requirePlatform()
+  return orgs.offboardingSummary(actor, id)
+}
+
+export async function deleteOrganisation(id: string, typedName: string) {
+  const actor = await requirePlatform()
+  const res = await orgs.deleteOrganisation(actor, id, typedName)
+  if (res.ok) touched()
+  return res
+}

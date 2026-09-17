@@ -532,6 +532,35 @@ create index if not exists outbound_pending_idx
 -- trigger; that is a different threat model from this one.
 create or replace function audit_is_append_only() returns trigger language plpgsql as $$
 begin
+  -- One exception, and it is not a loophole. All three of `staff_id`,
+  -- `property_id` and `organisation_id` are `on delete set null`, so deleting
+  -- a staff member, a property or a whole customer asks Postgres to null those
+  -- pointers on every audit row that referenced them. That is not an edit to
+  -- the record: the actor, the action, the entity, the meta and the timestamp
+  -- are all untouched, and the actor's *name* was always stored as text
+  -- precisely so the trail survives the account. All that is released is a
+  -- pointer to a row that no longer exists.
+  --
+  -- Refused outright, the audit log becomes the reason a customer cannot be
+  -- off-boarded — found the first time it was tried, and then found a second
+  -- time with `staff_id`, because deleting an organisation cascades to its
+  -- staff before it reaches the log.
+  --
+  -- Deliberately narrow: every other column must be byte-identical, compared
+  -- as jsonb so that a column added later is covered without anybody
+  -- remembering to come back here, and the three pointers may only move toward
+  -- null. An update that rewrites `actor` while also nulling `property_id` is
+  -- still refused.
+  if tg_op = 'UPDATE'
+     and to_jsonb(new) - 'staff_id' - 'property_id' - 'organisation_id'
+       = to_jsonb(old) - 'staff_id' - 'property_id' - 'organisation_id'
+     and (new.staff_id is null or new.staff_id = old.staff_id)
+     and (new.property_id is null or new.property_id = old.property_id)
+     and (new.organisation_id is null or new.organisation_id = old.organisation_id)
+  then
+    return new;
+  end if;
+
   raise exception 'audit_log is append-only: % on audit row % was refused',
     lower(tg_op), coalesce(old.id::text, '(unknown)')
     using errcode = 'restrict_violation',
@@ -550,3 +579,12 @@ create trigger audit_append_only
 -- checkout alongside everything else about that stay, so the hotel is not
 -- quietly accumulating a marketing list out of a room-service product.
 alter table rooms add column if not exists guest_phone text;
+
+-- -------------------------------------------------------------- off-boarding
+-- A customer leaving is not one button. Suspending is reversible and takes
+-- effect everywhere immediately — nobody on that customer can sign in and no
+-- guest link opens — which is what a hotel that has given notice, or is
+-- disputing an invoice, actually needs. Deleting is the separate, final step,
+-- and `lib/organisations.ts` will not do it until the customer has been
+-- suspended first.
+alter table organisations add column if not exists suspended_at timestamptz;

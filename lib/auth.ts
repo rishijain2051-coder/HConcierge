@@ -156,6 +156,11 @@ export async function staffFromToken(token?: string, enteredOrg?: string): Promi
         on o.id = coalesce(s.organisation_id,
                            case when s.role = 'platform' then ${orgId}::uuid end)
      where s.id = ${payload.sid} and s.active
+       -- A suspended customer cannot sign in, and an existing session stops
+       -- working on its next request rather than at its next expiry. HConcierge
+       -- itself is exempt, or it could suspend a customer and then be locked
+       -- out of the screens it needs to restore or delete them.
+       and (s.role = 'platform' or o.suspended_at is null)
      limit 1`
   return rows[0] ?? null
 }
