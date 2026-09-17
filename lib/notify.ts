@@ -261,8 +261,20 @@ function teamName(team: string | null, department: string): string {
  * `extra_teams` is the second team a department account covers. `department`
  * still holds their main one, so a housekeeper also covering the spa is reached
  * by either.
+ *
+ * `includeSupervisors` is whether managers and admins are reached by *role* —
+ * every manager at the property, whatever team the request belongs to. The
+ * new-request ping turns it off, because a manager whose phone buzzes for every
+ * towel stops reading any of them, and lateness is what they are for. They keep
+ * escalation and the completion notice.
+ *
+ * It drops the clause rather than excluding the role, and that distinction is
+ * load-bearing: at a small hotel the manager may be the only person in a team
+ * with a phone, and `role not in ('manager','admin')` would route that team's
+ * requests to nobody. A manager whose `department` really is housekeeping still
+ * gets housekeeping's requests.
  */
-function teamRecipients(propertyId: string, department: string) {
+function teamRecipients(propertyId: string, department: string, includeSupervisors = true) {
   return sql<Recipient[]>`
     select id, name, phone, phone_verified_at from staff
      where active and phone is not null and phone <> ''
@@ -270,7 +282,7 @@ function teamRecipients(propertyId: string, department: string) {
        and (department = ${department}
             or ${department} = any(extra_teams)
             or department = 'all'
-            or role in ('manager','admin'))`
+            or (${includeSupervisors} and role in ('manager','admin')))`
 }
 
 type FiredRow = {
@@ -418,7 +430,18 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
      where r.id = ${requestId} limit 1`
   if (!r) return
 
-  const targets = await teamRecipients(r.property_id, r.department)
+  // Supervisors off: the team that does the work, not everyone who runs the
+  // property. Escalation is how a manager hears about a request.
+  const targets = await teamRecipients(r.property_id, r.department, false)
+
+  // sweepEscalations has warned about a rung that reaches nobody since it was
+  // written; this path never needed to, because the role clause meant a
+  // property with any manager on it always had a recipient. Narrowing the
+  // audience is what makes an empty result reachable, so it gets the same
+  // warning — a team whose only phone was deactivated is otherwise silent.
+  if (targets.length === 0) {
+    console.warn(`[notify] new ${r.department} request #${r.ref} names nobody with a phone number`)
+  }
 
   const text = [
     headline('New', r.room_number, r.ref),
