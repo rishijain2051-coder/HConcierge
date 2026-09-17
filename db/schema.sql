@@ -513,3 +513,33 @@ create table if not exists outbound_messages (
 -- The drainer's one query: oldest unsent first.
 create index if not exists outbound_pending_idx
   on outbound_messages (created_at) where sent_at is null;
+
+-- ------------------------------------------------- the audit log is append-only
+-- The logging itself was already complete — 48 call sites and 42 actions, board
+-- status transitions included. What was missing was the guarantee: `audit_log`
+-- was an ordinary table and the application's own role could rewrite or delete
+-- any row in it, which makes "audit log" a description of intent rather than a
+-- property of the system.
+--
+-- A trigger rather than `revoke update, delete`, for two reasons. Supabase's
+-- pooled role is frequently the table owner, and an owner ignores its own
+-- revokes — so a grant-based approach can be a silent no-op. And a revoke is
+-- lost the moment a role is recreated, while a trigger travels with the schema
+-- and shows up in every dump.
+--
+-- Deliberately not a hash chain. `prev_hash` per row defends against somebody
+-- who already has direct database access and can therefore also drop this
+-- trigger; that is a different threat model from this one.
+create or replace function audit_is_append_only() returns trigger language plpgsql as $$
+begin
+  raise exception 'audit_log is append-only: % on audit row % was refused',
+    lower(tg_op), coalesce(old.id::text, '(unknown)')
+    using errcode = 'restrict_violation',
+          hint = 'Correct the record by appending a new entry, not by editing this one.';
+end;
+$$;
+
+drop trigger if exists audit_append_only on audit_log;
+create trigger audit_append_only
+  before update or delete on audit_log
+  for each row execute function audit_is_append_only();

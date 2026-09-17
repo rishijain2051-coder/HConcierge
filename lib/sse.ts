@@ -23,11 +23,19 @@ export function sseStream<T>({
   signal,
   subscribe,
   load,
+  onClose,
 }: {
   signal: AbortSignal
   subscribe: (fire: () => void) => () => void
   /** Returning null means "this viewer is no longer allowed" — the stream closes. */
   load: () => Promise<T | null>
+  /**
+   * Run once when the stream ends, however it ends. `shutdown` below is the
+   * single funnel for all four exits — the client hanging up, MAX_MS, a
+   * revoked grant, and the abort signal — which is why a caller holding a
+   * resource for the life of the stream can release it here and not leak.
+   */
+  onClose?: () => void
 }): Response {
   const encoder = new TextEncoder()
   // Held outside the stream so `cancel` can reach it. Without a cancel handler
@@ -110,6 +118,7 @@ export function sseStream<T>({
         clearTimeout(lifetime)
         unsubscribe()
         signal.removeEventListener('abort', shutdown)
+        onClose?.()
         try {
           controller.close()
         } catch {
@@ -119,6 +128,14 @@ export function sseStream<T>({
 
       cleanup = shutdown
       signal.addEventListener('abort', shutdown)
+      // An AbortSignal that has *already* aborted never fires a listener added
+      // afterwards, so a request the client gave up on before this ran would
+      // hold whatever `onClose` releases for good. Cheap to check, and the
+      // alternative is a slow leak that only shows under load.
+      if (signal.aborted) {
+        shutdown()
+        return
+      }
       // `retry` is how long the browser waits before reopening after we close.
       write('retry: 3000\n\n')
       void push()
