@@ -322,6 +322,81 @@ type FiredRow = {
   notify_managers: boolean
   notify_admins: boolean
   minutes_waiting: number
+  /**
+   * `escalation_step` as it was *before* this sweep raised it, so 0 means this
+   * is the first rung this request has passed. The `due` CTE reads the
+   * pre-update row, which is also how `e.step > r.escalation_step` works.
+   */
+  was: number
+  /** The person who accepted it, joined in rather than fetched per request. */
+  assignee_id: string | null
+  assignee_name: string | null
+  assignee_phone: string | null
+  assignee_verified: Date | null
+  assignee_active: boolean | null
+}
+
+/**
+ * The nudge sideways, to whoever can actually clear it.
+ *
+ * The ladder tells managers, and that is the point of it — but the person who
+ * could finish the job in ninety seconds is not on the ladder, so a late
+ * request used to travel upwards and never sideways. The manager's first move
+ * was always to go and tell them anyway.
+ *
+ * Who gets it depends on the state, because the alternative is noise:
+ *
+ *   new             → the team, since any of them can pick it up
+ *   ack, in_progress → only the person holding it; the rest cannot help, and a
+ *                      message about somebody else's job is the kind nobody
+ *                      reads twice
+ *
+ * **Once per request, on the first rung only.** After that the manager owns it
+ * and the team has already been told, so a reminder per rung would multiply the
+ * one cost this file is careful about. `was` is the pre-sweep step, so 0 is the
+ * first rung whatever the ladder is numbered.
+ *
+ * Anyone already on the rung's own list is dropped — at a small hotel the duty
+ * manager's department really is housekeeping, and two messages about one towel
+ * is how somebody learns to ignore both.
+ */
+async function remindOwners(r: FiredRow, already: Recipient[], base: string | null): Promise<void> {
+  if (r.was > 0) return
+
+  const usable = (p: Recipient | null): p is Recipient => Boolean(p && p.phone && p.phone.trim())
+  const holder: Recipient | null =
+    r.assignee_id && r.assignee_active
+      ? {
+          id: r.assignee_id,
+          name: r.assignee_name ?? '',
+          phone: r.assignee_phone ?? '',
+          phone_verified_at: r.assignee_verified,
+        }
+      : null
+
+  const targets =
+    r.status === 'new'
+      ? await teamRecipients(r.property_id, r.department, false)
+      : [holder].filter(usable)
+
+  const told = new Set(already.map((p) => p.id))
+  const people = targets.filter((p) => !told.has(p.id))
+  if (people.length === 0) return
+
+  const text = [
+    // Not "Late": that word is the manager's, and this message is going to the
+    // person who is about to fix it rather than to the person who wants to know
+    // why it was not fixed.
+    headline('Still waiting', r.room_number, r.ref),
+    facts(teamName(r.team, r.department), r.property),
+    itemLines(r.items, r.summary || teamName(r.team, r.department)),
+    r.items && r.items.length > 0 && r.summary ? `“${r.summary}”` : null,
+    `${Math.round(r.minutes_waiting)} min old, target ${r.sla_minutes}. ${waiting(r.status)}`,
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
 }
 
 /**
@@ -369,12 +444,19 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
                 from request_items ri where ri.request_id = r.id) as items,
              p.name as property,
              e.id as rule_id, e.step, e.notify_managers, e.notify_admins,
-             extract(epoch from (now() - ${dueFrom})) / 60 as minutes_waiting
+             extract(epoch from (now() - ${dueFrom})) / 60 as minutes_waiting,
+             r.escalation_step as was,
+             asg.id as assignee_id, asg.name as assignee_name, asg.phone as assignee_phone,
+             asg.phone_verified_at as assignee_verified, asg.active as assignee_active
         from requests r
         join rooms rm on rm.id = r.room_id
         join properties p on p.id = r.property_id
         left join departments d
           on d.organisation_id = p.organisation_id and d.slug = r.department
+        -- Joined, not fetched per request: this is the escalation path and the
+        -- cost here is round trips. At most one row, so it cannot multiply the
+        -- distinct on.
+        left join staff asg on asg.id = r.assigned_to
         join escalation_rules e
           on e.property_id = r.property_id
          and e.active
@@ -426,26 +508,31 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
            or s.id in (select staff_id from escalation_rule_staff where rule_id = ${r.rule_id})
          )`
 
+    const base = await linkBase()
+
+    // A rung that reaches nobody is worth a warning, but it must not swallow
+    // the reminder as well: a ladder with no manager on a phone is exactly the
+    // hotel where telling the team matters most. This used to `continue`.
     if (people.length === 0) {
       console.warn(`[notify] rung ${r.step} for request #${r.ref} names nobody with a phone number`)
-      continue
+    } else {
+      const waited = Math.round(r.minutes_waiting)
+      const text = [
+        headline('Late', r.room_number, r.ref),
+        facts(teamName(r.team, r.department), r.property),
+        itemLines(r.items, r.summary || teamName(r.team, r.department)),
+        // The guest's own words, kept but subordinate. They used to be the
+        // summary line, which meant a late request named the comment and never
+        // the work.
+        r.items && r.items.length > 0 && r.summary ? `“${r.summary}”` : null,
+        `${waited} min old, target ${r.sla_minutes}. ${waiting(r.status)}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+      await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
     }
 
-    const waited = Math.round(r.minutes_waiting)
-    const text = [
-      headline('Late', r.room_number, r.ref),
-      facts(teamName(r.team, r.department), r.property),
-      itemLines(r.items, r.summary || teamName(r.team, r.department)),
-      // The guest's own words, kept but subordinate. They used to be the
-      // summary line, which meant a late request named the comment and never
-      // the work.
-      r.items && r.items.length > 0 && r.summary ? `“${r.summary}”` : null,
-      `${waited} min old, target ${r.sla_minutes}. ${waiting(r.status)}`,
-    ]
-      .filter(Boolean)
-      .join('\n')
-    const base = await linkBase()
-    await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
+    await remindOwners(r, people, base)
   }
 
   return fired.length

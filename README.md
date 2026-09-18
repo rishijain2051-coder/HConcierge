@@ -114,6 +114,19 @@ A rung names groups (the property's managers, the organisation's admins) and/or 
 people. Only staff with a phone number can actually be reached, and the screen says so
 when nobody has one.
 
+**The team is reminded as well as the ladder told.** A rung goes upwards, which is the
+point of it — but the person who could finish the job in ninety seconds is not on it, so
+the first time a request escalates it also nudges whoever can clear it: the whole team if
+nobody has picked it up, or only the one person holding it once somebody has. That message
+says *Still waiting* rather than *Late*, because it is going to the person about to fix it
+and not to the person who wants to know why it wasn't.
+
+It fires **once per request, on the first rung only** — after that the manager owns it and
+the team has already been told — and it drops anyone the rung itself reached, since at a
+small hotel the duty manager's department really is housekeeping and two messages about
+one towel is how somebody learns to ignore both. Budget one extra message per late
+request.
+
 The sweep runs opportunistically on the board's safety poll (once a minute while anyone
 is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at 4am when
 no board is open). Escalation is the one thing that cannot be pushed: nothing changes in
