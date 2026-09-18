@@ -158,6 +158,27 @@ cannot bill twice.
 Today the front office exports a CSV and keys it into the PMS. When RN's PMS is wired up,
 the adapter goes behind those four functions and nothing else in the app changes.
 
+**Settling asks first.** It is a claim that cash has changed hands, it clears the charges
+from the room and from the guest's screen, and nothing on that screen can take it back —
+so the button opens a dialog that names the figure and offers the receipt before closing
+the bill.
+
+**The receipt prints two ways, from one builder.** `lib/receipt.ts` lays out the charges
+once; `/staff/rooms/receipt` renders that as an 80mm page through the browser's print
+dialog, which is the path a desk with a driver-installed thermal printer already has, and
+`/api/staff/receipt?room=<id>` serves the same lines as raw ESC/POS for a printer in raw
+mode or a local helper. `?mm=58` narrows both to 32 columns.
+
+It is **not a tax invoice and says so on the paper**: the property's GST registration is
+not held here and the PMS issues the real document. ESC/POS has no rupee glyph at any
+fixed code point, so the byte stream spells it `Rs` — and the HTML does too, deliberately,
+because a receipt that disagrees with itself between two printers is worse than one that
+spells it out on both.
+
+`npm run db:check-receipt` prints the receipt at both widths and asserts the byte framing.
+`npm run db:check-escalation` does the same for who a late request reaches. Neither sends
+or prints anything.
+
 ---
 
 ## Layout

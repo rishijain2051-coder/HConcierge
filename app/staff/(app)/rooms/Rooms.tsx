@@ -69,6 +69,10 @@ export default function Rooms({
   // this did not, which was backwards — this is the one a mis-tap on a phone
   // actually reaches, because it sits in the same row.
   const [checkingOut, setCheckingOut] = useState<RoomRow | null>(null)
+  // Settling moves money in the hotel's books and cannot be undone from here.
+  // It was one tap next to four other one-tap buttons, on a row that is 44px
+  // tall on a phone.
+  const [settling, setSettling] = useState<RoomRow | null>(null)
   // One room at a time: opening a second closes the first, so the list never
   // grows back into the thing it replaced.
   const [openId, setOpenId] = useState<string | null>(null)
@@ -224,13 +228,16 @@ export default function Rooms({
                             New code
                           </Mini>
                           {r.balance_paise > 0 && (
-                            <Mini
-                              onClick={() => run(() => settleBill(r.id))}
-                              disabled={pending}
-                              tone={r.settle_requested_at ? 'ink' : undefined}
-                            >
-                              Settle {rupees(r.balance_paise)}
-                            </Mini>
+                            <>
+                              <PrintLink href={`/staff/rooms/receipt?room=${r.id}`}>Print receipt</PrintLink>
+                              <Mini
+                                onClick={() => setSettling(r)}
+                                disabled={pending}
+                                tone={r.settle_requested_at ? 'ink' : undefined}
+                              >
+                                Settle {rupees(r.balance_paise)}
+                              </Mini>
+                            </>
                           )}
                           <Mini onClick={() => setCheckingOut(r)} disabled={pending} tone="late">
                             Check out
@@ -286,6 +293,43 @@ export default function Rooms({
               className="bg-ink flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white"
             >
               Settled — check out
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Settling is a claim that cash has changed hands, and nothing on this
+          screen can take it back — the charges leave the folio and the guest's
+          own screen clears. So it asks, it names the figure it is about to
+          close, and it offers the paper first, because handing the guest a
+          receipt is the step this button usually comes after. */}
+      {settling && (
+        <Modal title={`Settle room ${settling.number}?`} onClose={() => setSettling(null)}>
+          <p className="text-muted text-[14px] leading-relaxed">
+            This records that the desk has taken{' '}
+            <span className="text-ink font-semibold">{rupees(settling.balance_paise)}</span>. HConcierge does not take
+            the money and cannot check that it arrived — settling clears the charges from the room and from the
+            guest&rsquo;s screen, and it cannot be undone from here.
+          </p>
+          <div className="mt-4">
+            <PrintLink href={`/staff/rooms/receipt?room=${settling.id}`}>Print the receipt first</PrintLink>
+          </div>
+          <div className="mt-5 flex gap-2">
+            <button
+              onClick={() => setSettling(null)}
+              className="border-line hover:border-ink flex-1 rounded-xl border px-4 py-3 text-[13px] font-semibold"
+            >
+              Not yet
+            </button>
+            <button
+              onClick={() => {
+                const room = settling
+                setSettling(null)
+                run(() => settleBill(room.id))
+              }}
+              className="bg-ink flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white"
+            >
+              Money taken — settle
             </button>
           </div>
         </Modal>
