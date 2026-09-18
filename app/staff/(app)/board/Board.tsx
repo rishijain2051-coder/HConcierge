@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hotelTime } from '@/lib/clock'
 import { rupees } from '@/lib/money'
-import { formatAge, minutesRemaining, needsAttention, notDueYet, since, slaState } from '@/lib/sla'
+import { formatAge, minutesRemaining, notDueYet, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { IconAlarm, IconChat, IconChevron, IconClose } from '@/components/icons'
@@ -16,10 +16,12 @@ import { assign, openThread, quickReplies, reply, updateStatus } from './actions
 // run the escalation sweep, which is time-based and so has nothing to notify it.
 const POLL_MS = 60_000
 
-// How often the amber alert rings again while a request sits unaccepted. Short
-// enough that it is an alarm, long enough that a desk can hold a conversation
-// between two of them.
-const RING_MS = 20_000
+// The ring's own period. The phrase below runs four seconds, so this is it and
+// then a breath: a phone left to ring rather than a reminder every so often. It
+// starts when the request lands, not when it is late, and it does not stop
+// until somebody accepts. Keep this longer than the phrase or two rings overlap
+// into mud.
+const RING_MS = 4_800
 
 type Me = { id: string; name: string; role: string; department: string }
 
@@ -84,7 +86,7 @@ export default function Board({
   // guard a slow network makes polls overlap, and overlapping polls exhaust the
   // database pool until the whole app stops responding.
   const inFlight = useRef(false)
-  const chime = useRef<(() => void) | null>(null)
+  const ringer = useRef<(() => void) | null>(null)
 
   const canFilterDepartment = visibleDepartments.length === 0
   // The hotel's own name for a team, not the humanised slug.
@@ -104,7 +106,9 @@ export default function Board({
   const announce = useCallback(
     (arrived: BoardRequest[]) => {
     if (!alertsOn.current) return
-    chime.current?.()
+    // No sound here any more. Everything arrives unaccepted, so the alert
+    // below rings for it in the same tick — a blip half a beat ahead of a
+    // two-second ring sounded like a fault rather than a cue.
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       for (const r of arrived.slice(0, 3)) {
         const what = r.items.length ? r.items.map((i) => `${i.qty}× ${i.name}`).join(', ') : r.note || 'New request'
@@ -199,23 +203,61 @@ export default function Board({
   }, [])
 
   async function enableAlerts() {
-    // A short square-ish blip from the Web Audio API — no asset to host, and it
-    // cuts through a noisy lobby better than a soft chime.
-    if (!chime.current) {
+    if (!ringer.current) {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       const ctx = new Ctx()
-      chime.current = () => {
+
+      /** One plucked note: fast attack, then it rings down. */
+      const note = (freq: number, at: number, len: number, level = 0.22) => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.type = 'triangle'
-        osc.frequency.setValueAtTime(880, ctx.currentTime)
-        osc.frequency.setValueAtTime(1320, ctx.currentTime + 0.11)
-        gain.gain.setValueAtTime(0.001, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.32)
+        osc.frequency.setValueAtTime(freq, at)
+        // Exponential either side of the peak — a linear envelope clicks at
+        // both ends, and a click is the thing this is trying not to be.
+        gain.gain.setValueAtTime(0.0001, at)
+        gain.gain.exponentialRampToValueAtTime(level, at + 0.012)
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + len)
         osc.connect(gain).connect(ctx.destination)
-        osc.start()
-        osc.stop(ctx.currentTime + 0.34)
+        osc.start(at)
+        osc.stop(at + len + 0.02)
+      }
+
+      /**
+       * The ring.
+       *
+       * This was one 320ms two-tone blip, which is not a ring — at that length
+       * a tone reads as a click, and a click is exactly what a room full of
+       * people learns to stop hearing. So: three phrases, fourteen notes, a
+       * little over two seconds, each phrase higher and longer than the one
+       * before so it arrives rather than just happening.
+       *
+       * Every note is scheduled against the audio clock rather than fired off
+       * a timer, so the rhythm holds even while the main thread is busy
+       * re-rendering the board underneath it.
+       */
+      ringer.current = () => {
+        // A browser suspends an idle context — a backgrounded board being the
+        // usual way — and a suspended context accepts a note and plays
+        // silence. Cheap to ask every time; it is already running or it isn't.
+        if (ctx.state !== 'running') void ctx.resume().catch(() => {})
+
+        // [notes, length, gap]. Paced at about two thirds the speed it
+        // started at: long enough for each note to ring rather than tick,
+        // and four seconds for the phrase to say what it has to say.
+        const phrases: [number[], number, number][] = [
+          [[988, 988, 988, 988], 0.15, 0.08], // ta ta ta ta — knuckles on the desk
+          [[659, 659, 659, 659], 0.19, 0.07], // da da da da — lower, insisting
+          [[880, 988, 1109, 1319, 1568, 1319], 0.25, 0.045], // la la la — rising, and it lands
+        ]
+        let at = ctx.currentTime + 0.03
+        for (const [notes, len, gap] of phrases) {
+          for (const f of notes) {
+            note(f, at, len)
+            at += len + gap
+          }
+          at += 0.14 // a breath between phrases
+        }
       }
       // Browsers only let audio start inside a user gesture, which this is.
       await ctx.resume().catch(() => {})
@@ -224,7 +266,8 @@ export default function Board({
       await Notification.requestPermission()
     }
     setAlerts(true)
-    chime.current?.()
+    // Once, so whoever pressed it knows what they have turned on.
+    ringer.current?.()
   }
 
   const filtered = useMemo(
@@ -242,18 +285,21 @@ export default function Board({
   )
 
   /**
-   * The amber alert: a request nobody has accepted that has already eaten into
-   * the time it was promised in.
+   * The amber alert: every request nobody has accepted yet.
+   *
+   * It used to wait until a request had eaten 60% of its target before
+   * ringing, which on a ten-minute towel is six minutes of silence — so the
+   * alarm was almost never sounding at the moment anyone looked at the board,
+   * and it read as broken. It rings from the moment the request lands and
+   * stops when somebody accepts it, which is what an alarm is for. How old it
+   * is and whether it is overdue is on each row; it is not the trigger.
    *
    * Read off `requests` and not `filtered`, deliberately. An alarm that goes
    * quiet because somebody left a team filter on is an alarm nobody can rely
    * on, and the filter is a view of the board rather than a claim about what
    * is happening in the hotel.
    */
-  const ringing = useMemo(
-    () => requests.filter((r) => needsAttention(r, new Date(now))),
-    [requests, now],
-  )
+  const ringing = useMemo(() => requests.filter((r) => r.status === 'new'), [requests])
 
   // Keeps ringing. The blip in `announce` says something arrived; this says
   // something is *still* sitting there, and it repeats until somebody accepts
@@ -262,29 +308,19 @@ export default function Board({
   // Keyed on the ids rather than the array: `now` ticks every 15s and would
   // otherwise restart the interval before it ever got to fire.
   const alarmKey = useMemo(() => ringing.map((r) => r.id).join(','), [ringing])
+  const lateRinging = ringing.filter((r) => slaState(r, new Date(now)) === 'late').length
   const muted = silenced === alarmKey
 
   useEffect(() => {
     if (ringing.length === 0 || !alerts || muted) return
-    // Twice, a beat apart. One blip is an arrival; two is a nag.
-    const ring = () => {
-      chime.current?.()
-      setTimeout(() => chime.current?.(), 420)
-    }
-    ring()
-    const t = setInterval(ring, RING_MS)
+    ringer.current?.()
+    // ponytail: a plain interval, so a tab backgrounded for more than five
+    // minutes may have it throttled and the ring will stutter. Scheduling the
+    // whole loop on the audio clock would hold it; worth doing if anybody is
+    // ever actually working from a buried tab.
+    const t = setInterval(() => ringer.current?.(), RING_MS)
     return () => clearInterval(t)
   }, [alarmKey, ringing.length, alerts, muted])
-
-  // The board lives in a background tab on a reception PC as often as not, and
-  // a tab says nothing unless its title does. The clean title is captured
-  // before the count is ever written into it, or the second run would count
-  // the first run's prefix as part of the name.
-  const baseTitle = useRef<string | null>(null)
-  useEffect(() => {
-    if (baseTitle.current === null) baseTitle.current = document.title
-    document.title = ringing.length > 0 ? `(${ringing.length}) waiting · ${baseTitle.current}` : baseTitle.current
-  }, [ringing.length])
 
   const overdue = filtered.filter((r) => slaState(r, new Date(now)) === 'late').length
   const unreadTotal = chats.reduce((s, c) => s + c.unread, 0)
@@ -398,8 +434,14 @@ export default function Board({
             </span>
             <p className="text-warn text-[14px] font-semibold tracking-[-0.01em]">
               {ringing.length === 1
-                ? 'A request is past its time and nobody has accepted it'
-                : `${ringing.length} requests are past their time and nobody has accepted them`}
+                ? 'A request is waiting to be accepted'
+                : `${ringing.length} requests are waiting to be accepted`}
+              {lateRinging > 0 && (
+                <span className="text-late">
+                  {' '}
+                  · {lateRinging} overdue
+                </span>
+              )}
             </p>
             {/* Without the sound this is a banner on a screen nobody is looking
                 at, so the offer to turn it on lives here as well as in the
@@ -415,14 +457,21 @@ export default function Board({
           </div>
 
           <ul className="mt-3 grid gap-1.5">
-            {ringing.slice(0, 4).map((r) => (
+            {ringing.slice(0, 4).map((r) => {
+              // The trigger is that nobody has accepted it; how late it is
+              // only decides how loudly the row says so.
+              const late = slaState(r, new Date(now)) === 'late'
+              return (
               <li
                 key={r.id}
-                className="bg-surface/70 border-warn/20 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2"
+                className={`flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2 ${
+                  late ? 'bg-late-soft border-late/30' : 'bg-surface/70 border-warn/20'
+                }`}
               >
                 <span className="text-[14px] font-semibold">Room {r.room_number}</span>
-                <span className="text-muted text-[13px]">
-                  {nameOf(r.department)} · {formatAge(r.created_at, new Date(now))} old, target {r.sla_minutes}m
+                <span className={`text-[13px] ${late ? 'text-late font-medium' : 'text-muted'}`}>
+                  {nameOf(r.department)} · {age(r.created_at, new Date(now))}, target {r.sla_minutes}m
+                  {late ? ' · overdue' : ''}
                 </span>
                 <button
                   onClick={() => act(r.id, 'ack')}
@@ -432,7 +481,8 @@ export default function Board({
                   {acting.has(r.id) ? 'Accepting…' : 'Accept'}
                 </button>
               </li>
-            ))}
+              )
+            })}
           </ul>
           {ringing.length > 4 && (
             <p className="text-warn mt-2 text-[12px] font-medium">
@@ -493,6 +543,17 @@ export default function Board({
 }
 
 /* --------------------------------------------------------------- pieces */
+
+/**
+ * "12m old", or just "just now" — which does not take an "old" after it. The
+ * same trap `since()` in lib/sla.ts documents, walked into again on the alert
+ * rows, where the first minute of a request's life is exactly when somebody is
+ * reading them.
+ */
+function age(from: string | Date, now: Date) {
+  const a = formatAge(from, now)
+  return a === 'just now' ? a : `${a} old`
+}
 
 /**
  * "Sunita R." rather than "Sunita", because a card that only ever showed the

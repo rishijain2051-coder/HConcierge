@@ -134,19 +134,28 @@ small hotel the duty manager's department really is housekeeping and two message
 one towel is how somebody learns to ignore both. Budget one extra message per late
 request.
 
-**The board rings until somebody accepts.** A request that has passed its amber
-threshold and that nobody has accepted puts an amber banner across the top of the
-board, naming the rooms with an Accept button on each, and sounds a double blip
-every twenty seconds until one of them is pressed. It is deliberately read off
-the whole board rather than the filtered view — an alarm a team filter can
-silence is an alarm nobody can rely on — and the tab title carries the count, so
-a board sitting behind a browser window still says something.
+**The board rings until somebody accepts.** Any request nobody has accepted puts
+an amber banner across the top of the board, naming the rooms with an Accept
+button on each, and rings until one of them is pressed. Not once, and not every
+so often: the ring is a fourteen-note phrase about two and a half seconds long
+and it repeats with a breath between, which is a phone left ringing rather than
+a reminder. The row says how old it is and turns red once it is past its target,
+but that is the row talking, not the trigger.
+
+This started out waiting until a request had eaten 60% of its target before it
+rang, which on a ten-minute towel is six minutes of silence, so the alarm was
+almost never sounding at the moment anybody looked at the board and it read as
+broken. It rings from the moment the request lands.
 
 The sound needs *Alerts on*, because a browser will not let a page make a noise
 until somebody has clicked something; the banner does not. **Silence** quiets the
-alert on screen and nothing else: it is keyed to the rooms in it, so the next
-alert rings, and so does this one the moment another room joins it. An alarm one
-click turns off for a whole shift is a fire alarm with the battery taken out.
+ring and nothing else: it is keyed to the rooms in the alert, so the next alert
+rings, and so does this one the moment another room joins it. An alarm one click
+turns off for a whole shift is a fire alarm with the battery taken out. The alert
+lives on the board and nowhere else in the app.
+
+Read off the whole board rather than the filtered view, deliberately: an alarm a
+team filter can silence is an alarm nobody can rely on.
 `npm run db:check-amber-alert` prints what it would be ringing about now.
 
 The sweep runs opportunistically on the board's safety poll (once a minute while anyone
