@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 
 import { hotelTime } from '@/lib/clock'
 import { rupees } from '@/lib/money'
@@ -23,6 +23,81 @@ const POLL_MS = 60_000
 // until somebody accepts. Keep this longer than the phrase or two rings overlap
 // into mud.
 const RING_MS = 4_800
+
+/** Remembers the sound toggle across reloads. */
+const ALERTS_KEY = 'hc.alerts'
+
+/**
+ * The ring, built outside the component.
+ *
+ * An AudioContext is a browser object with its own lifetime, and constructing
+ * one needs no gesture - only *starting* it does. Having this out here is what
+ * lets a remembered alert rebuild its audio on load and wait for the first
+ * click to unlock, rather than needing somebody to press the button again.
+ */
+function makeRinger(): { ring: () => void; resume: () => void } {
+  const Ctx =
+    window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  const ctx = new Ctx()
+  const resume = () => {
+    // A browser suspends an idle context - a backgrounded board being the usual
+    // way - and a suspended context accepts a note and plays silence. Cheap to
+    // ask; it is either already running or it isn't.
+    if (ctx.state !== 'running') void ctx.resume().catch(() => {})
+  }
+
+  /** One plucked note: fast attack, then it rings down. */
+  const note = (freq: number, at: number, len: number, level = 0.22) => {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(freq, at)
+    // Exponential either side of the peak — a linear envelope clicks at
+    // both ends, and a click is the thing this is trying not to be.
+    gain.gain.setValueAtTime(0.0001, at)
+    gain.gain.exponentialRampToValueAtTime(level, at + 0.012)
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + len)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(at)
+    osc.stop(at + len + 0.02)
+  }
+
+  /**
+   * The ring.
+   *
+   * This was one 320ms two-tone blip, which is not a ring — at that length
+   * a tone reads as a click, and a click is exactly what a room full of
+   * people learns to stop hearing. So: three phrases, fourteen notes, four
+   * seconds measured, each phrase higher and longer than the one before so it
+   * arrives rather than just happening.
+   *
+   * Every note is scheduled against the audio clock rather than fired off
+   * a timer, so the rhythm holds even while the main thread is busy
+   * re-rendering the board underneath it.
+   */
+  const ring = () => {
+    resume()
+
+    // [notes, length, gap]. Paced at about two thirds the speed it
+    // started at: long enough for each note to ring rather than tick,
+    // and four seconds for the phrase to say what it has to say.
+    const phrases: [number[], number, number][] = [
+      [[988, 988, 988, 988], 0.15, 0.08], // ta ta ta ta — knuckles on the desk
+      [[659, 659, 659, 659], 0.19, 0.07], // da da da da — lower, insisting
+      [[880, 988, 1109, 1319, 1568, 1319], 0.25, 0.045], // la la la — rising, and it lands
+    ]
+    let at = ctx.currentTime + 0.03
+    for (const [notes, len, gap] of phrases) {
+      for (const f of notes) {
+        note(f, at, len)
+        at += len + gap
+      }
+      at += 0.14 // a breath between phrases
+    }
+  }
+
+  return { ring, resume }
+}
 
 type Me = { id: string; name: string; role: string; department: string }
 
@@ -62,7 +137,33 @@ export default function Board({
   const [view, setView] = useState<'requests' | 'messages'>('requests')
   const [openId, setOpenId] = useState<string | null>(null)
   const [chatRoom, setChatRoom] = useState<{ id: string; number: string } | null>(null)
-  const [alerts, setAlerts] = useState(false)
+  /**
+   * Remembered across reloads.
+   *
+   * A reception board is reloaded all day and this was plain component state,
+   * so every reload silently turned the alarm off - which is the one failure an
+   * alarm must not have. Read through `useSyncExternalStore` rather than
+   * straight out of localStorage during render: the server has no localStorage,
+   * and a render that disagrees with the HTML it hydrates is a mismatch React
+   * is entitled to repair by throwing the subtree away.
+   */
+  const remembered = useSyncExternalStore(
+    () => () => {},
+    () => localStorage.getItem(ALERTS_KEY) === '1',
+    () => false,
+  )
+  const [override, setOverride] = useState<boolean | null>(null)
+  const alerts = override ?? remembered
+
+  function remember(on: boolean) {
+    setOverride(on)
+    try {
+      if (on) localStorage.setItem(ALERTS_KEY, '1')
+      else localStorage.removeItem(ALERTS_KEY)
+    } catch {
+      // Private browsing. The toggle still works for this tab.
+    }
+  }
   // Which alert has been silenced, held as the ids it was made of rather than
   // as a boolean. Silence then lasts exactly as long as that alert does: the
   // next one rings, and so does this one the moment another room joins it. An
@@ -92,7 +193,7 @@ export default function Board({
   // guard a slow network makes polls overlap, and overlapping polls exhaust the
   // database pool until the whole app stops responding.
   const inFlight = useRef(false)
-  const ringer = useRef<(() => void) | null>(null)
+  const ringer = useRef<{ ring: () => void; resume: () => void } | null>(null)
 
   const canFilterDepartment = visibleDepartments.length === 0
   // The hotel's own name for a team, not the humanised slug.
@@ -209,72 +310,34 @@ export default function Board({
   }, [])
 
   async function enableAlerts() {
-    if (!ringer.current) {
-      const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      const ctx = new Ctx()
-
-      /** One plucked note: fast attack, then it rings down. */
-      const note = (freq: number, at: number, len: number, level = 0.22) => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.type = 'triangle'
-        osc.frequency.setValueAtTime(freq, at)
-        // Exponential either side of the peak — a linear envelope clicks at
-        // both ends, and a click is the thing this is trying not to be.
-        gain.gain.setValueAtTime(0.0001, at)
-        gain.gain.exponentialRampToValueAtTime(level, at + 0.012)
-        gain.gain.exponentialRampToValueAtTime(0.0001, at + len)
-        osc.connect(gain).connect(ctx.destination)
-        osc.start(at)
-        osc.stop(at + len + 0.02)
-      }
-
-      /**
-       * The ring.
-       *
-       * This was one 320ms two-tone blip, which is not a ring — at that length
-       * a tone reads as a click, and a click is exactly what a room full of
-       * people learns to stop hearing. So: three phrases, fourteen notes, a
-       * little over two seconds, each phrase higher and longer than the one
-       * before so it arrives rather than just happening.
-       *
-       * Every note is scheduled against the audio clock rather than fired off
-       * a timer, so the rhythm holds even while the main thread is busy
-       * re-rendering the board underneath it.
-       */
-      ringer.current = () => {
-        // A browser suspends an idle context — a backgrounded board being the
-        // usual way — and a suspended context accepts a note and plays
-        // silence. Cheap to ask every time; it is already running or it isn't.
-        if (ctx.state !== 'running') void ctx.resume().catch(() => {})
-
-        // [notes, length, gap]. Paced at about two thirds the speed it
-        // started at: long enough for each note to ring rather than tick,
-        // and four seconds for the phrase to say what it has to say.
-        const phrases: [number[], number, number][] = [
-          [[988, 988, 988, 988], 0.15, 0.08], // ta ta ta ta — knuckles on the desk
-          [[659, 659, 659, 659], 0.19, 0.07], // da da da da — lower, insisting
-          [[880, 988, 1109, 1319, 1568, 1319], 0.25, 0.045], // la la la — rising, and it lands
-        ]
-        let at = ctx.currentTime + 0.03
-        for (const [notes, len, gap] of phrases) {
-          for (const f of notes) {
-            note(f, at, len)
-            at += len + gap
-          }
-          at += 0.14 // a breath between phrases
-        }
-      }
-      // Browsers only let audio start inside a user gesture, which this is.
-      await ctx.resume().catch(() => {})
-    }
+    ringer.current ??= makeRinger()
+    // Browsers only let audio start inside a user gesture, which this is.
+    ringer.current.resume()
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       await Notification.requestPermission()
     }
-    setAlerts(true)
+    remember(true)
     // Once, so whoever pressed it knows what they have turned on.
-    ringer.current?.()
+    ringer.current.ring()
   }
+
+  /**
+   * Restored from a previous visit, so build the audio without waiting to be
+   * asked. A browser will not let it make a sound until somebody has touched
+   * the page, so the first interaction of any kind unlocks it - and until then
+   * the banner is doing the work anyway.
+   */
+  useEffect(() => {
+    if (!alerts || ringer.current) return
+    ringer.current = makeRinger()
+    const unlock = () => ringer.current?.resume()
+    window.addEventListener('pointerdown', unlock, { once: true })
+    window.addEventListener('keydown', unlock, { once: true })
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [alerts])
 
   const filtered = useMemo(
     () => (dept ? requests.filter((r) => r.department === dept) : requests),
@@ -319,12 +382,12 @@ export default function Board({
 
   useEffect(() => {
     if (ringing.length === 0 || !alerts || muted) return
-    ringer.current?.()
+    ringer.current?.ring()
     // ponytail: a plain interval, so a tab backgrounded for more than five
     // minutes may have it throttled and the ring will stutter. Scheduling the
     // whole loop on the audio clock would hold it; worth doing if anybody is
     // ever actually working from a buried tab.
-    const t = setInterval(() => ringer.current?.(), RING_MS)
+    const t = setInterval(() => ringer.current?.ring(), RING_MS)
     return () => clearInterval(t)
   }, [alarmKey, ringing.length, alerts, muted])
 
@@ -412,7 +475,7 @@ export default function Board({
           )}
           {stale && <span className="text-warn text-[12px] font-medium">Reconnecting…</span>}
           <button
-            onClick={() => (alerts ? setAlerts(false) : enableAlerts())}
+            onClick={() => (alerts ? remember(false) : enableAlerts())}
             aria-pressed={alerts}
             aria-label={alerts ? 'Alerts on' : 'Turn on alerts'}
             className={`flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold transition sm:min-h-0 ${
