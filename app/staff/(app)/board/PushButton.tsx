@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { IconAlarm } from '@/components/icons'
 
 /**
@@ -30,15 +30,40 @@ export default function PushButton({
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<string | null>(null)
 
-  // Not supported, or not configured: say nothing at all rather than offering a
-  // button that cannot work. An iPhone only has this once the board has been
-  // added to the home screen, and that is Apple's rule, not ours.
-  const usable =
-    publicKey !== null &&
-    typeof window !== 'undefined' &&
-    'serviceWorker' in navigator &&
-    'PushManager' in window
-  if (!usable) return null
+  /**
+   * Whether this browser can do push at all, asked in the one way that does not
+   * lie during hydration.
+   *
+   * This started as a plain `typeof window !== 'undefined' && 'PushManager' in
+   * window`, which is false on the server and true in the browser - a rendered
+   * output that disagrees with the HTML it is hydrating, which is a mismatch
+   * React has to repair and is entitled to repair by throwing the subtree away.
+   * The button appeared anyway on the machine it was written on. That is the
+   * worst kind of working.
+   *
+   * `useSyncExternalStore` exists for exactly this: a server snapshot of false,
+   * a client snapshot of the real answer, and no state set inside an effect.
+   */
+  const supported = useSyncExternalStore(
+    () => () => {},
+    () => 'serviceWorker' in navigator && 'PushManager' in window,
+    () => false,
+  )
+
+  // No key means the install has no VAPID pair - push is off for everybody
+  // here, not just this browser. Nothing to show, but say why in the console:
+  // a control that is simply absent is indistinguishable from one that is
+  // broken, and this is the difference between "your browser cannot" and
+  // "whoever deployed this has not finished".
+  if (publicKey === null) {
+    if (typeof window !== 'undefined') {
+      console.warn('[push] no VAPID public key from the server, so "Wake this device" is hidden')
+    }
+    return null
+  }
+  // An iPhone only has PushManager once the board is on the home screen, and
+  // that is Apple's rule, not ours.
+  if (!supported) return null
 
   async function toggle() {
     setBusy(true)
