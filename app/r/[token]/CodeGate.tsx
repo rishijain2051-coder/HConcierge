@@ -40,7 +40,7 @@ export default function CodeGate({
 
   return (
     <div
-      className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12"
+      className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-6 py-12"
       style={{ ['--brand' as string]: property.brand_color }}
     >
       <p className="text-muted text-[14px] font-semibold tracking-tight">{property.name}</p>

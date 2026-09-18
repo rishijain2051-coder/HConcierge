@@ -12,7 +12,7 @@ import Link from 'next/link'
  */
 export default function NotFound() {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center">
+    <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center px-6 text-center">
       <h1 className="text-[22px] font-semibold tracking-tight">There is nothing at this address</h1>
       <p className="text-muted mt-2 text-sm leading-relaxed">
         The link may be out of date, or it may have a typo in it.

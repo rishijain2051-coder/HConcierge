@@ -21,9 +21,9 @@ import type { RequestStatus } from '@/lib/types'
  * the request arrived from a chat.
  *
  * Returns nothing, because a plain `<form action={…}>` takes a void action and
- * this page carries no client JavaScript to read a result with. A refusal comes
- * back as `?e=` and is rendered above the list; success just re-renders, and the
- * row shows its new state.
+ * nothing on that page reads a return value — ./ActButton only watches whether
+ * the action is still running. A refusal comes back as `?e=` and is rendered
+ * above the list; success just re-renders, and the row shows its new state.
  */
 export async function actOnJob(form: FormData) {
   const token = String(form.get('token') ?? '')

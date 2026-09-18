@@ -235,6 +235,27 @@ mode, which silently drops `LISTEN`. Supabase serves the same database in sessio
 connection cannot be made, the routes return 503, the client gives up after three tries
 and falls back to its once-a-minute poll. Nothing breaks; it just stops being instant.
 
+**The link pages are built for the phone they open on.** Everything that arrives
+by WhatsApp — the welcome card, the guest's room page, a staff member's job list —
+is read on a handset in a chat app's in-app browser, which is the slowest browser
+any of this runs in. Five things were costing more there than they were worth:
+
+- Zoom is deliberately left on so a guest can pinch a menu, and that makes the
+  browser wait ~300ms after every tap to see whether a second one is coming.
+  `touch-action: manipulation` on the root keeps the pinch and drops the wait.
+- The guest menu stacked three `backdrop-filter` bars — header, category rail,
+  bottom nav — each one re-blurring everything behind it on every scrolled frame.
+  They are frosted where the pointer can hover and opaque where it cannot; on a
+  phone nothing shows through an opaque bar anyway.
+- A stray flick at the top of a list pull-to-refreshed, which re-ran a
+  `force-dynamic` page and its queries. `overscroll-behavior-y: contain`.
+- `dvh` is re-measured as the address bar collapses, so anything sized in it
+  changes height mid-scroll. These pages use `svh`, which does not move.
+- Accepting a job from the WhatsApp link re-reads the board, which takes about a
+  second — during which the button looked untouched. It now disables itself and
+  says *Accepting…*, which is also what stops a second tap on **Done**: that one
+  posts the folio charge and there is no transition back out of it.
+
 **Money is never taken in the app.** Charges accrue to `folio_entries`; the guest can read
 the itemised bill from their phone and tap "ask to settle", which puts the room and its
 balance on the front desk's board. The desk takes payment the way it always has and marks

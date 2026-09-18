@@ -66,7 +66,7 @@ export default async function CardPage({ params }: PageProps<'/c/[token]'>) {
 
   return (
     <main
-      className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 py-12 text-center"
+      className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center px-6 py-12 text-center"
       style={{ ['--brand' as string]: room.brand_color }}
     >
       <p className="text-[12px] font-semibold tracking-[0.18em] text-[var(--brand)] uppercase">

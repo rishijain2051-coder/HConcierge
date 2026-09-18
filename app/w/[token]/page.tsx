@@ -5,6 +5,7 @@ import { hotelTime } from '@/lib/clock'
 import { since, slaState } from '@/lib/sla'
 import { departmentLabel } from '@/lib/types'
 import { actOnJob } from './actions'
+import ActButton from './ActButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,10 +30,11 @@ export async function generateMetadata(): Promise<Metadata> {
  * Authority is the signed token plus a re-read of the staff row; see
  * lib/auth.ts staffFromLinkToken.
  *
- * Deliberately a server component with plain forms and no client JavaScript.
- * app/staff/(app)/ui.tsx has a nicer Button, but it is a client component in
- * another route group, and this page's whole job is to open fast on bad hotel
- * wifi. The classes below match it.
+ * Deliberately a server component with plain forms: this page's whole job is to
+ * open fast on bad hotel wifi, and app/staff/(app)/ui.tsx's nicer Button is a
+ * client component in another route group. The classes below match it. The one
+ * piece of client JavaScript here is ./ActButton, which does nothing but say
+ * that a tap landed — see the note in that file for why it is worth the bytes.
  */
 export default async function JobsPage({ params, searchParams }: PageProps<'/w/[token]'>) {
   const { token } = await params
@@ -47,7 +49,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
   const refused = typeof e === 'string' ? e : undefined
 
   return (
-    <main className="mx-auto min-h-dvh max-w-md px-4 py-6">
+    <main className="mx-auto min-h-svh max-w-md px-4 py-6">
       <p className="text-muted text-[13px] font-semibold tracking-tight">
         {staff.property_name ?? 'HConcierge'}
       </p>
@@ -145,11 +147,11 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
                 <div className="mt-3 flex gap-2">
                   {req.status === 'new' ? (
                     <>
-                      <Act token={token} id={req.id} next="ack" label="Accept" primary />
-                      <Act token={token} id={req.id} next="done" label="Done" />
+                      <Act token={token} id={req.id} next="ack" label="Accept" busy="Accepting…" primary />
+                      <Act token={token} id={req.id} next="done" label="Done" busy="Finishing…" />
                     </>
                   ) : (
-                    <Act token={token} id={req.id} next="done" label="Mark done" primary />
+                    <Act token={token} id={req.id} next="done" label="Mark done" busy="Finishing…" primary />
                   )}
                 </div>
               </li>
@@ -178,12 +180,14 @@ function Act({
   id,
   next,
   label,
+  busy,
   primary,
 }: {
   token: string
   id: string
   next: 'ack' | 'done'
   label: string
+  busy: string
   primary?: boolean
 }) {
   return (
@@ -191,23 +195,14 @@ function Act({
       <input type="hidden" name="token" value={token} />
       <input type="hidden" name="request" value={id} />
       <input type="hidden" name="next" value={next} />
-      <button
-        type="submit"
-        className={`min-h-11 w-full rounded-lg border px-3 py-2.5 text-[14px] font-semibold transition ${
-          primary
-            ? 'bg-ink border-ink text-white hover:opacity-90'
-            : 'border-line text-muted hover:text-ink'
-        }`}
-      >
-        {label}
-      </button>
+      <ActButton label={label} busy={busy} primary={primary} />
     </form>
   )
 }
 
 function Expired() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center">
+    <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-6 text-center">
       <h1 className="font-display text-[clamp(1.6rem,6vw,2rem)] leading-[1.1] tracking-[-0.02em]">
         This link has expired
       </h1>

@@ -158,7 +158,7 @@ export default function GuestApp({
   if (gone) {
     return (
       <div
-        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center"
+        className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-6 text-center"
         style={{ ['--brand' as string]: property.brand_color }}
       >
         <h1 className="font-display text-[clamp(1.8rem,7vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">
@@ -181,10 +181,18 @@ export default function GuestApp({
 
   return (
     <div
-      className="mx-auto flex min-h-dvh max-w-2xl flex-col"
+      className="mx-auto flex min-h-svh max-w-2xl flex-col"
       style={{ ['--brand' as string]: property.brand_color, ['--brand-soft' as string]: `${property.brand_color}12` }}
     >
-      <header className="bg-surface/85 sticky top-0 z-30 backdrop-blur-xl">
+      {/* Opaque on a phone, frosted on a desktop.
+          A `backdrop-filter` under a sticky or fixed layer is re-run over
+          everything behind it on every scrolled frame, and the menu stacks
+          three of them — this header, the category rail below it, and the
+          nav at the bottom. A desktop GPU does that for nothing; a handset
+          drops frames and the scroll goes sticky under the thumb, which is
+          the single biggest reason this screen felt rusty on a phone. What
+          is lost is a translucency nobody can see once the bar is opaque. */}
+      <header className="bg-surface pointer-fine:bg-surface/85 pointer-fine:backdrop-blur-xl sticky top-0 z-30">
         <div className="border-line flex items-center justify-between gap-3 border-b px-4 py-2.5">
           <div className="min-w-0">
             <p className="text-ink truncate text-[15px] leading-tight font-semibold tracking-[-0.01em]">
@@ -248,7 +256,7 @@ export default function GuestApp({
         <BasketBar count={cartCount} total={cartTotal} onOpen={() => setCartOpen(true)} />
       )}
 
-      <nav className="bg-surface/90 border-line fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur-xl">
+      <nav className="bg-surface pointer-fine:bg-surface/90 pointer-fine:backdrop-blur-xl border-line fixed inset-x-0 bottom-0 z-30 border-t">
         <div className="mx-auto flex max-w-2xl pb-[env(safe-area-inset-bottom)]">
           {(
             [
@@ -741,7 +749,7 @@ const Catalog = memo(function Catalog({
 
   return (
     <div>
-      <div className="bg-paper/85 border-line sticky top-[57px] z-20 border-b backdrop-blur-xl">
+      <div className="bg-paper pointer-fine:bg-paper/85 pointer-fine:backdrop-blur-xl border-line sticky top-[57px] z-20 border-b">
         <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-2.5">
           {categories.map((c) => (
             <button
@@ -1432,7 +1440,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
       <div
-        className="bg-scrim absolute inset-0 backdrop-blur-[2px]"
+        className="bg-scrim pointer-fine:backdrop-blur-[2px] absolute inset-0"
         style={{ animation: 'hc-fade-in 300ms var(--ease-glide) both' }}
         onClick={onClose}
       />
@@ -1440,7 +1448,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
         ref={ref}
         tabIndex={-1}
         style={{ animation: 'hc-sheet-in 460ms var(--ease-glide) both' }}
-        className="bg-surface relative max-h-[88dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[var(--shadow-float)] sm:rounded-[28px] sm:pb-5"
+        className="bg-surface relative max-h-[88dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-[var(--shadow-float)] sm:rounded-[28px] sm:pb-5"
       >
         <div className="mb-4 flex items-start justify-between gap-4">
           <h2 className="text-[20px] leading-tight font-semibold tracking-[-0.02em]">{title}</h2>

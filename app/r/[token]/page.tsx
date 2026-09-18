@@ -27,7 +27,7 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
   if (!ctx.room.occupied) {
     return (
       <div
-        className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 text-center"
+        className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-6 text-center"
         style={{ ['--brand' as string]: ctx.property.brand_color }}
       >
         <p className="text-muted text-[14px] font-semibold tracking-tight">{ctx.property.name}</p>

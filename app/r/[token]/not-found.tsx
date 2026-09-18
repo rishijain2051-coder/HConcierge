@@ -1,6 +1,6 @@
 export default function RoomNotFound() {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center">
+    <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center px-6 text-center">
       {/* No icon, matching its two siblings: the not-checked-in screen in
           page.tsx and Expired() in app/w/[token]. This had the codebase's only
           emoji-as-icon, which also made it the only screen not drawing from

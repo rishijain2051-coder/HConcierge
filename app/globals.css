@@ -59,11 +59,24 @@ body {
   font-family: var(--font-sans-stack), system-ui, sans-serif;
 }
 
-/* Guests tap these on a phone with one hand; 44px is the floor. */
-button,
-[role="button"],
-a.tap {
+/* Two things that only matter on a phone, both set on the root because they
+   are about the whole document rather than any component in it.
+
+   `touch-action: manipulation` keeps pinch-zoom — guests will pinch a menu —
+   and drops double-tap-to-zoom. That is what removes the ~300ms a browser
+   otherwise waits after every tap to see whether a second one is coming: with
+   zoom left on (viewport `maximumScale: 5`) that wait applies to every button,
+   link and row, and it is most of why these pages read as a beat behind the
+   finger. Set here rather than on `button` so links and rows get it too.
+
+   `overscroll-behavior-y` turns off pull-to-refresh. Every link page is
+   `force-dynamic`, so a stray upward flick at the top of the list re-runs the
+   whole query and the page appears to hang — and these pages are opened from
+   WhatsApp's in-app browser, which is exactly where that gesture is easiest to
+   trigger by accident. */
+html {
   touch-action: manipulation;
+  overscroll-behavior-y: contain;
 }
 
 /* Safari zooms the page in when a field smaller than 16px takes focus, and it
@@ -135,22 +148,28 @@ a.tap {
   scrollbar-width: thin;
 }
 
-::-webkit-scrollbar {
-  width: 11px;
-  height: 11px;
-}
-::-webkit-scrollbar-thumb {
-  background: color-mix(in oklab, var(--color-ink) 20%, transparent);
-  border: 3px solid transparent;
-  background-clip: content-box;
-  border-radius: 999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in oklab, var(--color-ink) 34%, transparent);
-  background-clip: content-box;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
+/* Styling a scrollbar at all is what makes a mobile browser draw a permanent
+   classic one instead of the overlay it would have used, and a permanent 11px
+   gutter on a 375px screen takes width off the content and puts a grey bar
+   down the side of every rail. So: pointers that have a scrollbar to style. */
+@media (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-ink) 20%, transparent);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--color-ink) 34%, transparent);
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 input,

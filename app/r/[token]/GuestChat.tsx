@@ -39,7 +39,7 @@ export default function GuestChat({
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-13rem)] flex-col px-4 pt-5">
+    <div className="flex min-h-[calc(100svh-13rem)] flex-col px-4 pt-5">
       <div className="flex-1">
         <h1 className="text-[22px] font-semibold tracking-tight">Front desk</h1>
         <p className="text-muted mt-0.5 mb-5 text-sm">
