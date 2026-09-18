@@ -121,7 +121,17 @@ export default function PushButton({
         setNote('The server would not take the subscription.')
         return
       }
+      const body = (await res.json().catch(() => ({}))) as { woke?: number }
       setOn(true)
+      // The server pushes to this device as soon as it is registered, so there
+      // is something to see straight away rather than a label change and a
+      // wait. If the push service refused it, that is worth saying here: it is
+      // the difference between "set up" and "set up and working".
+      setNote(
+        body.woke && body.woke > 0
+          ? 'Notifications are on. One has just been sent to this device.'
+          : 'Registered, but the push service would not take a test notification. Check the console.',
+      )
     } catch (err) {
       setNote(err instanceof Error ? err.message : 'That did not work.')
     } finally {
@@ -135,18 +145,26 @@ export default function PushButton({
         onClick={toggle}
         disabled={busy}
         aria-pressed={on}
-        aria-label={on ? 'This device is being woken' : 'Wake this device'}
+        aria-label={on ? 'Notifications are on for this device. Click to turn them off.' : 'Turn on notifications for this device'}
+        title={on ? 'Notifications are on for this device. Click to turn them off.' : undefined}
         className={`flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-2 text-[13px] font-semibold transition disabled:opacity-55 sm:min-h-0 ${
           on ? 'border-ok text-ok' : 'border-line hover:border-ink'
         }`}
       >
         <IconAlarm size={15} on={on} />
+        {/* A settled state, not a progress verb. This said "Waking this
+            device" once it had subscribed, which reads as something still
+            happening - so the thing to do was click it again, and clicking it
+            again is what turns it off. */}
         <span className="hidden sm:inline">
-          {busy ? 'One moment…' : on ? 'Waking this device' : 'Wake this device'}
+          {busy ? 'Just a moment…' : on ? 'Notifications on' : 'Turn on notifications'}
         </span>
       </button>
       {note && (
-        <p className="border-line bg-surface text-muted absolute top-full right-0 z-40 mt-1.5 w-[260px] rounded-xl border p-2.5 text-[12px] leading-snug shadow-[var(--shadow-float)]">
+        <p
+          onClick={() => setNote(null)}
+          className="border-line bg-surface text-muted absolute top-full right-0 z-40 mt-1.5 w-[260px] cursor-pointer rounded-xl border p-2.5 text-[12px] leading-snug shadow-[var(--shadow-float)]"
+        >
           {note}
         </p>
       )}

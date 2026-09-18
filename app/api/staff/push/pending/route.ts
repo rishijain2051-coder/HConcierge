@@ -31,9 +31,13 @@ export async function GET() {
   const waiting = board.filter((r) => r.status === 'new')
 
   if (waiting.length === 0) {
+    // Reached two ways: the confirmation push when somebody subscribes, and a
+    // push that arrives after the request it was about has been accepted. This
+    // wording has to be true of both, so it says what is true now and what
+    // happens next rather than guessing which case it is in.
     return Response.json({
       title: 'Nothing waiting',
-      body: 'Somebody has already picked it up.',
+      body: 'Notifications are on. You will hear the moment a room asks for something.',
       url: '/staff/board',
     })
   }

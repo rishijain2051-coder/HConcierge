@@ -1,5 +1,5 @@
 import { getStaff } from '@/lib/auth'
-import { dropSubscription, pushConfigured, saveSubscription } from '@/lib/push'
+import { dropSubscription, pushConfigured, pushToStaff, saveSubscription } from '@/lib/push'
 
 /**
  * A browser telling us it is willing to be woken, or that it no longer is.
@@ -32,7 +32,21 @@ export async function POST(req: Request) {
   }
 
   await saveSubscription(staff.id, { endpoint, p256dh, auth })
-  return Response.json({ ok: true })
+
+  // And wake it immediately.
+  //
+  // Without this, subscribing proves nothing: the next push is whenever a
+  // guest next asks for something, which at a quiet moment is never, and the
+  // only feedback was a button that changed its own label. Somebody watching
+  // for a notification that cannot come concludes it is broken and clicks
+  // again - which unsubscribes them. That is not a hypothetical; it is what
+  // happened the first time this shipped.
+  //
+  // The count comes back with the response so the UI can tell "subscribed and
+  // proven" from "subscribed, but the push service would not take it", which
+  // are very different problems and used to look identical.
+  const sent = await pushToStaff([staff.id]).catch(() => 0)
+  return Response.json({ ok: true, woke: sent })
 }
 
 export async function DELETE(req: Request) {
