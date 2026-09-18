@@ -109,7 +109,7 @@ export default function Home() {
         <div className="text-faint mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-8 text-[13px] sm:px-6">
           <span className="inline-flex items-center gap-2">
             <Logo size={15} />
-            HConcierge — built for RN Hospitality
+            HConcierge — built by Draveta Technologies
           </span>
           <StaffSignInLink className="hover:text-ink inline-flex items-center gap-1.5 font-medium transition">
             Staff sign in
