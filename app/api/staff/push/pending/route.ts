@@ -50,6 +50,12 @@ export async function GET() {
     : first.note || team
 
   return Response.json({
+    // The id and room of the oldest one, so the notification can carry an
+    // Accept button for the request it actually names. The notification is
+    // tagged for the board as a whole, so this is deliberately the one the
+    // body describes rather than "all of them".
+    requestId: first.id,
+    room: first.room_number,
     title:
       waiting.length === 1
         ? `Room ${first.room_number} is waiting`
