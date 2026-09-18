@@ -82,13 +82,36 @@ export function openStream(roomId: string, max: number): (() => void) | null {
  * limiting rather than trusting a header we cannot verify.
  */
 export function clientKey(req: Request): string {
-  const fwd = req.headers.get('x-forwarded-for')
+  return clientKeyFrom(req.headers)
+}
+
+/**
+ * The same key from a bare header bag, for server actions.
+ *
+ * A server action has no Request to read - it has `headers()` from
+ * next/headers - and the guest's code gate is an action. Sharing this is what
+ * stops a second, subtly different idea of "who is this" appearing there.
+ */
+export function clientKeyFrom(h: Headers): string {
+  const fwd = h.get('x-forwarded-for')
   if (fwd) return fwd.split(',')[0].trim()
-  return req.headers.get('x-real-ip') ?? 'unknown'
+  return h.get('x-real-ip') ?? 'unknown'
 }
 
 /** Shared so the two guest routes cannot drift apart. */
 export const GUEST_LIMIT = { perMinute: 40, burst: 60 }
+
+/**
+ * The 4-digit code, which is the one endpoint in the app worth guessing at.
+ *
+ * The per-room lockout in lib/guest-session.ts is the real defence - five
+ * wrong codes and that room is shut for fifteen minutes - and it caps one room
+ * at about 480 guesses a day against 10,000 combinations. What it does not cap
+ * is the cost: every guess is a round trip and an `update rooms`, so a script
+ * walking a list of tokens spends the connection pool rather than breaking in.
+ * Ten a minute is more than a guest mistyping twice ever needs.
+ */
+export const CODE_LIMIT = { perMinute: 10, burst: 15 }
 export const MAX_STREAMS_PER_ROOM = 3
 
 export function tooMany(retryAfterSeconds = 30): Response {

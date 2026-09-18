@@ -1,8 +1,11 @@
 'use server'
 
+import { headers } from 'next/headers'
+
 import { sql } from '@/lib/db'
 import { audit } from '@/lib/audit'
 import { loadRoom } from '@/lib/guest'
+import { allow, clientKeyFrom, CODE_LIMIT } from '@/lib/limit'
 import { hasGuestAccess, submitRoomCode } from '@/lib/guest-session'
 import { rupees } from '@/lib/money'
 import { cancelOwnRequest, createFreeformRequest, createRequests, type CartLine } from '@/lib/requests'
@@ -28,6 +31,14 @@ const MESSAGE_MAX = 15
 
 /** The second factor: the 4-digit code the front desk issued for this stay. */
 export async function enterRoomCode(token: string, code: string) {
+  // Before the database, deliberately. The per-room lockout is what stops a
+  // code being guessed; this is what stops the guessing being free. Every
+  // attempt otherwise costs a room lookup and an `update rooms` on a pool that
+  // is the first thing to run out under load.
+  if (!allow(`code:${clientKeyFrom(await headers())}`, CODE_LIMIT.perMinute, CODE_LIMIT.burst)) {
+    return { ok: false as const, error: 'Too many tries from this device. Wait a moment and try again.' }
+  }
+
   const ctx = await loadRoom(token)
   if (!ctx) return { ok: false as const, error: 'This room link is not valid. Please ask at reception.' }
   if (!ctx.room.occupied) return { ok: false as const, error: 'This room is not checked in yet.' }

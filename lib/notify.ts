@@ -1,4 +1,5 @@
 import { sql } from './db'
+import { breakerAllows, breakerRecord } from './breaker'
 import { pushToStaff } from './push'
 import { audit } from './audit'
 import { baseUrl } from './qr'
@@ -57,8 +58,16 @@ async function viaGateway(to: string, body: string): Promise<boolean> {
   const chat = chatId(to)
   if (!chat) {
     console.error(`[notify] unusable phone number, not sending: ${to}`)
+    // Deliberately before the breaker and not recorded as a failure: a number
+    // stored without its country code is wrong about that number for ever,
+    // and counting it would take a working transport out of the rotation.
     return false
   }
+
+  // Skipped while the breaker is open, so the caller falls through to Twilio
+  // at once rather than waiting out a connect to a laptop that is shut.
+  if (!breakerAllows('gateway')) return false
+
   try {
     const res = await fetch(`${waUrl}/api/sessions/${waSession}/messages/send-text`, {
       method: 'POST',
@@ -71,11 +80,17 @@ async function viaGateway(to: string, body: string): Promise<boolean> {
     })
     if (!res.ok) {
       console.error('[notify] gateway rejected:', res.status, await res.text())
+      // A 4xx from a reachable gateway is still a failure of this transport -
+      // an expired session answers 401 and will answer 401 to the next fifty
+      // messages just as fast.
+      breakerRecord('gateway', false)
       return false
     }
+    breakerRecord('gateway', true)
     return true
   } catch (err) {
     console.error('[notify] gateway request failed', err)
+    breakerRecord('gateway', false)
     return false
   }
 }
@@ -88,6 +103,12 @@ async function viaTwilio(to: string, body: string): Promise<boolean> {
   // A whatsapp: sender can only message a whatsapp: recipient, and vice versa.
   const recipient = from.startsWith('whatsapp:') && !to.startsWith('whatsapp:') ? `whatsapp:${to}` : to
 
+  // The last transport there is, so an open breaker here means nothing goes
+  // out at all - which is still the right answer. Six hanging requests inside
+  // one `maxDuration` is how a sweep dies half-finished, and a sweep that dies
+  // half-finished leaves rungs unfired with `escalated_at` already stamped.
+  if (!breakerAllows('twilio')) return false
+
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: 'POST',
@@ -99,11 +120,14 @@ async function viaTwilio(to: string, body: string): Promise<boolean> {
     })
     if (!res.ok) {
       console.error('[notify] twilio rejected:', res.status, await res.text())
+      breakerRecord('twilio', false)
       return false
     }
+    breakerRecord('twilio', true)
     return true
   } catch (err) {
     console.error('[notify] twilio request failed', err)
+    breakerRecord('twilio', false)
     return false
   }
 }
