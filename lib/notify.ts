@@ -1,4 +1,5 @@
 import { sql } from './db'
+import { pushToStaff } from './push'
 import { audit } from './audit'
 import { baseUrl } from './qr'
 import { signStaffLink, staffLinkUrl } from './staff-link'
@@ -304,6 +305,24 @@ function teamRecipients(propertyId: string, department: string, includeSuperviso
             or (${includeSupervisors} and role in ('manager','admin')))`
 }
 
+/**
+ * The same team, but by id and without the phone clause.
+ *
+ * `teamRecipients` above insists on a number, because a message needs one.
+ * Push does not, and that difference is most of what it is worth: the
+ * housekeeper whose number was never verified, or was never collected, is
+ * unreachable by WhatsApp and perfectly reachable on the handset in their hand.
+ */
+function teamStaffIds(propertyId: string, department: string, includeSupervisors = false) {
+  return sql<{ id: string }[]>`
+    select id from staff
+     where active and property_id = ${propertyId}
+       and (department = ${department}
+            or ${department} = any(extra_teams)
+            or department = 'all'
+            or (${includeSupervisors} and role in ('manager','admin')))`
+}
+
 type FiredRow = {
   id: string
   ref: string
@@ -532,15 +551,31 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
       await Promise.all(people.map((p) => sendMessage(p.phone, `${text}\n${actionLine(base, p, r.ref)}`)))
     }
 
+    // And the same news to whatever devices are subscribed. Deliberately wider
+    // than the rung: everyone the rung reached, plus the team who can actually
+    // clear it, because a push is free and silent until somebody looks at it.
+    // The service worker fetches the current state when it wakes, so a phone
+    // that comes back online at 4.20am is told what is true at 4.20am.
+    const woken = new Set(people.map((p) => p.id))
+    for (const row of await teamStaffIds(r.property_id, r.department, true)) woken.add(row.id)
+    await pushToStaff([...woken])
+
     await remindOwners(r, people, base)
   }
 
   return fired.length
 }
 
-/** Optional ping when a request first arrives. Off unless NOTIFY_ON_NEW=1. */
+/**
+ * A request has just arrived.
+ *
+ * Two channels with two different rules. Push goes out every time: it costs
+ * nothing, it needs no phone number, and it is the only thing that reaches
+ * anybody when there is no board open — which at 4am is the whole point.
+ * WhatsApp stays behind NOTIFY_ON_NEW, because new requests are by far the
+ * largest source of message volume and every one of them is billed.
+ */
 export async function notifyNewRequest(requestId: string): Promise<void> {
-  if (process.env.NOTIFY_ON_NEW !== '1') return
   const [r] = await sql<
     { property_id: string; department: string; ref: string; room_number: string; note: string | null; team: string | null; property: string }[]
   >`select r.property_id, r.department, r.ref::text as ref, rm.number as room_number, r.note, d.name as team,
@@ -552,6 +587,12 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
         on d.organisation_id = p.organisation_id and d.slug = r.department
      where r.id = ${requestId} limit 1`
   if (!r) return
+
+  // Supervisors off here too, for the same reason as below: a manager whose
+  // phone buzzes for every towel stops looking at any of them.
+  await pushToStaff((await teamStaffIds(r.property_id, r.department)).map((row) => row.id))
+
+  if (process.env.NOTIFY_ON_NEW !== '1') return
 
   // Supervisors off: the team that does the work, not everyone who runs the
   // property. Escalation is how a manager hears about a request.

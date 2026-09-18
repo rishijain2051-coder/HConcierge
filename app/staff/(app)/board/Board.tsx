@@ -5,11 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hotelTime } from '@/lib/clock'
 import { rupees } from '@/lib/money'
-import { formatAge, minutesRemaining, notDueYet, since, slaState } from '@/lib/sla'
+import { formatAge, howOld, minutesRemaining, notDueYet, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { IconAlarm, IconChat, IconChevron, IconClose } from '@/components/icons'
 import { assign, openThread, quickReplies, reply, updateStatus } from './actions'
+import PushButton from './PushButton'
 
 // The board is pushed, not polled — see /api/staff/board/live. This is the
 // seatbelt: it covers a dropped stream, and it is what knocks on the server to
@@ -34,6 +35,8 @@ export default function Board({
   initialRequests,
   initialChats,
   serverNow,
+  pushKey,
+  pushSubscribed,
 }: {
   me: Me
   visibleDepartments: string[]
@@ -47,6 +50,9 @@ export default function Board({
   // The server's clock, so the first client render agrees with the HTML it is
   // hydrating. See the useState below.
   serverNow: number
+  /** null when the install has no VAPID keys; the button hides itself. */
+  pushKey: string | null
+  pushSubscribed: boolean
 }) {
   const router = useRouter()
   const [requests, setRequests] = useState(initialRequests)
@@ -416,6 +422,9 @@ export default function Board({
             <IconAlarm size={15} on={alerts} />
             <span className="hidden sm:inline">{alerts ? 'Alerts on' : 'Turn on alerts'}</span>
           </button>
+          {/* Its counterpart: that button makes this tab ring while somebody is
+              watching it, this one makes the device ring when nobody is. */}
+          <PushButton publicKey={pushKey} subscribed={pushSubscribed} />
         </div>
       </div>
 
@@ -470,7 +479,7 @@ export default function Board({
               >
                 <span className="text-[14px] font-semibold">Room {r.room_number}</span>
                 <span className={`text-[13px] ${late ? 'text-late font-medium' : 'text-muted'}`}>
-                  {nameOf(r.department)} · {age(r.created_at, new Date(now))}, target {r.sla_minutes}m
+                  {nameOf(r.department)} · {howOld(r.created_at, new Date(now))}, target {r.sla_minutes}m
                   {late ? ' · overdue' : ''}
                 </span>
                 <button
@@ -543,17 +552,6 @@ export default function Board({
 }
 
 /* --------------------------------------------------------------- pieces */
-
-/**
- * "12m old", or just "just now" — which does not take an "old" after it. The
- * same trap `since()` in lib/sla.ts documents, walked into again on the alert
- * rows, where the first minute of a request's life is exactly when somebody is
- * reading them.
- */
-function age(from: string | Date, now: Date) {
-  const a = formatAge(from, now)
-  return a === 'just now' ? a : `${a} old`
-}
 
 /**
  * "Sunita R." rather than "Sunita", because a card that only ever showed the

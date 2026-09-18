@@ -2,6 +2,7 @@ import { requireOperational, visibleDepartments } from '@/lib/auth'
 import { listTeams } from '@/lib/departments'
 import { loadAssignableStaff, loadBoard, loadChatRooms } from '@/lib/board'
 import { sql } from '@/lib/db'
+import { pushPublicKey, subscriptionCount } from '@/lib/push'
 import Board from './Board'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ export default async function BoardPage() {
   // eslint-disable-next-line react-hooks/purity
   const serverNow = Date.now()
 
-  const [requests, chats, properties, assignable, teams] = await Promise.all([
+  const [requests, chats, properties, assignable, teams, subscribed] = await Promise.all([
     loadBoard(staff),
     loadChatRooms(staff),
     staff.role === 'admin'
@@ -23,6 +24,7 @@ export default async function BoardPage() {
       : Promise.resolve([]),
     staff.property_id ? loadAssignableStaff(staff, staff.property_id) : Promise.resolve([]),
     listTeams(staff.organisation_id),
+    subscriptionCount(staff.id),
   ])
 
   return (
@@ -35,6 +37,8 @@ export default async function BoardPage() {
       initialRequests={requests}
       initialChats={chats}
       serverNow={serverNow}
+      pushKey={pushPublicKey()}
+      pushSubscribed={subscribed > 0}
     />
   )
 }

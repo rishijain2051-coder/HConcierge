@@ -15,7 +15,8 @@
     "db:check-escalation": "node --env-file=.env.local db/check-escalation.mjs",
     "db:check-receipt": "node --env-file=.env.local db/check-receipt.mjs",
     "db:check-quick-replies": "node --env-file=.env.local db/check-quick-replies.mjs",
-    "db:check-amber-alert": "node --env-file=.env.local db/check-amber-alert.mjs"
+    "db:check-amber-alert": "node --env-file=.env.local db/check-amber-alert.mjs",
+    "db:check-push": "node --env-file=.env.local db/check-push.mjs"
   },
   "dependencies": {
     "gsap": "^3.15.0",

@@ -38,6 +38,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM` | no | WhatsApp or SMS escalation. Unset = escalations log to the console instead. |
 | `NOTIFY_ON_NEW` | no | `1` also messages the team on every new request, not just escalations. **Off by default, and leave it off unless somebody is paying attention to the bill** — it is by far the largest source of message volume, since escalations are rare and new requests are not. |
 | `NOTIFY_ON_DONE` | — | **No longer read.** The completion notice is disabled in code — `lib/board.ts` does not call it and `COMPLETION_NOTICE` in `lib/notify.ts` is `false`. Setting this does nothing, on purpose: it was off by default and three still went out from one terminal that had it set. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | in production | Push notifications to staff devices. Unset in development and a throwaway pair is generated per process, so push works with no setup; unset in production and push is simply off. Rotating them unsubscribes every device. |
 | `CRON_SECRET` | in production | Shared with the pg_cron job. The route refuses to run unauthenticated once deployed. |
 | `NEXT_PUBLIC_BASE_URL` | no | Only needed if the QR origin cannot be read from the request. |
 
@@ -157,6 +158,37 @@ lives on the board and nowhere else in the app.
 Read off the whole board rather than the filtered view, deliberately: an alarm a
 team filter can silence is an alarm nobody can rely on.
 `npm run db:check-amber-alert` prints what it would be ringing about now.
+
+**And the phone rings when no board is open.** The ring above needs somebody
+looking at a screen, which at 4am nobody is. *Wake this device*, next to the
+alerts button, subscribes that browser to Web Push: after that a request landing
+at any hour reaches the lock screen of every device the team has subscribed,
+whether or not anyone is signed in on a monitor, and whether or not that person's
+phone number was ever verified. Push is per device, not per person -- the handset
+a housekeeper carries and the PC at the desk are separate subscriptions, and an
+endpoint that changes hands re-points to whoever subscribed last.
+
+**The push carries no payload, on purpose.** A push message can hold its own
+encrypted body, and every library that does it implements an ECDH agreement,
+HKDF and AES128GCM -- a lot of cryptography, one whole dependency, and it buys a
+copy of what a guest asked for sitting in a queue on Google's or Mozilla's push
+service until the phone next comes online. So the push here is an empty
+doorbell: `public/sw.js` wakes up, fetches `/api/staff/push/pending` with the
+staff member's own session cookie, and shows what is on their board *now*. A
+notification delayed by a tunnel says what is true when it arrives rather than
+what was true when it was sent, nothing about a guest ever leaves our servers,
+and the only cryptography left is a plain ES256 JWT that `node:crypto` signs.
+
+That signature is the one part that fails unreadably -- a push service answers a
+malformed VAPID token with a bare 401 -- so `npm run db:check-push` verifies one
+against the public key instead of discovering it against Firebase. The trap it
+guards is `dsaEncoding`: JOSE wants a flat 64-byte signature and node defaults to
+the ASN.1 wrapper.
+
+Push goes out on **every** new request, not behind `NOTIFY_ON_NEW`. That flag
+exists because each WhatsApp message is billed and new requests are the largest
+source of volume; a push costs nothing. Escalation pushes too, to the rung and
+the team both.
 
 The sweep runs opportunistically on the board's safety poll (once a minute while anyone
 is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at 4am when

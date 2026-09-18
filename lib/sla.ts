@@ -80,6 +80,19 @@ export function since(from: string | Date, now: Date = new Date()): string {
   return age === 'just now' ? age : `${age} ago`
 }
 
+/**
+ * "12m old", or just "just now" - which does not take an "old" after it.
+ *
+ * The same trap `since()` above documents, and two callers walked into it
+ * independently: the board's alert rows and the push notification body both
+ * read "just now old" for the first minute of a request's life, which is
+ * exactly the minute somebody is reading them.
+ */
+export function howOld(from: string | Date, now: Date = new Date()): string {
+  const a = formatAge(from, now)
+  return a === 'just now' ? a : `${a} old`
+}
+
 export function formatAge(from: string | Date, now: Date = new Date()): string {
   const m = Math.floor(minutesElapsed(from, now))
   if (m < 1) return 'just now'

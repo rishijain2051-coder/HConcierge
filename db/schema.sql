@@ -222,6 +222,25 @@ create table if not exists audit_log (
 );
 create index if not exists audit_created_idx on audit_log (created_at desc);
 
+-- One row per browser that has agreed to be woken. `endpoint` is the push
+-- service's own URL for that browser and is the identity: it is unique so a
+-- shared handset changing hands re-points to whoever subscribed last rather
+-- than notifying the person who had it yesterday. p256dh and auth are the
+-- browser's encryption keys -- unused today, because HConcierge sends a push
+-- with no payload and the service worker fetches what to say (see lib/push.ts),
+-- but they are what the browser handed over and re-subscribing everybody to get
+-- them back later would be the expensive way to find that out.
+create table if not exists push_subscriptions (
+  id           uuid primary key default gen_random_uuid(),
+  staff_id     uuid not null references staff(id) on delete cascade,
+  endpoint     text not null unique,
+  p256dh       text not null,
+  auth         text not null,
+  created_at   timestamptz not null default now(),
+  last_push_at timestamptz
+);
+create index if not exists push_staff_idx on push_subscriptions (staff_id);
+
 -- keep requests.updated_at honest without every query remembering to set it
 create or replace function touch_updated_at() returns trigger as $fn$
 begin
