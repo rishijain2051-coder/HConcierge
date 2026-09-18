@@ -172,6 +172,22 @@ export async function deleteInfoPage(id: string) {
   return res
 }
 
+/* ------------------------------------------------------------ quick replies */
+
+export async function saveQuickReply(propertyId: string, input: { id?: string | null; label: string; body: string }) {
+  const actor = await requireManager()
+  const res = await admin.saveQuickReply(actor, propertyId, input)
+  if (res.ok) touched()
+  return res
+}
+
+export async function deleteQuickReply(id: string) {
+  const actor = await requireManager()
+  const res = await admin.deleteQuickReply(actor, id)
+  if (res.ok) touched()
+  return res
+}
+
 /* --------------------------------------------------------------- escalation */
 
 export async function saveEscalationRule(propertyId: string, input: escalation.EscalationInput) {

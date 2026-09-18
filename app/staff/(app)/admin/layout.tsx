@@ -39,6 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: '/staff/admin/catalog', label: 'Directory' },
         { href: '/staff/admin/escalation', label: 'Escalation' },
         { href: '/staff/admin/info', label: 'Hotel info' },
+        { href: '/staff/admin/replies', label: 'Quick replies' },
         { href: '/staff/admin/import', label: 'Import' },
         { href: '/staff/admin/audit', label: 'Activity' },
       ]
@@ -58,7 +59,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       )}
 
       <div className="border-line mb-6 flex flex-wrap items-center justify-between gap-4 border-b pb-4">
-        {/* Six tabs wrap to three cramped rows on a phone. A rail keeps them on
+        {/* These wrap to three cramped rows on a phone. A rail keeps them on
             one line and keeps the panel's own content above the fold. */}
         <nav className="no-scrollbar -mx-4 flex gap-1 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           {tabs.map((t) => (

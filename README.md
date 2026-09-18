@@ -79,6 +79,13 @@ never sees the biryani. This is the part that stops reception being a switchboar
 
 Departments: `front_desk`, `housekeeping`, `fnb`, `maintenance`.
 
+The desk can also reply in the room's own chat, and the lines it sends most
+often are canned per property — *on the way*, *kitchen is closing*, *your laundry
+is back* — editable in **Manage → Quick replies**. Picking one fills the reply box
+rather than sending it, so it can still be changed before it goes. These were
+seeded from the beginning and, until they had a screen, could only be changed by
+us.
+
 ### Who sees what
 
 Four levels, each scoped by the one above:
@@ -176,7 +183,9 @@ because a receipt that disagrees with itself between two printers is worse than 
 spells it out on both.
 
 `npm run db:check-receipt` prints the receipt at both widths and asserts the byte framing.
-`npm run db:check-escalation` does the same for who a late request reaches. Neither sends
+`npm run db:check-escalation` does the same for who a late request reaches, and
+`npm run db:check-quick-replies` exercises the quick-reply editor's rules — including
+that a manager at one property cannot write into another's words. None of them sends
 or prints anything.
 
 ---

@@ -969,6 +969,93 @@ export async function deleteInfoPage(actor: Staff, id: string): Promise<Ok> {
   return { ok: true }
 }
 
+/* ------------------------------------------------------------ quick replies */
+
+/**
+ * The canned lines the desk sends into a room's chat.
+ *
+ * Seeded per property since the beginning and copied when a property starts
+ * from another's catalogue, but until now there was no way to change one: a
+ * hotel that wanted to say something in its own words had to ask us. The board
+ * reads these through lib/board.ts loadQuickReplies, scoped by the room rather
+ * than by the reader, because they are one customer's words.
+ */
+export type AdminQuickReply = { id: string; label: string; body: string; sort: number }
+
+export async function listQuickReplies(actor: Staff, propertyId: string): Promise<AdminQuickReply[]> {
+  return sql<AdminQuickReply[]>`
+    select id, label, body, sort from quick_replies
+     where property_id = ${propertyId}
+       and ${scopeTo(actor, sql`property_id`, propertyId)}
+     order by sort, label`
+}
+
+/**
+ * `body` is capped at the same 1000 characters as the reply box on the board.
+ * A canned line longer than the field it is pasted into would arrive silently
+ * truncated, and the person sending it would never see where it was cut.
+ */
+export async function saveQuickReply(
+  actor: Staff,
+  propertyId: string,
+  input: { id?: string | null; label: string; body: string },
+): Promise<Ok> {
+  if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
+  const label = input.label.trim().slice(0, 60)
+  const body = input.body.trim().slice(0, 1000)
+  if (!label) return fail('Give it a name — that is what the desk picks from.')
+  if (!body) return fail('Enter the line that gets sent.')
+
+  // No unique index here, so this is a courtesy rather than an integrity
+  // check: two chips reading the same thing are indistinguishable in a list
+  // that shows the label first.
+  const [clash] = await sql`
+    select 1 from quick_replies
+     where property_id = ${propertyId} and lower(label) = lower(${label})
+       and id <> ${input.id ?? '00000000-0000-0000-0000-000000000000'}`
+  if (clash) return fail(`Another quick reply is already called “${label}”.`)
+
+  if (input.id) {
+    await sql`update quick_replies set label = ${label}, body = ${body}
+               where id = ${input.id} and property_id = ${propertyId}`
+  } else {
+    const [{ next }] = await sql<{ next: number }[]>`
+      select coalesce(max(sort), -1) + 1 as next from quick_replies where property_id = ${propertyId}`
+    await sql`insert into quick_replies (property_id, label, body, sort)
+              values (${propertyId}, ${label}, ${body}, ${next})`
+  }
+
+  await audit({
+    propertyId,
+    staffId: actor.id,
+    actor: actor.name,
+    action: input.id ? 'quick_reply.updated' : 'quick_reply.created',
+    entity: 'quick_reply',
+    entityId: input.id ?? undefined,
+    meta: { label },
+  })
+  return { ok: true }
+}
+
+export async function deleteQuickReply(actor: Staff, id: string): Promise<Ok> {
+  const [row] = await sql<{ property_id: string; label: string }[]>`
+    select property_id, label from quick_replies where id = ${id}`
+  if (!row) return { ok: true }
+  if (!(await canManageProperty(actor, row.property_id))) return fail('Not your property.')
+
+  await sql`delete from quick_replies where id = ${id}`
+  await audit({
+    propertyId: row.property_id,
+    staffId: actor.id,
+    actor: actor.name,
+    action: 'quick_reply.deleted',
+    entity: 'quick_reply',
+    entityId: id,
+    meta: { label: row.label },
+  })
+  return { ok: true }
+}
+
 /* -------------------------------------------------------------------- audit */
 
 export type AuditRow = {
