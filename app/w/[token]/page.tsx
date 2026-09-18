@@ -6,6 +6,7 @@ import { since, slaState } from '@/lib/sla'
 import { departmentLabel } from '@/lib/types'
 import { actOnJob } from './actions'
 import ActButton from './ActButton'
+import Live from './Live'
 import { Wordmark } from '@/components/Logo'
 
 export const dynamic = 'force-dynamic'
@@ -51,6 +52,9 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
 
   return (
     <main className="mx-auto min-h-svh max-w-md px-4 py-6">
+      {/* Live, so a job a colleague finished while this page was in a pocket
+          stops offering an irreversible Done button. Renders nothing. */}
+      <Live token={token} />
       <p className="text-muted text-[13px] font-semibold tracking-tight">
         {staff.property_name ?? 'HConcierge'}
       </p>
