@@ -81,7 +81,7 @@ export default function StaffDoor() {
           <h1 className="font-display mt-8 text-[clamp(1.9rem,4vw,2.5rem)] leading-[1.05] tracking-[-0.02em]">
             Sign in
           </h1>
-          <p className="text-muted mt-2 text-[14px]">RN Hospitality staff only.</p>
+          <p className="text-muted mt-2 text-[14px]">Staff only.</p>
 
           <form
             action={(form) => {

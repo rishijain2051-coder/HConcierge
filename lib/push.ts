@@ -129,9 +129,18 @@ async function ring(endpoint: string): Promise<Outcome> {
     method: 'POST',
     headers: {
       Authorization: authorization(endpoint),
-      // Required by FCM, and short on purpose: a request that has been sitting
-      // in a queue for an hour is not news, and the board has moved on.
-      TTL: '120',
+      // How long the push service should hold this if the device is offline.
+      //
+      // This was two minutes, on the reasoning that an hour-old request is not
+      // news - which was wrong twice over. The push carries no payload, so a
+      // late delivery fetches the board as it is at that moment and cannot be
+      // stale; and the notification is tagged, so a backlog collapses into one
+      // rather than arriving as a pile. Two minutes only meant that a desk PC
+      // with its browser closed for five minutes was never told at all, which
+      // is the exact case this feature exists for. Half an hour: long enough to
+      // outlast a closed lid or a tunnel, short enough not to raise last
+      // night's towel at breakfast.
+      TTL: '1800',
       Urgency: 'high',
     },
     signal: AbortSignal.timeout(8_000),
