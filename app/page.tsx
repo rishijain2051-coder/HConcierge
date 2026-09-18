@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import DemoStage from './DemoStage'
+import StaffSignInLink from './StaffSignInLink'
 import { DIRECTORY_BREADTH } from '@/lib/demo-data'
 import { IconArrowRight, IconPhoneOff } from '@/components/icons'
 import { Logo, Wordmark } from '@/components/Logo'
@@ -9,13 +9,10 @@ export default function Home() {
     <div className="min-h-dvh">
       <header className="mx-auto flex max-w-[1240px] items-center justify-between px-4 py-5 sm:px-6">
         <Wordmark size={20} className="text-[15px] font-semibold tracking-tight" />
-        <Link
-          href="/staff/login"
-          className="text-muted hover:text-ink inline-flex items-center gap-1.5 text-[13px] font-medium transition"
-        >
+        <StaffSignInLink className="text-muted hover:text-ink inline-flex items-center gap-1.5 text-[13px] font-medium transition">
           Staff sign in
           <IconArrowRight size={14} />
-        </Link>
+        </StaffSignInLink>
       </header>
 
       <main>
@@ -114,10 +111,10 @@ export default function Home() {
             <Logo size={15} />
             HConcierge — built for RN Hospitality
           </span>
-          <Link href="/staff/login" className="hover:text-ink inline-flex items-center gap-1.5 font-medium transition">
+          <StaffSignInLink className="hover:text-ink inline-flex items-center gap-1.5 font-medium transition">
             Staff sign in
             <IconArrowRight size={14} />
-          </Link>
+          </StaffSignInLink>
         </div>
       </footer>
     </div>
