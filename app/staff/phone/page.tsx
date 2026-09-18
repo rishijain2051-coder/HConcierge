@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { homeFor, requireStaff } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import AuthForm from '../AuthForm'
+import { Wordmark } from '@/components/Logo'
 import SendCode from './SendCode'
 import { verifyPhone } from './actions'
 
@@ -29,6 +30,9 @@ export default async function PhonePage() {
   if (!row?.phone?.trim()) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12 text-center">
+        <p className="text-muted mb-6 inline-flex justify-center text-[14px] font-semibold tracking-tight">
+          <Wordmark />
+        </p>
         <h1 className="font-display text-[clamp(1.9rem,4vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">
           No number on file
         </h1>
@@ -44,6 +48,9 @@ export default async function PhonePage() {
   if (row.phone_verified_at) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12 text-center">
+        <p className="text-muted mb-6 inline-flex justify-center text-[14px] font-semibold tracking-tight">
+          <Wordmark />
+        </p>
         <h1 className="font-display text-[clamp(1.9rem,4vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">
           {row.phone} is verified
         </h1>

@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import type { FormState } from './login/actions'
+import { Wordmark } from '@/components/Logo'
 
 type Field = {
   name: string
@@ -36,6 +37,11 @@ export default function AuthForm({
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 py-12">
+      {/* These screens sit outside the staff layout, so this is the only thing
+          on them that says whose software is asking for a password. */}
+      <p className="text-muted mb-7 inline-flex text-[14px] font-semibold tracking-tight">
+        <Wordmark />
+      </p>
       <h1 className="font-display text-[clamp(1.9rem,4vw,2.4rem)] leading-[1.05] tracking-[-0.02em]">{title}</h1>
       <p className="text-muted mt-1.5 text-sm">{subtitle}</p>
 

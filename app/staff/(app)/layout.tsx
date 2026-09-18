@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { homeFor, requireStaff } from '@/lib/auth'
 import { teamLabels } from '@/lib/departments'
 import { logout } from '../login/actions'
+import { Wordmark } from '@/components/Logo'
 import StaffNav from './StaffNav'
 
 export const dynamic = 'force-dynamic'
@@ -43,7 +44,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <StaffNav items={nav} name={staff.name} subtitle={subtitle} />
 
           <Link href={homeFor(staff)} className="text-[15px] font-semibold tracking-tight">
-            HConcierge
+            <Wordmark />
           </Link>
 
           <nav className="hidden items-center gap-1 sm:flex">

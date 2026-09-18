@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { IconArrowRight } from '@/components/icons'
+import { Wordmark } from '@/components/Logo'
 import { login } from './actions'
 
 const LAST_USER = 'hc.lastUser'
@@ -74,7 +75,7 @@ export default function StaffDoor() {
       <main className="flex items-center px-6 py-14 sm:px-10 lg:order-1 lg:px-14">
         <div className="w-full max-w-[23rem]">
           <Link href="/" className="text-muted hover:text-ink text-[14px] font-semibold tracking-tight transition">
-            HConcierge
+            <Wordmark />
           </Link>
 
           <h1 className="font-display mt-8 text-[clamp(1.9rem,4vw,2.5rem)] leading-[1.05] tracking-[-0.02em]">

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Wordmark } from '@/components/Logo'
 
 /**
  * Every unmatched URL that is not a room link — a mistyped staff path, a stale
@@ -13,6 +14,9 @@ import Link from 'next/link'
 export default function NotFound() {
   return (
     <div className="mx-auto flex min-h-svh max-w-md flex-col items-center justify-center px-6 text-center">
+      <p className="text-muted mb-6 inline-flex text-[14px] font-semibold tracking-tight">
+        <Wordmark />
+      </p>
       <h1 className="text-[22px] font-semibold tracking-tight">There is nothing at this address</h1>
       <p className="text-muted mt-2 text-sm leading-relaxed">
         The link may be out of date, or it may have a typo in it.

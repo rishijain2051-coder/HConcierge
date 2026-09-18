@@ -6,6 +6,7 @@ import { since, slaState } from '@/lib/sla'
 import { departmentLabel } from '@/lib/types'
 import { actOnJob } from './actions'
 import ActButton from './ActButton'
+import { Wordmark } from '@/components/Logo'
 
 export const dynamic = 'force-dynamic'
 
@@ -203,6 +204,9 @@ function Act({
 function Expired() {
   return (
     <main className="mx-auto flex min-h-svh max-w-md flex-col justify-center px-6 text-center">
+      <p className="text-muted mb-6 inline-flex justify-center text-[14px] font-semibold tracking-tight">
+        <Wordmark />
+      </p>
       <h1 className="font-display text-[clamp(1.6rem,6vw,2rem)] leading-[1.1] tracking-[-0.02em]">
         This link has expired
       </h1>

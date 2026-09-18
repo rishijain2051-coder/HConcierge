@@ -2,12 +2,13 @@ import Link from 'next/link'
 import DemoStage from './DemoStage'
 import { DIRECTORY_BREADTH } from '@/lib/demo-data'
 import { IconArrowRight, IconPhoneOff } from '@/components/icons'
+import { Logo, Wordmark } from '@/components/Logo'
 
 export default function Home() {
   return (
     <div className="min-h-dvh">
       <header className="mx-auto flex max-w-[1240px] items-center justify-between px-4 py-5 sm:px-6">
-        <span className="text-[15px] font-semibold tracking-tight">HConcierge</span>
+        <Wordmark size={20} className="text-[15px] font-semibold tracking-tight" />
         <Link
           href="/staff/login"
           className="text-muted hover:text-ink inline-flex items-center gap-1.5 text-[13px] font-medium transition"
@@ -109,7 +110,10 @@ export default function Home() {
 
       <footer className="border-line border-t">
         <div className="text-faint mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-8 text-[13px] sm:px-6">
-          <span>HConcierge — built for RN Hospitality</span>
+          <span className="inline-flex items-center gap-2">
+            <Logo size={15} />
+            HConcierge — built for RN Hospitality
+          </span>
           <Link href="/staff/login" className="hover:text-ink inline-flex items-center gap-1.5 font-medium transition">
             Staff sign in
             <IconArrowRight size={14} />
