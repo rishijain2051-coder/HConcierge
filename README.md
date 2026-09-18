@@ -1,6 +1,6 @@
 # HConcierge
 
-In-room guest requests for **RN Hospitality**, built to take the phone out of the loop
+In-room guest requests for hotels, built to take the phone out of the loop
 between a hotel room and reception.
 
 A guest scans the QR card on their desk and lands straight in their room's page — no app,

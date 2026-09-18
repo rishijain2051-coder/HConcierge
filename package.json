@@ -38,5 +38,5 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "HConcierge — in-room guest request platform for RN Hospitality"
+  "description": "HConcierge — in-room guest request platform for hotels"
 }
