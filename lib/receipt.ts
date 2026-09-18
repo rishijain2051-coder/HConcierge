@@ -71,17 +71,94 @@ export const WIDTH_80MM = 48
 export const WIDTH_58MM = 32
 
 /**
- * ESC/POS has no rupee sign.
+ * ESC/POS has no rupee sign at any fixed code point.
  *
- * The glyph lives at no fixed position in any of the standard code pages, so
- * `₹` prints as whatever byte 0x20-0xFF happens to sit there — a box, an
- * accented vowel, or nothing. Printers that do carry it disagree about where.
- * "Rs" is the safe spelling and is what an Indian till roll prints anyway.
- *
- * The HTML receipt keeps the real sign, because a browser has the font.
+ * `₹` prints as whatever byte 0x20-0xFF happens to sit at that position in the
+ * selected code page — a box, an accented vowel, or nothing — and the printers
+ * that do carry it disagree about where. So there are two ways to get one on
+ * paper, and this is the safe one: spell it "Rs", which is what an Indian till
+ * roll prints anyway. RUPEE_GLYPH below is the other.
  */
-function money(paise: number): string {
-  return rupees(paise).replace('₹', 'Rs ')
+export const RS_TEXT = 'Rs '
+
+/**
+ * The other way: draw it.
+ *
+ * ESC/POS lets a host define its own characters and print them in place of an
+ * ASCII code, which every clone implements because it is in the original Epson
+ * set. `~` is the code borrowed — nothing on a receipt prints a tilde — so one
+ * definition, one mode switch, and the paper carries a real rupee sign.
+ *
+ * The art is the source of truth rather than a table of hex, because a table of
+ * hex is unreviewable: nobody can tell a correct rupee sign from a wrong one.
+ * It was rasterised from the actual U+20B9 glyph at 12x24, which is Font A's
+ * cell on a 203dpi head, with the first and last columns left clear so adjacent
+ * characters do not touch.
+ */
+const RUPEE_GLYPH = [
+  '............',
+  '............',
+  '............',
+  '............',
+  '............',
+  '.##########.',
+  '.##########.',
+  '.#########..',
+  '.....###....',
+  '.##########.',
+  '.##########.',
+  '.#########..',
+  '.....###....',
+  '.#######....',
+  '.######.....',
+  '.#####......',
+  '..###.......',
+  '...###......',
+  '....####....',
+  '.....####...',
+  '............',
+  '............',
+  '............',
+  '............',
+]
+
+/** The ASCII code the drawn glyph is printed as. */
+const GLYPH_CODE = 0x7e // '~'
+
+/**
+ * The art as ESC/POS wants it: column-major, three bytes per column for a
+ * 24-dot-high cell, most significant bit at the top of each byte.
+ */
+export function packGlyph(art: string[] = RUPEE_GLYPH): number[] {
+  const height = art.length
+  const width = art[0].length
+  const bytesPerColumn = height / 8
+  const out: number[] = []
+  for (let col = 0; col < width; col++) {
+    for (let band = 0; band < bytesPerColumn; band++) {
+      let byte = 0
+      for (let bit = 0; bit < 8; bit++) {
+        if (art[band * 8 + bit][col] === '#') byte |= 0x80 >> bit
+      }
+      out.push(byte)
+    }
+  }
+  return out
+}
+
+/** The inverse, so a test can prove the packing without a printer. */
+export function unpackGlyph(bytes: number[], width = 12, height = 24): string[] {
+  const bytesPerColumn = height / 8
+  return Array.from({ length: height }, (_, row) =>
+    Array.from({ length: width }, (_, col) => {
+      const byte = bytes[col * bytesPerColumn + Math.floor(row / 8)]
+      return byte & (0x80 >> row % 8) ? '#' : '.'
+    }).join(''),
+  )
+}
+
+function money(paise: number, symbol = RS_TEXT): string {
+  return rupees(paise).replace('₹', symbol)
 }
 
 /** A left label and a right amount on one line, or two lines if it will not fit. */
@@ -107,8 +184,14 @@ function columns(left: string, right: string, width: number): string[] {
 const centre = (s: string, width: number) =>
   s.length >= width ? s : ' '.repeat(Math.floor((width - s.length) / 2)) + s
 
-/** The receipt as plain text, which is also what the ESC/POS body carries. */
-export function receiptText(r: Receipt, width = WIDTH_80MM): string[] {
+/**
+ * The receipt as plain text, which is also what the ESC/POS body carries.
+ *
+ * `symbol` is what stands in for `₹`, and it has to be threaded through rather
+ * than substituted afterwards: every amount is right-aligned by string length,
+ * so "Rs 420.00" and a one-character glyph do not produce the same columns.
+ */
+export function receiptText(r: Receipt, width = WIDTH_80MM, symbol = RS_TEXT): string[] {
   const rule = '-'.repeat(width)
   const when = r.printedAt.toLocaleString('en-IN', {
     day: '2-digit',
@@ -129,9 +212,9 @@ export function receiptText(r: Receipt, width = WIDTH_80MM): string[] {
   if (r.empty) {
     out.push('', centre('Nothing outstanding.', width), '')
   } else {
-    for (const l of r.lines) out.push(...columns(l.description, money(l.amount), width))
+    for (const l of r.lines) out.push(...columns(l.description, money(l.amount, symbol), width))
     out.push(rule)
-    out.push(...columns('TOTAL', money(r.total), width))
+    out.push(...columns('TOTAL', money(r.total, symbol), width))
   }
 
   out.push(rule)
@@ -150,7 +233,7 @@ export function receiptText(r: Receipt, width = WIDTH_80MM): string[] {
  * on a TM-T88. The cut is `GS V 66 0` — feed, then partial cut — which is the
  * one every clone gets right; `GS V 1` full-cut is the one they do not.
  */
-export function escpos(r: Receipt, width = WIDTH_80MM): Uint8Array {
+export function escpos(r: Receipt, width = WIDTH_80MM, opts: { rupeeGlyph?: boolean } = {}): Uint8Array {
   const bytes: number[] = []
   const put = (...b: number[]) => bytes.push(...b)
   // latin1: the body is ASCII after money() has replaced the rupee sign, and
@@ -162,7 +245,15 @@ export function escpos(r: Receipt, width = WIDTH_80MM): Uint8Array {
   put(ESC, 0x40) // initialise: clears whatever the last job left set
   put(ESC, 0x74, 0x00) // code page 437, the default every clone has
 
-  const text = receiptText(r, width)
+  if (opts.rupeeGlyph) {
+    // ESC & y c1 c2 : define characters c1..c2, y bytes tall. Then, per
+    // character, its width in dots followed by width*y bytes of column data.
+    const glyph = packGlyph()
+    put(ESC, 0x26, 0x03, GLYPH_CODE, GLYPH_CODE, RUPEE_GLYPH[0].length, ...glyph)
+    put(ESC, 0x25, 0x01) // print the user-defined set from here on
+  }
+
+  const text = receiptText(r, width, opts.rupeeGlyph ? String.fromCharCode(GLYPH_CODE) : RS_TEXT)
   text.forEach((line, i) => {
     // The property name is the only thing that gets emphasis. A receipt in
     // four weights is a receipt nobody reads.
@@ -173,6 +264,8 @@ export function escpos(r: Receipt, width = WIDTH_80MM): Uint8Array {
     put(0x0a)
   })
 
+  // Back to the built-in set before anything else prints on this roll.
+  if (opts.rupeeGlyph) put(ESC, 0x25, 0x00)
   put(ESC, 0x64, 0x04) // feed four lines clear of the cutter
   put(GS, 0x56, 0x42, 0x00) // feed and partial cut
   return new Uint8Array(bytes)

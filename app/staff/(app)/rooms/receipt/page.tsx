@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireManager } from '@/lib/auth'
 import { sql } from '@/lib/db'
 import { scopeTo } from '@/lib/scope'
-import { buildReceipt, receiptText, WIDTH_58MM, WIDTH_80MM } from '@/lib/receipt'
+import { buildReceipt, receiptText, RS_TEXT, WIDTH_58MM, WIDTH_80MM } from '@/lib/receipt'
 import PrintButton from '../print/PrintButton'
 
 export const dynamic = 'force-dynamic'
@@ -17,15 +17,21 @@ export const dynamic = 'force-dynamic'
  *
  * It renders `receiptText()` in a monospace block rather than laying the
  * receipt out again in HTML, which means the paper is identical whichever route
- * printed it — including the "Rs" spelling, since ESC/POS has no rupee glyph
- * and a receipt that disagrees with itself between two printers is worse than
- * one that spells it out on both.
+ * printed it — including how the rupee sign is spelled. `?glyph=1` switches
+ * both to a real ₹: the byte stream defines and draws one, and this page stops
+ * writing "Rs". Without it both spell it out, because ESC/POS has the sign at
+ * no fixed code point and a receipt that disagrees with itself between two
+ * printers is worse than one that spells it out on both.
  */
 export default async function ReceiptPage({ searchParams }: PageProps<'/staff/rooms/receipt'>) {
   const staff = await requireManager()
-  const { room, mm } = await searchParams
+  const { room, mm, glyph } = await searchParams
   const roomId = typeof room === 'string' ? room : null
   const width = mm === '58' ? WIDTH_58MM : WIDTH_80MM
+  // One decision per request, so the two printers cannot disagree: with the
+  // drawn glyph switched on, the paper carries a real ₹ and so does this page.
+  // Without it, both spell it "Rs".
+  const symbol = glyph === '1' ? '₹' : RS_TEXT
 
   const [found] = roomId
     ? await sql<{ id: string }[]>`
@@ -63,7 +69,7 @@ export default async function ReceiptPage({ searchParams }: PageProps<'/staff/ro
           </Link>
           {receipt && (
             <Link
-              href={`/api/staff/receipt?room=${found!.id}${width === WIDTH_58MM ? '&mm=58' : ''}`}
+              href={`/api/staff/receipt?room=${found!.id}${width === WIDTH_58MM ? '&mm=58' : ''}${glyph === '1' ? '&glyph=1' : ''}`}
               className="border-line rounded-xl border px-4 py-2.5 text-[13px] font-semibold"
             >
               Raw ESC/POS
@@ -78,7 +84,7 @@ export default async function ReceiptPage({ searchParams }: PageProps<'/staff/ro
           className="roll bg-surface border-line mx-auto border p-4 font-mono text-[13px] leading-[1.45] whitespace-pre print:mx-0 print:border-0 print:p-0"
           style={{ width: `${width}ch` }}
         >
-          {receiptText(receipt, width).join('\n')}
+          {receiptText(receipt, width, symbol).join('\n')}
         </pre>
       ) : (
         <p className="text-faint py-16 text-center text-sm">Nothing to print.</p>

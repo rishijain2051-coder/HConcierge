@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic'
  *
  *   GET /api/staff/receipt?room=<id>        80mm, 48 columns
  *   GET /api/staff/receipt?room=<id>&mm=58  58mm, 32 columns
+ *   GET /api/staff/receipt?room=<id>&glyph=1  draw a real ₹ instead of "Rs"
  *
  * This is the path for a printer reached over the network on port 9100, or one
  * driven by a local helper. A front desk whose printer is installed as an
@@ -43,8 +44,13 @@ export async function GET(req: Request) {
   const receipt = await buildReceipt(room.id)
   if (!receipt) return new Response('not found', { status: 404 })
 
-  const width = new URL(req.url).searchParams.get('mm') === '58' ? WIDTH_58MM : WIDTH_80MM
-  const bytes = escpos(receipt, width)
+  const params = new URL(req.url).searchParams
+  const width = params.get('mm') === '58' ? WIDTH_58MM : WIDTH_80MM
+  // Opt-in, because a printer that ignores ESC & prints a literal tilde where
+  // the rupee sign should be, and there is no way to ask it in advance. Try it
+  // once on the printer that is actually installed; if the sign comes out,
+  // leave it on.
+  const bytes = escpos(receipt, width, { rupeeGlyph: params.get('glyph') === '1' })
 
   // Printing a bill is a thing somebody should be able to account for later,
   // the same as exporting the charges is.
