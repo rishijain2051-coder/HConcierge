@@ -14,7 +14,8 @@
     "db:platform": "node --env-file=.env.local db/platform-user.mjs",
     "db:check-escalation": "node --env-file=.env.local db/check-escalation.mjs",
     "db:check-receipt": "node --env-file=.env.local db/check-receipt.mjs",
-    "db:check-quick-replies": "node --env-file=.env.local db/check-quick-replies.mjs"
+    "db:check-quick-replies": "node --env-file=.env.local db/check-quick-replies.mjs",
+    "db:check-amber-alert": "node --env-file=.env.local db/check-amber-alert.mjs"
   },
   "dependencies": {
     "next": "16.3.5",

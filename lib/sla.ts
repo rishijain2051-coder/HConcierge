@@ -64,6 +64,19 @@ export function slaState(r: SlaInput, now: Date = new Date()): SlaState {
   return 'ok'
 }
 
+/**
+ * The board's amber alert: nobody has accepted this yet, and it has already
+ * eaten into the time it was promised in.
+ *
+ * Here rather than in the board component because the board is the one place
+ * that cannot be opened without a session, so `npm run db:check-amber-alert`
+ * reads this same function against real rows. Two copies of the rule would
+ * mean the check could pass while the screen was wrong.
+ */
+export function needsAttention(r: SlaInput, now: Date = new Date()): boolean {
+  return r.status === 'new' && slaState(r, now) !== 'ok'
+}
+
 /** Minutes left before the promise is broken. Negative once it already is. */
 export function minutesRemaining(r: SlaInput, now: Date = new Date()): number {
   return Math.round((r.sla_minutes || 15) - minutesElapsed(startsAt(r), now))

@@ -134,6 +134,21 @@ small hotel the duty manager's department really is housekeeping and two message
 one towel is how somebody learns to ignore both. Budget one extra message per late
 request.
 
+**The board rings until somebody accepts.** A request that has passed its amber
+threshold and that nobody has accepted puts an amber banner across the top of the
+board, naming the rooms with an Accept button on each, and sounds a double blip
+every twenty seconds until one of them is pressed. It is deliberately read off
+the whole board rather than the filtered view — an alarm a team filter can
+silence is an alarm nobody can rely on — and the tab title carries the count, so
+a board sitting behind a browser window still says something.
+
+The sound needs *Alerts on*, because a browser will not let a page make a noise
+until somebody has clicked something; the banner does not. **Silence** quiets the
+alert on screen and nothing else: it is keyed to the rooms in it, so the next
+alert rings, and so does this one the moment another room joins it. An alarm one
+click turns off for a whole shift is a fire alarm with the battery taken out.
+`npm run db:check-amber-alert` prints what it would be ringing about now.
+
 The sweep runs opportunistically on the board's safety poll (once a minute while anyone
 is working) and from **Supabase pg_cron** every 10 minutes (so it still fires at 4am when
 no board is open). Escalation is the one thing that cannot be pushed: nothing changes in
@@ -182,11 +197,13 @@ fixed code point, so the byte stream spells it `Rs` — and the HTML does too, d
 because a receipt that disagrees with itself between two printers is worse than one that
 spells it out on both.
 
-`npm run db:check-receipt` prints the receipt at both widths and asserts the byte framing.
-`npm run db:check-escalation` does the same for who a late request reaches, and
-`npm run db:check-quick-replies` exercises the quick-reply editor's rules — including
-that a manager at one property cannot write into another's words. None of them sends
-or prints anything.
+Four checks run the real code against the real database and write nothing:
+`db:check-receipt` prints the receipt at both widths and asserts the byte framing,
+`db:check-escalation` shows who a late request would reach, `db:check-amber-alert`
+shows what the board would be ringing about, and `db:check-quick-replies` exercises
+the editor's rules — including that a manager at one property cannot write into
+another's words. They exist because none of those four can be seen without either
+a printer, a phone number, or somebody's password.
 
 ---
 

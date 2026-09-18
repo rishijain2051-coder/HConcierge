@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { hotelTime } from '@/lib/clock'
 import { rupees } from '@/lib/money'
-import { formatAge, minutesRemaining, notDueYet, since, slaState } from '@/lib/sla'
+import { formatAge, minutesRemaining, needsAttention, notDueYet, since, slaState } from '@/lib/sla'
 import { STATUS_LABEL, teamLabel, type BoardRequest, type ChatMessage, type RequestStatus } from '@/lib/types'
 import type { ChatRoom } from '@/lib/board'
 import { IconAlarm, IconChat, IconChevron, IconClose } from '@/components/icons'
@@ -15,6 +15,11 @@ import { assign, openThread, quickReplies, reply, updateStatus } from './actions
 // seatbelt: it covers a dropped stream, and it is what knocks on the server to
 // run the escalation sweep, which is time-based and so has nothing to notify it.
 const POLL_MS = 60_000
+
+// How often the amber alert rings again while a request sits unaccepted. Short
+// enough that it is an alarm, long enough that a desk can hold a conversation
+// between two of them.
+const RING_MS = 20_000
 
 type Me = { id: string; name: string; role: string; department: string }
 
@@ -50,6 +55,12 @@ export default function Board({
   const [openId, setOpenId] = useState<string | null>(null)
   const [chatRoom, setChatRoom] = useState<{ id: string; number: string } | null>(null)
   const [alerts, setAlerts] = useState(false)
+  // Which alert has been silenced, held as the ids it was made of rather than
+  // as a boolean. Silence then lasts exactly as long as that alert does: the
+  // next one rings, and so does this one the moment another room joins it. An
+  // alarm a single click turns off for the rest of a shift is a fire alarm with
+  // the battery taken out.
+  const [silenced, setSilenced] = useState<string | null>(null)
   // Seeded from the server, not from Date.now().
   //
   // Every age label on this board is derived from this value, and a client
@@ -230,6 +241,51 @@ export default function Board({
     [filtered],
   )
 
+  /**
+   * The amber alert: a request nobody has accepted that has already eaten into
+   * the time it was promised in.
+   *
+   * Read off `requests` and not `filtered`, deliberately. An alarm that goes
+   * quiet because somebody left a team filter on is an alarm nobody can rely
+   * on, and the filter is a view of the board rather than a claim about what
+   * is happening in the hotel.
+   */
+  const ringing = useMemo(
+    () => requests.filter((r) => needsAttention(r, new Date(now))),
+    [requests, now],
+  )
+
+  // Keeps ringing. The blip in `announce` says something arrived; this says
+  // something is *still* sitting there, and it repeats until somebody accepts
+  // it — because the arrival blip is the one that was missed.
+  //
+  // Keyed on the ids rather than the array: `now` ticks every 15s and would
+  // otherwise restart the interval before it ever got to fire.
+  const alarmKey = useMemo(() => ringing.map((r) => r.id).join(','), [ringing])
+  const muted = silenced === alarmKey
+
+  useEffect(() => {
+    if (ringing.length === 0 || !alerts || muted) return
+    // Twice, a beat apart. One blip is an arrival; two is a nag.
+    const ring = () => {
+      chime.current?.()
+      setTimeout(() => chime.current?.(), 420)
+    }
+    ring()
+    const t = setInterval(ring, RING_MS)
+    return () => clearInterval(t)
+  }, [alarmKey, ringing.length, alerts, muted])
+
+  // The board lives in a background tab on a reception PC as often as not, and
+  // a tab says nothing unless its title does. The clean title is captured
+  // before the count is ever written into it, or the second run would count
+  // the first run's prefix as part of the name.
+  const baseTitle = useRef<string | null>(null)
+  useEffect(() => {
+    if (baseTitle.current === null) baseTitle.current = document.title
+    document.title = ringing.length > 0 ? `(${ringing.length}) waiting · ${baseTitle.current}` : baseTitle.current
+  }, [ringing.length])
+
   const overdue = filtered.filter((r) => slaState(r, new Date(now)) === 'late').length
   const unreadTotal = chats.reduce((s, c) => s + c.unread, 0)
   const openRequest = requests.find((r) => r.id === openId) ?? null
@@ -326,6 +382,65 @@ export default function Board({
           </button>
         </div>
       </div>
+
+      {/* Amber, and it does not have a close button: the only thing that
+          clears it is accepting the work, which is what the button on each row
+          does. The sound can be silenced; the alert cannot. */}
+      {ringing.length > 0 && (
+        <div role="alert" aria-live="assertive" className="border-warn/35 bg-warn-soft mb-4 rounded-2xl border p-3.5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span aria-hidden="true" className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="bg-warn absolute inset-0 rounded-full" />
+              <span
+                className="bg-warn absolute inset-0 rounded-full"
+                style={{ animation: 'hc-pulse 1.8s var(--ease-glide) infinite' }}
+              />
+            </span>
+            <p className="text-warn text-[14px] font-semibold tracking-[-0.01em]">
+              {ringing.length === 1
+                ? 'A request is past its time and nobody has accepted it'
+                : `${ringing.length} requests are past their time and nobody has accepted them`}
+            </p>
+            {/* Without the sound this is a banner on a screen nobody is looking
+                at, so the offer to turn it on lives here as well as in the
+                toolbar — this is the moment it matters. */}
+            <button
+              onClick={() => (alerts ? setSilenced(muted ? null : alarmKey) : enableAlerts())}
+              aria-pressed={alerts ? muted : undefined}
+              className="border-warn/40 text-warn hover:bg-warn/10 ml-auto flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-[13px] font-semibold transition sm:min-h-0 sm:py-1.5"
+            >
+              <IconAlarm size={15} on={alerts && !muted} />
+              {!alerts ? 'Turn on the sound' : muted ? 'Silenced' : 'Silence'}
+            </button>
+          </div>
+
+          <ul className="mt-3 grid gap-1.5">
+            {ringing.slice(0, 4).map((r) => (
+              <li
+                key={r.id}
+                className="bg-surface/70 border-warn/20 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-3 py-2"
+              >
+                <span className="text-[14px] font-semibold">Room {r.room_number}</span>
+                <span className="text-muted text-[13px]">
+                  {nameOf(r.department)} · {formatAge(r.created_at, new Date(now))} old, target {r.sla_minutes}m
+                </span>
+                <button
+                  onClick={() => act(r.id, 'ack')}
+                  disabled={acting.has(r.id)}
+                  className="bg-ink border-ink ml-auto min-h-11 shrink-0 rounded-lg border px-3.5 text-[13px] font-semibold text-white transition hover:opacity-90 disabled:opacity-55 sm:min-h-0 sm:py-1.5"
+                >
+                  {acting.has(r.id) ? 'Accepting…' : 'Accept'}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {ringing.length > 4 && (
+            <p className="text-warn mt-2 text-[12px] font-medium">
+              And {ringing.length - 4} more in New.
+            </p>
+          )}
+        </div>
+      )}
 
       {view === 'requests' ? (
         <div className="grid gap-3 lg:grid-cols-3">
