@@ -111,7 +111,7 @@ export default function PropertyManager({ properties }: { properties: PropertyRo
                   autoFocus
                   defaultValue={editing?.name}
                   onChange={(e) => setNameDraft(e.target.value)}
-                  placeholder="RN Grand, Pune"
+                  placeholder="Lakeview, Pune"
                   className="border-line bg-surface focus:border-ink placeholder:text-faint w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none"
                 />
               </label>

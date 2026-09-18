@@ -231,7 +231,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
                   required
                   autoFocus
                   onChange={(e) => setNameDraft(e.target.value)}
-                  placeholder="RN Hospitality"
+                  placeholder="Lakeview Hotels"
                   className="border-line bg-surface focus:border-ink placeholder:text-faint w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none"
                 />
               </label>

@@ -442,8 +442,8 @@ export default function DemoStage() {
 
           <p className="text-faint mt-3 px-1 text-[12px] leading-relaxed">
             Time runs at a minute per second here so you can watch a request go late. Everything else is the real
-            thing: RN Grand&rsquo;s actual menu and prices, the actual target times, the actual routing, and the
-            escalation firing on its own the moment a target is missed.
+            thing: a working hotel&rsquo;s actual menu and prices, the actual target times, the actual routing, and
+            the escalation firing on its own the moment a target is missed.
           </p>
         </div>
       </div>
@@ -477,7 +477,7 @@ function Phone({
       <div className="border-line bg-surface overflow-hidden rounded-[30px] border shadow-[0_30px_60px_-30px_rgba(28,25,23,.35)]">
         <div className="border-line flex items-center justify-between border-b px-4 py-3">
           <div>
-            <p className="text-[13px] leading-tight font-semibold">RN Grand, Pune</p>
+            <p className="text-[13px] leading-tight font-semibold">Lakeview, Pune</p>
             <p className="text-faint text-[11px] leading-tight">Room 204 · Deluxe</p>
           </div>
           <button

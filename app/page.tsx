@@ -45,8 +45,8 @@ export default function Home() {
               And this is what a guest can already ask for.
             </h2>
             <p className="text-muted mt-4 max-w-[62ch] text-[15px] leading-relaxed">
-              Every line below is a real row in RN Grand&rsquo;s directory, loaded on day one. Each one knows which
-              team owns it and how long it is allowed to take. None of it is a phone call.
+              Every line below is a real row in a working hotel&rsquo;s directory, loaded on day one. Each one knows
+              which team owns it and how long it is allowed to take. None of it is a phone call.
             </p>
 
             {/* A river of real rows rather than a grid of cards: the point is the
@@ -79,7 +79,7 @@ export default function Home() {
               {[
                 [
                   'Load the property',
-                  'Menu, rooms, rates, target times and staff. RN Grand and RN Suites both came from one file.',
+                  'Menu, rooms, rates, target times and staff. Two properties, a full directory each, from one file.',
                 ],
                 [
                   'Print the cards',
@@ -107,9 +107,22 @@ export default function Home() {
 
       <footer className="border-line border-t">
         <div className="text-faint mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-8 text-[13px] sm:px-6">
+          {/* The sentence is one flex child, not three: the gap-2 that spaces the
+              mark from the text would otherwise open up mid-sentence either
+              side of the link. */}
           <span className="inline-flex items-center gap-2">
             <Logo size={15} />
-            HConcierge — built by Draveta Technologies
+            <span>
+              HConcierge — built by{' '}
+              <a
+                href="https://draveta.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-ink font-medium underline decoration-from-font underline-offset-2 transition"
+              >
+                Draveta Technologies
+              </a>
+            </span>
           </span>
           <StaffSignInLink className="hover:text-ink inline-flex items-center gap-1.5 font-medium transition">
             Staff sign in
