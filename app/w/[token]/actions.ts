@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { staffFromLinkToken } from '@/lib/auth'
-import { setRequestStatus } from '@/lib/board'
+import { setItemDone, setRequestStatus } from '@/lib/board'
 import type { RequestStatus } from '@/lib/types'
 
 /**
@@ -44,5 +44,31 @@ export async function actOnJob(form: FormData) {
   //
   // force-dynamic already means nothing is cached; this is what re-renders the
   // list in the same round trip.
+  revalidatePath(`/w/${token}`)
+}
+
+/**
+ * Ticking one line of a job off, from the same link and with the same
+ * authority: the token is re-read here too, and lib/board's setItemDone asks
+ * the same property and department questions setRequestStatus does.
+ *
+ * Seven lines is seven of these, so it stays a revalidate rather than a
+ * redirect: React swaps the tree in place and the handset keeps its scroll,
+ * where a navigation would send line five of seven back to the top of the page
+ * on every tick.
+ */
+export async function tickJobItem(form: FormData) {
+  const token = String(form.get('token') ?? '')
+  const itemId = String(form.get('item') ?? '')
+  const done = form.get('done') === '1'
+
+  const staff = await staffFromLinkToken(token)
+  if (staff) {
+    const result = await setItemDone(staff, itemId, done)
+    if (!result.ok) {
+      redirect(`/w/${token}?e=${encodeURIComponent(result.error ?? 'That did not work.')}`)
+    }
+  }
+
   revalidatePath(`/w/${token}`)
 }

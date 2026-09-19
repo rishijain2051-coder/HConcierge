@@ -4,8 +4,9 @@ import { loadBoard } from '@/lib/board'
 import { hotelTime } from '@/lib/clock'
 import { since, slaState } from '@/lib/sla'
 import { departmentLabel } from '@/lib/types'
-import { actOnJob } from './actions'
+import { actOnJob, tickJobItem } from './actions'
 import ActButton from './ActButton'
+import TickButton from './TickButton'
 import Live from './Live'
 import { Wordmark } from '@/components/Logo'
 
@@ -91,6 +92,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
             // corridor by whoever the escalation reached.
             const lines = req.items.map((i) => (i.qty > 1 ? `${i.qty}× ${i.name}` : i.name))
             const summary = lines.join(', ') || req.note || departmentLabel(req.department)
+            const ticked = req.items.filter((i) => i.done_at).length
 
             return (
               <li
@@ -112,12 +114,25 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
                   </span>
                 </div>
 
-                {lines.length > 1 ? (
-                  <ul className="text-muted mt-1 space-y-0.5 text-[14px] leading-snug">
-                    {lines.map((l) => (
-                      <li key={l} className="flex gap-1.5">
-                        <span className="text-faint select-none">·</span>
-                        <span>{l}</span>
+                {/* Seven lines from one guest is seven jobs, and the only
+                    marks on them used to be Accept and Done - so whoever was
+                    working it held the remainder in their head, and the next
+                    person to pick the handset up could not see how far it had
+                    got. One thing is still one sentence: a checkbox beside a
+                    single line is ceremony, and Done already says it. */}
+                {req.items.length > 1 ? (
+                  <ul className="mt-1.5">
+                    {req.items.map((i) => (
+                      <li key={i.id}>
+                        <form action={tickJobItem}>
+                          <input type="hidden" name="token" value={token} />
+                          <input type="hidden" name="item" value={i.id} />
+                          <input type="hidden" name="done" value={i.done_at ? '0' : '1'} />
+                          <TickButton
+                            done={i.done_at !== null}
+                            label={i.qty > 1 ? `${i.qty}× ${i.name}` : i.name}
+                          />
+                        </form>
                       </li>
                     ))}
                   </ul>
@@ -140,6 +155,15 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
                 <p className="text-faint mt-1 text-[12px]">
                   #{req.ref} · {STATUS_LABEL[req.status]}
                   {req.assigned_name ? ` · ${req.assigned_name}` : ''}
+                  {/* Only once there is something to count. It is also the
+                      one line that says the ticks are not the same as done -
+                      seven of seven still waits for the button below. */}
+                  {req.items.length > 1 && ticked > 0 && (
+                    <span className={ticked === req.items.length ? 'text-ok font-semibold' : ''}>
+                      {' · '}
+                      {ticked} of {req.items.length} ticked
+                    </span>
+                  )}
                 </p>
 
                 {/* Emphasis follows the expected next step, because `done` is

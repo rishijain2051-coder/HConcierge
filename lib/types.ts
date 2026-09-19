@@ -162,6 +162,8 @@ export type RequestItem = {
   unit_price_paise: number
   modifiers: { group: string; name: string; price_paise: number }[]
   note: string | null
+  /** Ticked off by whoever is working the request. Not the same as done. */
+  done_at: string | null
 }
 
 export type GuestRequest = {

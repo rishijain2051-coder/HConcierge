@@ -734,8 +734,11 @@ function Card({
           <span className="mt-1.5 block space-y-0.5">
             {r.items.map((i) => (
               <span key={i.id} className="flex gap-1.5 text-[13px] leading-snug break-words">
-                <span className="text-faint select-none">·</span>
-                <span>
+                {/* Ticked off by whoever is working it, from the job link. The
+                    desk only reads it here - a line is finished by the person
+                    holding the towels, not by the person watching the board. */}
+                <span className="text-faint select-none">{i.done_at ? '✓' : '·'}</span>
+                <span className={i.done_at ? 'text-faint line-through' : ''}>
                   {i.qty > 1 && <span className="font-semibold tabular-nums">{i.qty}× </span>}
                   {i.name}
                   {i.modifiers.length > 0 && (
@@ -933,7 +936,7 @@ function RequestDetail({
           {r.items.map((i) => (
             <div key={i.id} className="flex justify-between gap-3 px-3 py-2.5">
               <div>
-                <p className="text-[14px] font-medium">
+                <p className={`text-[14px] font-medium ${i.done_at ? 'text-faint line-through' : ''}`}>
                   {i.qty}× {i.name}
                 </p>
                 {i.modifiers.length > 0 && (

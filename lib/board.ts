@@ -51,7 +51,7 @@ export async function loadBoard(staff: Staff, propertyId?: string | null): Promi
   if (rows.length === 0) return []
 
   const lines = await sql<(BoardRequest['items'][number] & { request_id: string })[]>`
-    select id, request_id, name, qty, unit_price_paise, modifiers, note
+    select id, request_id, name, qty, unit_price_paise, modifiers, note, done_at
       from request_items where request_id = any(${rows.map((r) => r.id)})`
 
   const byRequest = new Map<string, BoardRequest['items']>()
@@ -248,6 +248,53 @@ export async function setRequestStatus(
   // what they just finished. See notifyRequestDone in lib/notify.ts, kept for
   // the record and hard-disabled there too.
 
+  return { ok: true }
+}
+
+/**
+ * Ticking one line of a request off, and unticking it.
+ *
+ * A seven-line front desk request is seven jobs, and until now the only marks
+ * on it were Accept and Done - so whoever was working it kept the remainder in
+ * their head, and a colleague who picked the handset up next could not see how
+ * far it had got.
+ *
+ * This deliberately touches nothing else. It does not move the request's
+ * status, and ticking the last line does not finish it: `done` posts the folio
+ * charge and NEXT_STATUS has no way back out, so completing a request stays a
+ * decision somebody makes on purpose. Untickable for the same reason - the
+ * wrong line getting tapped on a corridor handset should cost one more tap,
+ * not a phone call to reception.
+ *
+ * Authorisation is the same two questions setRequestStatus asks, read through
+ * the item's own request so an id from a form field cannot reach another
+ * property's work.
+ */
+export async function setItemDone(staff: Staff, itemId: string, done: boolean) {
+  const [current] = await sql<
+    { id: string; request_id: string; property_id: string; organisation_id: string | null; department: string; status: RequestStatus }[]
+  >`select ri.id, ri.request_id, r.property_id, r.department, r.status, p.organisation_id
+      from request_items ri
+      join requests r on r.id = ri.request_id
+      join properties p on p.id = r.property_id
+     where ri.id = ${itemId}`
+
+  if (!current) return { ok: false, error: 'That line is no longer on the request.' }
+  if (!canTouchProperty(staff, propRef(current))) return { ok: false, error: 'Not your property.' }
+  if (!canTouchDepartment(staff, current.department)) return { ok: false, error: 'Not your department.' }
+  if (current.status === 'done' || current.status === 'cancelled') {
+    return { ok: false, error: 'That request is already closed.' }
+  }
+
+  await sql`
+    update request_items
+       set done_at = case when ${done} then now() else null end,
+           done_by = ${done ? staff.id : null}
+     where id = ${itemId}`
+
+  // No audit row. The log is for things somebody may have to answer for - a
+  // charge, a cancellation, an account - and a tick that can be untapped is
+  // scratch paper for the shift, not a record of it.
   return { ok: true }
 }
 

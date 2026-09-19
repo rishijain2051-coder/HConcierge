@@ -109,7 +109,7 @@ export async function loadGuestState(roomId: string): Promise<GuestState> {
              select json_agg(json_build_object(
                       'id', ri.id, 'name', ri.name, 'qty', ri.qty,
                       'unit_price_paise', ri.unit_price_paise, 'modifiers', ri.modifiers,
-                      'note', ri.note)) as items
+                      'note', ri.note, 'done_at', ri.done_at)) as items
                from request_items ri where ri.request_id = rq.id
            ) li on true
           where rq.room_id = ${roomId}

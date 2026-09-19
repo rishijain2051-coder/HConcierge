@@ -167,6 +167,14 @@ create table if not exists request_items (
 );
 create index if not exists request_items_request_idx on request_items (request_id);
 
+-- A seven-line front desk request is seven jobs, and the person working it was
+-- holding the list in their head. Ticked line by line, on whatever handset the
+-- message reached, so a colleague picking it up sees what is left rather than
+-- what was asked for. Nullable and never required: a request is still finished
+-- by its own Done button, which is the one that charges the room.
+alter table request_items add column if not exists done_at    timestamptz;
+alter table request_items add column if not exists done_by    uuid references staff(id) on delete set null;
+
 -- ----------------------------------------------------------------- messages
 create table if not exists messages (
   id          uuid primary key default gen_random_uuid(),
