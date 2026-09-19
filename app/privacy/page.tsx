@@ -108,24 +108,6 @@ export default function PrivacyPage() {
         </p>
       </Section>
 
-      <Section title="Where it is stored, and who else can see it">
-        <p>Data is held in India and processed by three suppliers, all under their own contracts.</p>
-        <Rows
-          rows={[
-            ['Supabase', 'The database, in the Mumbai (ap-south-1) region. Everything above lives here.'],
-            ['Vercel', 'Hosting and delivery, served from the Mumbai (bom1) region.'],
-            [
-              'WhatsApp (Meta)',
-              'Only when a hotel switches on notifications, or a welcome card is sent to a guest’s own number. The message carries the room, what was asked for and a link; it is delivered by WhatsApp under their terms.',
-            ],
-          ]}
-        />
-        <p>
-          Nothing is sold, rented or shared for anyone else&rsquo;s marketing. There is no data broker in this
-          product and there will not be one.
-        </p>
-      </Section>
-
       <Section title="How long it is kept">
         <p>
           A guest&rsquo;s access ends at checkout: the code is cleared and every device that used it is signed
@@ -159,6 +141,25 @@ export default function PrivacyPage() {
         <p>
           No system is perfect. If you think you have found a weakness in this one, please tell us on the number
           below rather than anywhere public, and we will fix it.
+        </p>
+      </Section>
+
+      {/* Short, and last. The substance a reader needs is the region, the
+          contractual basis and the promise below it; a named list of our
+          infrastructure suppliers is a competitor's reading, not a guest's,
+          and a hotel evaluating us can ask and get the names in writing. */}
+      <Section title="Where it is stored">
+        <p>
+          Data is held in India, on infrastructure operated for us by third-party providers under their own
+          contracts. A hotel is told who they are before it signs, and anybody else can ask.
+        </p>
+        <p>
+          Messages to a phone - a staff notification, or a welcome card a desk sends a guest - travel over
+          WhatsApp and are delivered under their terms.
+        </p>
+        <p>
+          Nothing is sold, rented or shared for anyone else&rsquo;s marketing. There is no data broker in this
+          product and there will not be one.
         </p>
       </Section>
 

@@ -155,7 +155,25 @@ export function DateTimeField({
   hint?: string
   hour?: number
 }) {
-  const [value, setValue] = useState(() => (defaultValue ? wallClockNow(timezone, new Date(defaultValue)) : ''))
+  // Held as two halves, not one string. `datetime-local` crams a date and a
+  // time into one control that every browser renders differently and most
+  // render badly - a row of stubs with no labels, where it is never obvious
+  // which segment the cursor is in. Two native controls side by side are two
+  // ordinary fields, each with its own picker and its own keyboard on a phone.
+  const initial = defaultValue ? wallClockNow(timezone, new Date(defaultValue)) : ''
+  const [day, setDay] = useState(() => initial.slice(0, 10))
+  const [time, setTime] = useState(() => initial.slice(11, 16))
+
+  // A date with no hour is the common half-answer - the desk knows Sunday and
+  // has not thought about the hour - so it takes the house checkout time
+  // rather than submitting something the server has to refuse.
+  const hhmm = `${String(hour).padStart(2, '0')}:00`
+  const value = day ? `${day}T${time || hhmm}` : ''
+
+  const set = (next: string) => {
+    setDay(next.slice(0, 10))
+    setTime(next.slice(11, 16))
+  }
   // Read once on mount: these live inside modals that open on a click, so
   // there is no server HTML to disagree with, and the row of nights should not
   // renumber itself while somebody is looking at it.
@@ -177,7 +195,7 @@ export function DateTimeField({
             <button
               key={o.n}
               type="button"
-              onClick={() => setValue(on ? '' : o.value)}
+              onClick={() => set(on ? '' : o.value)}
               aria-pressed={on}
               className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition ${
                 on ? 'bg-ink border-ink text-white' : 'border-line text-muted hover:border-ink hover:text-ink'
@@ -190,7 +208,7 @@ export function DateTimeField({
         {value && (
           <button
             type="button"
-            onClick={() => setValue('')}
+            onClick={() => set('')}
             className="text-faint hover:text-ink px-2 py-1.5 text-[13px] font-medium transition"
           >
             Clear
@@ -198,16 +216,36 @@ export function DateTimeField({
         )}
       </div>
 
-      <input
-        name={name}
-        type="datetime-local"
-        value={value}
-        // A bare date is not a valid floor for this input and is silently
-        // ignored; it has to carry an hour to hold at all.
-        min={`${today}T00:00`}
-        onChange={(e) => setValue(e.target.value)}
-        className="border-line bg-surface focus:border-ink w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors"
-      />
+      <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-2">
+        <label className="block">
+          <span className="text-faint mb-1 block text-[12px]">Date</span>
+          <input
+            type="date"
+            value={day}
+            min={today}
+            onChange={(e) => setDay(e.target.value)}
+            className="border-line bg-surface focus:border-ink w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors"
+          />
+        </label>
+        <label className="block">
+          <span className="text-faint mb-1 block text-[12px]">Time</span>
+          <input
+            type="time"
+            value={time}
+            step={300}
+            // Disabled rather than hidden while there is no date: an hour on
+            // its own is not a checkout, and a control that silently does
+            // nothing is worse than one that says it is not ready.
+            disabled={!day}
+            onChange={(e) => setTime(e.target.value)}
+            className="border-line bg-surface focus:border-ink w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors disabled:opacity-45"
+          />
+        </label>
+      </div>
+
+      {/* One field goes to the server, built from the two above, so the action
+          still receives the single wall clock it has always parsed. */}
+      <input type="hidden" name={name} value={value} />
 
       {/* The input renders the date in whatever order the reception laptop's
           locale puts it, and 09/11 is two different days on two machines. This
