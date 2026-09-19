@@ -44,6 +44,15 @@ const cartKey = (item: Item, mods: Chosen[], note: string) =>
 
 const entryUnit = (e: CartEntry) => e.item.price_paise + e.modifiers.reduce((s, m) => s + m.price_paise, 0)
 
+/** The basket as the server wants it. Two senders now: the sheet, and the concierge. */
+const cartLines = (cart: CartEntry[]) =>
+  cart.map((e) => ({
+    itemId: e.item.id,
+    qty: e.qty,
+    modifiers: e.modifiers.map((m) => ({ group: m.group, name: m.name })),
+    note: e.note || null,
+  }))
+
 /**
  * The example note, in the language of the team who will read it. One
  * placeholder read "No onion, extra napkins, leave outside the door" on every
@@ -157,7 +166,30 @@ export default function GuestApp({
   )
 
   const openBill = useCallback(() => setBillOpen(true), [])
-  const openCart = useCallback(() => setCartOpen(true), [])
+
+  /**
+   * Sending the basket without leaving the conversation.
+   *
+   * The concierge is the no-typing door, so it sends straight through rather
+   * than handing the guest to the basket sheet. The one thing it cannot ask
+   * for is a time, and the server refuses a wake-up call without one - so a
+   * basket holding anything timed opens the sheet, which is where the picker
+   * lives. `null` says "the sheet has it now"; the concierge stays open behind
+   * it either way.
+   */
+  const sendCart = useCallback(async () => {
+    if (cart.length === 0) return null
+    if (cart.some((e) => e.item.needs_time)) {
+      setCartOpen(true)
+      return null
+    }
+    const res = await submitCart(token, cartLines(cart))
+    if (!res.ok) return res
+    setCart([])
+    refresh()
+    return { ok: true as const, teams: res.refs.length }
+  }, [cart, token, refresh])
+
   const markChatSeen = useCallback(() => setChatSeenAt(Date.now()), [])
 
   if (gone) {
@@ -300,7 +332,7 @@ export default function GuestApp({
         raised={cartCount > 0}
         cartCount={cartCount}
         cartTotal={cartTotal}
-        onOpenCart={openCart}
+        onSendCart={sendCart}
         onTap={tapItem}
         onBump={bump}
         onOpenBill={openBill}
@@ -1045,12 +1077,7 @@ function CartSheet({
     setBusy(true)
     const res = await submitCart(
       token,
-      cart.map((e) => ({
-        itemId: e.item.id,
-        qty: e.qty,
-        modifiers: e.modifiers.map((m) => ({ group: m.group, name: m.name })),
-        note: e.note || null,
-      })),
+      cartLines(cart),
       // Sent as the bare wall clock the picker gave us. Resolving it here
       // would pin it to the phone's zone; the server reads it in the hotel's.
       { note: note || null, scheduledFor: when || null },

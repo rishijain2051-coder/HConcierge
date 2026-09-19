@@ -85,7 +85,7 @@ export default function Concierge({
   onTap,
   onBump,
   onOpenBill,
-  onOpenCart,
+  onSendCart,
   onRefresh,
   onChatSeen,
 }: {
@@ -104,7 +104,8 @@ export default function Concierge({
   onTap: (i: Item) => void
   onBump: (i: Item, by: number) => void
   onOpenBill: () => void
-  onOpenCart: () => void
+  /** Sends the basket. `null` when the basket sheet has taken the turn instead. */
+  onSendCart: () => Promise<{ ok: true; teams: number } | { ok: false; error: string } | null>
   onRefresh: () => void
   onChatSeen: () => void
 }) {
@@ -254,6 +255,34 @@ export default function Concierge({
   }, [])
 
   /**
+   * Sending the basket is a turn in the conversation, not an exit from it.
+   * Closing the panel to hand the guest a form was the old shape and it threw
+   * away the thread they had just built; now the answer arrives where they
+   * asked, and the concierge goes back to the top ready for the next thing.
+   */
+  const [sending, setSending] = useState(false)
+  const send = useCallback(async () => {
+    if (sending) return
+    setSending(true)
+    const res = await onSendCart()
+    setSending(false)
+    if (!res) return // the basket needed a time, and the sheet is asking for it
+
+    setLines((prev) => [
+      ...prev,
+      { id: nextId.current++, from: 'guest', text: 'Send to the team' },
+      {
+        id: nextId.current++,
+        from: 'bot',
+        text: res.ok
+          ? `Done. ${res.teams > 1 ? `${res.teams} teams are` : 'The team is'} on it.`
+          : res.error,
+      },
+    ])
+    if (res.ok) restart()
+  }, [sending, onSendCart, restart])
+
+  /**
    * Taking one up. The server re-checks the threshold and owns the one-per-stay
    * rule, so this is free to be optimistic about the answer and wrong about
    * nothing that matters.
@@ -340,31 +369,26 @@ export default function Concierge({
               <div ref={foot} />
             </div>
 
-            {/* The app's basket bar lives behind this panel, which on a phone
-                covers the whole screen - so anything added in here had no way
-                out. Same control, same words, inside the conversation. */}
-            {cartCount > 0 && screen.at !== 'desk' && (
-              <div className="border-line shrink-0 border-t px-3 py-2.5">
-                <button
-                  onClick={() => {
-                    close()
-                    onOpenCart()
-                  }}
-                  className="bg-ink ease-glide flex w-full items-center gap-3 rounded-full py-2.5 pr-4 pl-3 text-white transition duration-300 active:scale-[0.985]"
-                >
-                  <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/20 px-1.5 text-[12px] font-bold tabular-nums">
-                    {cartCount}
-                  </span>
-                  <span className="flex-1 text-left text-[13.5px] font-semibold tracking-[-0.01em]">
-                    Send to the team{cartTotal > 0 ? ` · ${rupees(cartTotal)}` : ''}
-                  </span>
-                  <IconArrowRight size={15} />
-                </button>
-              </div>
-            )}
-
             {/* And what can be said next. Always at the foot, always taps. */}
             <div className="border-line bg-surface shrink-0 border-t">
+              <div className="border-line flex items-center gap-2 border-b px-4 py-2">
+                {trail.length > 0 && (
+                  <button
+                    onClick={back}
+                    className="text-muted hover:text-ink ease-glide -ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-1 text-[13px] font-medium transition duration-200"
+                  >
+                    <IconChevron size={14} className="rotate-90" />
+                    Back
+                  </button>
+                )}
+                <button
+                  onClick={restart}
+                  className="text-faint hover:text-ink ease-glide ml-auto rounded-full px-1.5 py-1 text-[12px] font-medium transition duration-200"
+                >
+                  Start over
+                </button>
+              </div>
+
               {screen.at === 'desk' ? (
                 <div className="max-h-[58dvh] overflow-y-auto overscroll-contain">
                   <GuestChat token={token} messages={state.messages} onSent={onRefresh} embedded />
@@ -393,23 +417,27 @@ export default function Concierge({
                 </div>
               )}
 
-              <div className="border-line flex items-center gap-2 border-t px-4 py-2">
-                {trail.length > 0 && (
+              {/* The app's basket bar lives behind this panel, which on a phone
+                  covers the whole screen - so anything added in here had no way
+                  out. Same words, but it sends from here rather than handing
+                  the guest off to a form. */}
+              {cartCount > 0 && screen.at !== 'desk' && (
+                <div className="border-line border-t px-3 py-2.5">
                   <button
-                    onClick={back}
-                    className="text-muted hover:text-ink ease-glide -ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-1 text-[13px] font-medium transition duration-200"
+                    onClick={send}
+                    disabled={sending}
+                    className="bg-ink ease-glide flex w-full items-center gap-3 rounded-full py-2.5 pr-4 pl-3 text-white transition duration-300 active:scale-[0.985] disabled:opacity-50"
                   >
-                    <IconChevron size={14} className="rotate-90" />
-                    Back
+                    <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/20 px-1.5 text-[12px] font-bold tabular-nums">
+                      {cartCount}
+                    </span>
+                    <span className="flex-1 text-left text-[13.5px] font-semibold tracking-[-0.01em]">
+                      {sending ? 'Sending…' : `Send to the team${cartTotal > 0 ? ` · ${rupees(cartTotal)}` : ''}`}
+                    </span>
+                    <IconArrowRight size={15} />
                   </button>
-                )}
-                <button
-                  onClick={restart}
-                  className="text-faint hover:text-ink ease-glide ml-auto rounded-full px-1.5 py-1 text-[12px] font-medium transition duration-200"
-                >
-                  Start over
-                </button>
-              </div>
+                </div>
+              )}
             </div>
           </Panel>
         </div>
