@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { rupees } from '@/lib/money'
 import { IconChevron } from '@/components/icons'
-import { Confirm, Field, Modal } from '../ui'
+import { Confirm, DateTimeField, Field, Modal } from '../ui'
 import {
   addRoom,
   checkIn,
@@ -13,9 +13,14 @@ import {
   newAccessCode,
   rotateToken,
   sendWelcomeCard,
+  setCheckout,
   settleBill,
   unlockRoomCode,
 } from './actions'
+
+/** "21 Sept" on the property's clock - the two dates a stay is bracketed by. */
+const stayDay = (at: string, timeZone: string) =>
+  new Date(at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone })
 
 export type RoomRow = {
   id: string
@@ -27,6 +32,8 @@ export type RoomRow = {
   guest_name: string | null
   checked_in_at: string | null
   checkout_at: string | null
+  /** The hotel's own clock. A checkout hour means nothing without it. */
+  property_timezone: string
   property_id: string
   property_name: string
   open_requests: number
@@ -73,6 +80,10 @@ export default function Rooms({
   // It was one tap next to four other one-tap buttons, on a row that is 44px
   // tall on a phone.
   const [settling, setSettling] = useState<RoomRow | null>(null)
+  // A two-night stay that became four. The only way to say so used to be a
+  // checkout and a fresh check-in, which reissues the code and voids the card
+  // the guest is holding.
+  const [rebooking, setRebooking] = useState<RoomRow | null>(null)
   // One room at a time: opening a second closes the first, so the list never
   // grows back into the thing it replaced.
   const [openId, setOpenId] = useState<string | null>(null)
@@ -165,8 +176,12 @@ export default function Rooms({
                         <>
                           <p className="text-[15px] font-medium">{r.guest_name}</p>
                           <p className="text-faint mt-0.5 text-[12px] leading-relaxed">
-                            In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '-'}
-                            {r.checkout_at && ` · out ${new Date(r.checkout_at).toLocaleDateString()}`}
+                            {/* The hotel's clock, not the laptop's. A group
+                                admin has two cities on one screen, and a
+                                checkout at midnight is the day either side of
+                                itself depending on where the reader is. */}
+                            In since {r.checked_in_at ? stayDay(r.checked_in_at, r.property_timezone) : '-'}
+                            {r.checkout_at && ` · out ${stayDay(r.checkout_at, r.property_timezone)}`}
                             {r.balance_paise > 0 && (
                               <span className="text-ink font-semibold"> · {rupees(r.balance_paise)} on the bill</span>
                             )}
@@ -215,6 +230,9 @@ export default function Rooms({
                               Unlock the code
                             </Mini>
                           )}
+                          <Mini onClick={() => setRebooking(r)} disabled={pending}>
+                            {r.checkout_at ? 'Change checkout' : 'Set checkout'}
+                          </Mini>
                           <Mini
                             onClick={() =>
                               run(async () => {
@@ -373,6 +391,40 @@ export default function Rooms({
         </Modal>
       )}
 
+      {rebooking && (
+        <Modal title={`Room ${rebooking.number}: expected checkout`} onClose={() => setRebooking(null)}>
+          <form
+            action={(form) => {
+              const until = String(form.get('until') ?? '')
+              run(async () => {
+                const res = await setCheckout(rebooking.id, until || null)
+                if (res.ok) setRebooking(null)
+                return res
+              })
+            }}
+            className="space-y-4"
+          >
+            <DateTimeField
+              name="until"
+              label={`When is ${rebooking.guest_name ?? 'the guest'} leaving?`}
+              timezone={rebooking.property_timezone}
+              defaultValue={rebooking.checkout_at}
+              hint="Open-ended. Clear it and the stay runs until somebody checks them out."
+            />
+            <p className="text-faint text-xs leading-relaxed">
+              Only the date changes. The code, the QR card and the bill are untouched.
+            </p>
+            <button
+              type="submit"
+              disabled={pending}
+              className="bg-ink w-full rounded-xl px-4 py-3 text-[14px] font-semibold text-white disabled:opacity-50"
+            >
+              {pending ? 'Saving…' : 'Save'}
+            </button>
+          </form>
+        </Modal>
+      )}
+
       {checkingIn && (
         <Modal title={`Check in: Room ${checkingIn.number}`} onClose={() => setCheckingIn(null)}>
           <form
@@ -392,7 +444,12 @@ export default function Rooms({
             className="space-y-3"
           >
             <Field name="guest" label="Guest name" placeholder="Mr. Kabir Anand" autoFocus required />
-            <Field name="until" label="Expected checkout" type="datetime-local" />
+            <DateTimeField
+              name="until"
+              label="Expected checkout"
+              timezone={checkingIn.property_timezone}
+              hint="Optional. It can be set or moved later from the room."
+            />
             <Field
               name="phone"
               label="Guest phone (optional)"

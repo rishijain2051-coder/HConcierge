@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { sql } from '@/lib/db'
 import { audit } from '@/lib/audit'
 import { canTouchProperty, requireManager, type Staff } from '@/lib/auth'
+import { isWallClock } from '@/lib/clock'
 import { propRef } from '@/lib/scope'
 import { generateAccessCode } from '@/lib/guest-session'
 import { roomFolioTotal, settleRoom } from '@/lib/folio'
@@ -15,11 +16,28 @@ const newToken = () => randomBytes(8).toString('base64url')
 
 async function roomFor(staff: Staff, roomId: string) {
   const [room] = await sql<
-    { id: string; property_id: string; organisation_id: string | null; number: string }[]
-  >`select r.id, r.property_id, r.number, p.organisation_id
+    { id: string; property_id: string; organisation_id: string | null; number: string; timezone: string }[]
+  >`select r.id, r.property_id, r.number, p.organisation_id, p.timezone
       from rooms r join properties p on p.id = r.property_id where r.id = ${roomId}`
   if (!room || !canTouchProperty(staff, propRef(room))) return null
   return room
+}
+
+/**
+ * A checkout hour, on the clock of the building the guest is standing in.
+ *
+ * This used to hand the raw `datetime-local` string to a `timestamptz` column,
+ * which made Postgres read it in the *session's* zone - so "out at 11am" was
+ * stored as 11am UTC and read back as half past four in the afternoon in Pune.
+ * Same fix as lib/requests.ts, same reason: the string is a bare wall clock
+ * and only the property's zone gets to say what instant it is.
+ */
+async function checkoutInstant(wall: string | null, timezone: string) {
+  if (!wall) return null
+  if (!isWallClock(wall)) return undefined // caller turns this into a message
+  const [row] = await sql<{ at: Date }[]>`
+    select (${wall}::text)::timestamp at time zone (${timezone}::text) as at`
+  return row.at
 }
 
 /**
@@ -47,11 +65,14 @@ export async function checkIn(
     return { ok: false as const, error: 'That phone number is too short to send to. Leave it blank to skip.' }
   }
 
+  const out = await checkoutInstant(checkoutAt || null, room.timezone)
+  if (out === undefined) return { ok: false as const, error: 'That checkout time is not valid.' }
+
   const code = generateAccessCode()
   await sql`
     update rooms
        set occupied = true, guest_name = ${name}, checked_in_at = now(),
-           checkout_at = ${checkoutAt || null}, guest_phone = ${phone},
+           checkout_at = ${out}, guest_phone = ${phone},
            access_code = ${code}, code_set_at = now(),
            code_attempts = 0, code_locked_until = null
      where id = ${roomId}`
@@ -189,6 +210,39 @@ export async function checkOut(roomId: string, settleOutstanding = false) {
     entity: 'room',
     entityId: roomId,
     meta: outstanding > 0 ? { room: room.number, settled_paise: outstanding } : { room: room.number },
+  })
+  revalidatePath('/staff/rooms')
+  return { ok: true as const }
+}
+
+/**
+ * Changing when the room is expected back, without disturbing the stay.
+ *
+ * A stay that was booked for two nights and became four used to have exactly
+ * one way to say so: check the guest out and back in - which issues a new code,
+ * invalidates the one on the welcome card in their hand, and wipes the folio
+ * line the desk was about to settle. This touches one column.
+ *
+ * `null` clears it, which is the open-ended stay, not an error.
+ */
+export async function setCheckout(roomId: string, checkoutAt: string | null) {
+  const staff = await requireManager()
+  const room = await roomFor(staff, roomId)
+  if (!room) return { ok: false as const, error: 'Not your room.' }
+
+  const out = await checkoutInstant(checkoutAt || null, room.timezone)
+  if (out === undefined) return { ok: false as const, error: 'That checkout time is not valid.' }
+
+  await sql`update rooms set checkout_at = ${out} where id = ${roomId} and occupied = true`
+
+  await audit({
+    propertyId: room.property_id,
+    staffId: staff.id,
+    actor: staff.name,
+    action: 'room.checkout_changed',
+    entity: 'room',
+    entityId: roomId,
+    meta: { room: room.number, checkout_at: checkoutAt || null },
   })
   revalidatePath('/staff/rooms')
   return { ok: true as const }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 
+import { wallClockLabel, wallClockNow } from '@/lib/clock'
 import { IconClose } from '@/components/icons'
 
 /** Small shared pieces for the staff screens. Six of them need the same modal,
@@ -121,6 +122,106 @@ export function Field({
       />
       {hint && <span className="text-faint mt-1 block text-[11px]">{hint}</span>}
     </label>
+  )
+}
+
+/**
+ * A date and a time, for the two places the desk sets one.
+ *
+ * A bare `datetime-local` is a dd/mm/yyyy stub and a blinking cursor, which is
+ * four fields of typing for "out on Sunday" - the answer nearly every time. So
+ * the nights are buttons and the date reads back in words underneath, and the
+ * native input stays for the stay that ends at six in the morning.
+ *
+ * Eleven is the hour because it is checkout at almost every hotel; a property
+ * that turns rooms at noon takes one more tap on the input below. And the
+ * whole thing is computed on the property's clock rather than the reception
+ * laptop's, which on a group account is showing one city while the desk is
+ * standing in another.
+ */
+export function DateTimeField({
+  label,
+  name,
+  timezone,
+  defaultValue,
+  hint,
+  hour = 11,
+}: {
+  label: string
+  name: string
+  timezone: string
+  /** An instant from the database, or nothing. Rendered on the hotel's clock. */
+  defaultValue?: string | null
+  hint?: string
+  hour?: number
+}) {
+  const [value, setValue] = useState(() => (defaultValue ? wallClockNow(timezone, new Date(defaultValue)) : ''))
+  // Read once on mount: these live inside modals that open on a click, so
+  // there is no server HTML to disagree with, and the row of nights should not
+  // renumber itself while somebody is looking at it.
+  const [today] = useState(() => wallClockNow(timezone).slice(0, 10))
+
+  const nights = [1, 2, 3, 7].map((n) => ({
+    n,
+    value: `${new Date(new Date(`${today}T00:00:00Z`).getTime() + n * 86_400_000).toISOString().slice(0, 10)}T${String(hour).padStart(2, '0')}:00`,
+  }))
+
+  return (
+    <div className="block">
+      <span className="mb-1.5 block text-[13px] font-medium">{label}</span>
+
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {nights.map((o) => {
+          const on = value === o.value
+          return (
+            <button
+              key={o.n}
+              type="button"
+              onClick={() => setValue(on ? '' : o.value)}
+              aria-pressed={on}
+              className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition ${
+                on ? 'bg-ink border-ink text-white' : 'border-line text-muted hover:border-ink hover:text-ink'
+              }`}
+            >
+              {o.n === 1 ? '1 night' : `${o.n} nights`}
+            </button>
+          )
+        })}
+        {value && (
+          <button
+            type="button"
+            onClick={() => setValue('')}
+            className="text-faint hover:text-ink px-2 py-1.5 text-[13px] font-medium transition"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      <input
+        name={name}
+        type="datetime-local"
+        value={value}
+        // A bare date is not a valid floor for this input and is silently
+        // ignored; it has to carry an hour to hold at all.
+        min={`${today}T00:00`}
+        onChange={(e) => setValue(e.target.value)}
+        className="border-line bg-surface focus:border-ink w-full rounded-xl border px-3.5 py-2.5 text-[14px] outline-none transition-colors"
+      />
+
+      {/* The input renders the date in whatever order the reception laptop's
+          locale puts it, and 09/11 is two different days on two machines. This
+          line is the one unambiguous reading of what was chosen. */}
+      <span className="mt-1.5 block text-[12px]">
+        {value ? (
+          <span className="text-ink font-medium">
+            Out on {wallClockLabel(value)}
+          </span>
+        ) : (
+          <span className="text-faint">{hint ?? 'Open-ended. Set it later from the room.'}</span>
+        )}
+      </span>
+    </div>
   )
 }
 

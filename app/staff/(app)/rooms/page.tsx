@@ -18,6 +18,7 @@ export default async function RoomsPage({ searchParams }: PageProps<'/staff/room
     sql<RoomRow[]>`
       select r.id, r.number, r.floor, r.room_type, r.token, r.occupied, r.guest_name,
              r.checked_in_at, r.checkout_at, r.property_id, p.name as property_name,
+             p.timezone as property_timezone,
              r.access_code, r.code_attempts, r.code_locked_until, r.settle_requested_at,
              r.guest_phone,
              (select count(*)::int from requests q
