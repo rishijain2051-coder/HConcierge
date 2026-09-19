@@ -175,6 +175,28 @@ create index if not exists request_items_request_idx on request_items (request_i
 alter table request_items add column if not exists done_at    timestamptz;
 alter table request_items add column if not exists done_by    uuid references staff(id) on delete set null;
 
+-- ---------------------------------------------------------------- enquiries
+-- Somebody asking about the product, from the public site. Nothing to do with
+-- a guest or a stay, and deliberately not joined to a property: whoever fills
+-- this in does not have one yet.
+--
+-- The row is written before WhatsApp is attempted and `notified_at` is stamped
+-- only if that succeeded, because the transport is a laptop on somebody's desk
+-- (see lib/notify.ts) and a lead must not be lost to a closed lid.
+create table if not exists enquiries (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  hotel       text not null,
+  rooms       int,
+  email       text,
+  phone       text,
+  message     text,
+  source      text not null default 'website',
+  created_at  timestamptz not null default now(),
+  notified_at timestamptz
+);
+create index if not exists enquiries_created_idx on enquiries (created_at desc);
+
 -- ----------------------------------------------------------------- messages
 create table if not exists messages (
   id          uuid primary key default gen_random_uuid(),

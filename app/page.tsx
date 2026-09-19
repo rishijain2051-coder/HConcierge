@@ -1,5 +1,10 @@
+import Link from 'next/link'
+
+import { REPLY_PROMISE, SITE_NAME, SITE_URL } from '@/lib/site'
 import DemoStage from './DemoStage'
 import StaffSignInLink from './StaffSignInLink'
+import StickyCta from './StickyCta'
+import { SiteFooter, SiteHeader } from '@/components/SiteChrome'
 import {
   IconAlarm,
   IconArrowRight,
@@ -13,7 +18,6 @@ import {
   IconPhoneOff,
   IconReceipt,
 } from '@/components/icons'
-import { Logo, Wordmark } from '@/components/Logo'
 
 /**
  * One capability. A rule above it rather than a box around it: a page with
@@ -56,13 +60,27 @@ function Cell({
 export default function Home() {
   return (
     <div className="min-h-dvh">
-      <header className="mx-auto flex max-w-[1240px] items-center justify-between px-4 py-5 sm:px-6">
-        <Wordmark size={20} className="text-[15px] font-semibold tracking-tight" />
-        <StaffSignInLink className="text-muted hover:text-ink inline-flex items-center gap-1.5 text-[13px] font-medium transition">
-          Staff sign in
-          <IconArrowRight size={14} />
-        </StaffSignInLink>
-      </header>
+      {/* Structured data, so a search result can carry the product's name and
+          what it is rather than the first 30 words of the hero. Static, built
+          from lib/site.ts - nothing here comes from a request. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: SITE_NAME,
+            applicationCategory: 'BusinessApplication',
+            operatingSystem: 'Web',
+            url: SITE_URL,
+            description:
+              'In-room hotel guest requests without the phone call. Every request routes to the team that does it, carries its own target time, and escalates itself when that time is missed.',
+            audience: { '@type': 'Audience', audienceType: 'Hotels' },
+            publisher: { '@type': 'Organization', name: 'Draveta Technologies', url: 'https://draveta.vercel.app' },
+          }),
+        }}
+      />
+      <SiteHeader />
 
       <main>
         {/* Hero. Headline, one short line, one thing to do. Everything else
@@ -77,13 +95,28 @@ export default function Home() {
               Guests ask from their own phone. Every request routes to the team that does it, and escalates itself
               when it runs late.
             </p>
-            <a
-              href="#demo"
-              className="bg-ink ease-glide inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition duration-300 hover:opacity-90 active:translate-y-[1px]"
-            >
-              Try the working demo
-              <IconArrowRight size={15} />
-            </a>
+            {/* Both of them above the fold, and in that order: the demo is
+                what convinces, the form is what we want. Somebody who already
+                knows should not have to scroll the whole page to find a way
+                to say so. */}
+            <div id="hero-cta" className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <a
+                  href="#demo"
+                  className="bg-ink ease-glide inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition duration-300 hover:opacity-90 active:translate-y-[1px]"
+                >
+                  Try the working demo
+                  <IconArrowRight size={15} />
+                </a>
+                <Link
+                  href="/contact"
+                  className="border-line hover:border-ink ease-glide inline-flex items-center gap-2 rounded-full border px-5 py-3 text-[14px] font-semibold transition duration-300 active:translate-y-[1px]"
+                >
+                  Talk to us about your hotel
+                </Link>
+              </div>
+              <p className="text-faint text-[13px]">{REPLY_PROMISE} No card details, ever.</p>
+            </div>
           </div>
         </section>
 
@@ -94,7 +127,7 @@ export default function Home() {
         {/* Bento. Deliberately uneven: the lead cell is twice the width of its
             neighbour. Eight capabilities, eight cells, rows of 2+1 then 1+1+1
             twice, so every row fills and none of it ends on a hole. */}
-        <section className="border-line border-t">
+        <section id="guest" className="border-line scroll-mt-4 border-t">
           <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-6 sm:py-24">
             <h2 className="font-display reveal max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
               What the guest gets, without installing anything.
@@ -145,7 +178,7 @@ export default function Home() {
 
         {/* Split, with the heading holding its place while the list moves. A
             different shape from the bento above on purpose. */}
-        <section className="border-line border-t">
+        <section id="reception" className="border-line scroll-mt-4 border-t">
           <div className="mx-auto grid max-w-[1240px] gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20">
             <div className="lg:sticky lg:top-12 lg:self-start">
               <h2 className="font-display text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
@@ -254,7 +287,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="border-line border-t">
+        <section id="setup" className="border-line scroll-mt-4 border-t">
           <div className="mx-auto grid max-w-[1240px] gap-10 px-4 py-16 sm:px-6 sm:py-24 md:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] md:gap-16">
             <div>
               <h2 className="font-display max-w-[16ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
@@ -300,44 +333,40 @@ export default function Home() {
           </div>
         </section>
 
+        {/* The close. It used to offer only "Staff sign in", which is a door
+            for somebody who already has an account - the one visitor this page
+            is not written for. */}
         <section className="border-line border-t">
-          <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-6 px-4 py-14 sm:px-6">
-            <p className="font-display max-w-[24ch] text-[clamp(1.5rem,2.6vw,2rem)] leading-[1.1] tracking-[-0.02em]">
-              Have a look at the desk side.
-            </p>
-            <StaffSignInLink className="bg-ink ease-glide inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition duration-300 hover:opacity-90 active:translate-y-[1px]">
-              Staff sign in
-              <IconArrowRight size={15} />
-            </StaffSignInLink>
+          <div className="mx-auto flex max-w-[1240px] flex-wrap items-end justify-between gap-6 px-4 py-14 sm:px-6">
+            <div>
+              <p className="font-display max-w-[24ch] text-[clamp(1.5rem,2.6vw,2rem)] leading-[1.1] tracking-[-0.02em]">
+                Put it on your own directory.
+              </p>
+              <p className="text-muted mt-2 max-w-[48ch] text-[15px] leading-relaxed">
+                Send us your room list and your menu and we will show you the board running on them.{' '}
+                {REPLY_PROMISE}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link
+                href="/contact"
+                className="bg-ink ease-glide inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition duration-300 hover:opacity-90 active:translate-y-[1px]"
+              >
+                Talk to us about your hotel
+                <IconArrowRight size={15} />
+              </Link>
+              <StaffSignInLink className="border-line hover:border-ink ease-glide inline-flex items-center gap-2 rounded-full border px-5 py-3 text-[14px] font-semibold transition duration-300">
+                Staff sign in
+              </StaffSignInLink>
+            </div>
           </div>
         </section>
       </main>
 
-      <footer className="border-line border-t">
-        <div className="text-faint mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-8 text-[13px] sm:px-6">
-          {/* The sentence is one flex child, not three: the gap-2 that spaces the
-              mark from the text would otherwise open up mid-sentence either
-              side of the link. */}
-          <span className="inline-flex items-center gap-2">
-            <Logo size={15} />
-            <span>
-              HConcierge, built by{' '}
-              <a
-                href="https://draveta.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-ink font-medium underline decoration-from-font underline-offset-2 transition"
-              >
-                Draveta Technologies
-              </a>
-            </span>
-          </span>
-          <StaffSignInLink className="hover:text-ink inline-flex items-center gap-1.5 font-medium transition">
-            Staff sign in
-            <IconArrowRight size={14} />
-          </StaffSignInLink>
-        </div>
-      </footer>
+      <SiteFooter />
+
+      {/* Mobile only, and only once the hero button has gone by. */}
+      <StickyCta />
     </div>
   )
 }
