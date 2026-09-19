@@ -51,7 +51,7 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
           <p className="text-muted mt-1 max-w-[65ch] text-sm">
             {isSlip
               ? 'Hand this to the guest at check-in. It carries their code, so it should not be left in the room.'
-              : 'Print, cut along the borders and stand one on each desk. These are permanent — the code on the guest’s welcome card is what changes between stays.'}
+              : 'Print, cut along the borders and stand one on each desk. These are permanent - the code on the guest’s welcome card is what changes between stays.'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -85,7 +85,7 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
               <p className="text-[25px] leading-snug font-medium">
                 Scan for room service, housekeeping,
                 <br />
-                laundry, the front desk — anything at all.
+                laundry, the front desk - anything at all.
               </p>
               <div
                 className="mt-[8mm] flex justify-center [&>svg]:h-[300px] [&>svg]:w-[300px]"
@@ -107,7 +107,7 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
                 </p>
               </div>
             ) : (
-              <p className="text-muted text-[22px]">No code issued — check the guest in first.</p>
+              <p className="text-muted text-[22px]">No code issued. Check the guest in first.</p>
             )}
 
             <p className="text-faint text-[17px]">
@@ -118,7 +118,7 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
       ) : (
         // `@page { margin: 0 }` in globals.css is what removes the browser's
         // printed URL from the welcome card, but it applies to every printed
-        // page — so the desk cards have to supply their own margin or they land
+        // page - so the desk cards have to supply their own margin or they land
         // flush against a paper edge no consumer printer can reach, and the
         // dashed cut lines get clipped. 10mm clears every printer.
         //
@@ -139,7 +139,7 @@ export default async function PrintPage({ searchParams }: PageProps<'/staff/room
               <p className="text-muted mt-3 text-[13px] leading-snug">
                 Scan for room service, housekeeping,
                 <br />
-                laundry, the front desk — anything at all.
+                laundry, the front desk - anything at all.
               </p>
 
               <div

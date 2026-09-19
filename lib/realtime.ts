@@ -6,7 +6,7 @@ import postgres from 'postgres'
  * Every table a guest screen or a board watches has an `after` trigger that
  * calls `pg_notify` (see the bottom of db/schema.sql). This module holds ONE
  * listening connection per server process and fans the notifications out to
- * however many streams are open on it — a hundred guests watching their orders
+ * however many streams are open on it - a hundred guests watching their orders
  * cost one database connection between them, not a hundred.
  *
  * The listener needs a session, and the app's pooled URL is pgbouncer in
@@ -104,7 +104,7 @@ export const onRoomChange = (roomId: string, fn: () => void) => subscribe(hub.ro
 /** Fires whenever anything in this property changes. */
 export const onPropertyChange = (propertyId: string, fn: () => void) => subscribe(hub.properties, propertyId, fn)
 
-/** True once the listening connection is up — the streams report this to the client. */
+/** True once the listening connection is up - the streams report this to the client. */
 export async function realtimeReady(): Promise<boolean> {
   try {
     await connect()

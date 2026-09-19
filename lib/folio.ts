@@ -7,7 +7,7 @@ import type { Staff } from './auth'
  *
  * Today every charge lands in `folio_entries` and the front office exports a
  * CSV to key into their PMS. When RN Hospitality's PMS is wired up, the adapter
- * goes behind these four functions and nothing else in the app changes — that
+ * goes behind these four functions and nothing else in the app changes - that
  * is the whole point of routing every charge through here rather than letting
  * routes insert rows directly.
  */
@@ -54,7 +54,7 @@ export async function voidCharge(entryId: string, reason: string): Promise<void>
      where id = ${entryId} and voided_at is null`
 }
 
-/** Live charges for a room — what the guest sees and what checkout settles. */
+/** Live charges for a room - what the guest sees and what checkout settles. */
 export async function roomFolio(roomId: string): Promise<FolioEntry[]> {
   return sql<FolioEntry[]>`
     select * from folio_entries
@@ -72,7 +72,7 @@ export async function roomFolioTotal(roomId: string): Promise<number> {
 /**
  * Close out a room's bill.
  *
- * HConcierge never takes the money — the desk does, however it always has.
+ * HConcierge never takes the money - the desk does, however it always has.
  * This records that it happened, which is what stops the charges following the
  * guest into the next stay and what clears their screen.
  *
@@ -94,7 +94,7 @@ export async function settleRoom(roomId: string, by: string): Promise<number> {
  *
  * Takes the staff member, not just a property id. The route used to read the
  * property straight from the query string for admins, which let one customer's
- * admin export another customer's billing — every admin can see property ids
+ * admin export another customer's billing - every admin can see property ids
  * in their own picker, so nothing had to be guessed. The scope is enforced
  * here, where it cannot be skipped.
  */

@@ -37,7 +37,7 @@ export const fail = (error: string) => ({ ok: false as const, error })
  *
  * Half a dozen guards on a single page each need to know who owns a property,
  * and each used to pay its own round trip to Mumbai for the same three columns.
- * `cache` collapses them into one — including calls that overlap inside a
+ * `cache` collapses them into one - including calls that overlap inside a
  * `Promise.all`, which share the in-flight promise rather than racing.
  */
 export const propertyRow = cache(async (id: string) => {
@@ -59,7 +59,7 @@ type StaffTarget = { role: Role; property_id: string | null; organisation_id: st
 /**
  * May this person administer that account?
  *
- * The old test read "can you manage their property, OR are they an admin" —
+ * The old test read "can you manage their property, OR are they an admin" -
  * and because an admin has no property, the second half cancelled the first.
  * Any admin could reset the password of, deactivate, or edit any OTHER
  * customer's admin. The question was never about the property; it is about
@@ -88,7 +88,7 @@ function canAssignRole(actor: Staff, role: Role): boolean {
 
 /**
  * Counted per organisation. A global count would let one customer's last admin
- * be removed as long as some other customer still had one — which is exactly
+ * be removed as long as some other customer still had one - which is exactly
  * the lockout this guard exists to prevent.
  */
 async function activeAdminCount(organisationId: string | null, excluding?: string): Promise<number> {
@@ -171,7 +171,7 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
 
   if (!name) return fail('Enter a name.')
   if (!/^[a-z0-9._-]{3,60}$/.test(username)) {
-    return fail('Usernames use 3–60 lowercase letters, numbers, dot, dash or underscore.')
+    return fail('Usernames use 3-60 lowercase letters, numbers, dot, dash or underscore.')
   }
   // The pattern above accepts "..." and "---". A username has to contain
   // something someone can say out loud.
@@ -190,7 +190,7 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
         : actor.organisation_id
   if (input.role !== 'platform' && !organisationId) return fail('Choose an organisation.')
   // Checked against the organisation the account is being created in, which is
-  // resolved just above — a team belongs to one customer.
+  // resolved just above - a team belongs to one customer.
   if (input.role !== 'platform' && !(await isTeamOfOrg(organisationId, input.department, true))) {
     return fail('Choose a team.')
   }
@@ -244,7 +244,7 @@ export async function createStaff(actor: Staff, input: StaffInput): Promise<Ok<{
  *
  * Only a department account has them: a manager and an admin already see every
  * team, so carrying a list for them would be state that means nothing and can
- * go stale. The main team is removed rather than rejected — picking it twice is
+ * go stale. The main team is removed rather than rejected - picking it twice is
  * a mis-click, not an error worth a message.
  */
 async function resolveExtraTeams(
@@ -287,7 +287,7 @@ export async function updateStaff(
   if (target.role === 'admin' && actor.role === 'manager') return fail('Only an admin can edit an admin.')
   // Only a role CHANGE needs the authority to grant it. Requiring it to leave
   // someone where they are meant an admin could not edit another admin's phone
-  // number — or their own — without the form silently demoting them to staff.
+  // number - or their own - without the form silently demoting them to staff.
   if (input.role !== target.role && !canAssignRole(actor, input.role)) {
     return fail('Only a group admin can grant manager or admin.')
   }
@@ -385,7 +385,7 @@ async function remainingPeers(role: 'admin' | 'platform', organisationId: string
  * `on delete set null`, and the audit log keeps who did what in its own text
  * column, so the history stays readable with the person merely unattributed.
  * Their requests lose their owner's name and their messages lose the sender's;
- * the rows themselves stay. The one cascade is `escalation_rule_staff` — they
+ * the rows themselves stay. The one cascade is `escalation_rule_staff` - they
  * drop off any rule that used to page them, which is the point.
  *
  * Deactivating is still the right answer for somebody who has left, because it
@@ -533,7 +533,7 @@ export async function createProperty(
   const name = input.name.trim().slice(0, 120)
   const slug = input.slug.trim().toLowerCase().slice(0, 60)
   if (!name) return fail('Enter a name.')
-  if (!/^[a-z0-9-]{3,60}$/.test(slug)) return fail('Slugs use 3–60 lowercase letters, numbers and dashes.')
+  if (!/^[a-z0-9-]{3,60}$/.test(slug)) return fail('Slugs use 3-60 lowercase letters, numbers and dashes.')
   if (!/^#[0-9a-fA-F]{6}$/.test(input.brandColor)) return fail('Brand colour must be a hex value like #0F766E.')
 
   // Nothing read this column until scheduling did, so a typo in it used to be
@@ -864,7 +864,7 @@ export async function deleteCategory(actor: Staff, id: string): Promise<Ok> {
   if (!(await canManageProperty(actor, category.property_id))) return fail('Not your property.')
 
   const [{ n }] = await sql<{ n: number }[]>`select count(*)::int as n from items where category_id = ${id}`
-  if (n > 0) return fail(`Empty “${category.name}” first — it still has ${n} item${n === 1 ? '' : 's'}.`)
+  if (n > 0) return fail(`Empty “${category.name}” first - it still has ${n} item${n === 1 ? '' : 's'}.`)
 
   await sql`delete from categories where id = ${id}`
   await audit({
@@ -1003,7 +1003,7 @@ export async function saveQuickReply(
   if (!(await canManageProperty(actor, propertyId))) return fail('Not your property.')
   const label = input.label.trim().slice(0, 60)
   const body = input.body.trim().slice(0, 1000)
-  if (!label) return fail('Give it a name — that is what the desk picks from.')
+  if (!label) return fail('Give it a name - that is what the desk picks from.')
   if (!body) return fail('Enter the line that gets sent.')
 
   // No unique index here, so this is a courtesy rather than an integrity
@@ -1130,7 +1130,7 @@ export const newSlug = () => randomBytes(4).toString('hex')
 /**
  * Send a verification code to a staff member's phone.
  *
- * Authorisation matches unlockStaff — a manager or admin who can already manage
+ * Authorisation matches unlockStaff - a manager or admin who can already manage
  * this account. The code itself, its throttle and its lock live in
  * lib/staff-phone.ts; this only decides who is allowed to press the button.
  */

@@ -16,10 +16,10 @@ import {
 import { Button, Check, Confirm, Err, Field, Modal, Panel, Select, Tag } from '../../ui'
 
 const KINDS = [
-  { value: 'amenity', label: 'Ask for something — free housekeeping items' },
-  { value: 'fnb', label: 'Room service — the food menu' },
-  { value: 'service', label: 'Services — paid, like laundry or a spa booking' },
-  { value: 'front_desk', label: 'Front desk — wake-up calls, late checkout' },
+  { value: 'amenity', label: 'Ask for something: free housekeeping items' },
+  { value: 'fnb', label: 'Room service: the food menu' },
+  { value: 'service', label: 'Services: paid, like laundry or a spa booking' },
+  { value: 'front_desk', label: 'Front desk: wake-up calls, late checkout' },
 ]
 const KIND_SHORT: Record<string, string> = {
   amenity: 'Ask for',
@@ -89,7 +89,7 @@ export default function CatalogManager({
   return (
     <Panel
       title="Directory"
-      description="Everything a guest can ask for, what it costs, which team it goes to, and how long it is allowed to take. Editing a price never rewrites an old order — past requests keep the name and price they were placed at."
+      description="Everything a guest can ask for, what it costs, which team it goes to, and how long it is allowed to take. Editing a price never rewrites an old order - past requests keep the name and price they were placed at."
       action={
         <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (
@@ -242,7 +242,7 @@ export default function CatalogManager({
                 min={0}
                 step="0.01"
                 defaultValue={editingItem ? editingItem.price_paise / 100 : 0}
-                hint="0 shows as complimentary. Paise are allowed — 249.50."
+                hint="0 shows as complimentary. Paise are allowed - 249.50."
               />
               <Field
                 label="Target (minutes)"

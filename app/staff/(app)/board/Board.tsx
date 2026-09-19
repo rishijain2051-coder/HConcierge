@@ -12,7 +12,7 @@ import { IconAlarm, IconChat, IconChevron, IconClose } from '@/components/icons'
 import { assign, openThread, quickReplies, reply, updateStatus } from './actions'
 import PushButton from './PushButton'
 
-// The board is pushed, not polled — see /api/staff/board/live. This is the
+// The board is pushed, not polled - see /api/staff/board/live. This is the
 // seatbelt: it covers a dropped stream, and it is what knocks on the server to
 // run the escalation sweep, which is time-based and so has nothing to notify it.
 const POLL_MS = 60_000
@@ -52,7 +52,7 @@ function makeRinger(): { ring: () => void; resume: () => void } {
     const gain = ctx.createGain()
     osc.type = 'triangle'
     osc.frequency.setValueAtTime(freq, at)
-    // Exponential either side of the peak — a linear envelope clicks at
+    // Exponential either side of the peak - a linear envelope clicks at
     // both ends, and a click is the thing this is trying not to be.
     gain.gain.setValueAtTime(0.0001, at)
     gain.gain.exponentialRampToValueAtTime(level, at + 0.012)
@@ -65,7 +65,7 @@ function makeRinger(): { ring: () => void; resume: () => void } {
   /**
    * The ring.
    *
-   * This was one 320ms two-tone blip, which is not a ring — at that length
+   * This was one 320ms two-tone blip, which is not a ring - at that length
    * a tone reads as a click, and a click is exactly what a room full of
    * people learns to stop hearing. So: three phrases, fourteen notes, four
    * seconds measured, each phrase higher and longer than the one before so it
@@ -82,9 +82,9 @@ function makeRinger(): { ring: () => void; resume: () => void } {
     // started at: long enough for each note to ring rather than tick,
     // and four seconds for the phrase to say what it has to say.
     const phrases: [number[], number, number][] = [
-      [[988, 988, 988, 988], 0.15, 0.08], // ta ta ta ta — knuckles on the desk
-      [[659, 659, 659, 659], 0.19, 0.07], // da da da da — lower, insisting
-      [[880, 988, 1109, 1319, 1568, 1319], 0.25, 0.045], // la la la — rising, and it lands
+      [[988, 988, 988, 988], 0.15, 0.08], // ta ta ta ta - knuckles on the desk
+      [[659, 659, 659, 659], 0.19, 0.07], // da da da da - lower, insisting
+      [[880, 988, 1109, 1319, 1568, 1319], 0.25, 0.045], // la la la - rising, and it lands
     ]
     let at = ctx.currentTime + 0.03
     for (const [notes, len, gap] of phrases) {
@@ -173,8 +173,8 @@ export default function Board({
   // Seeded from the server, not from Date.now().
   //
   // Every age label on this board is derived from this value, and a client
-  // component is server-rendered too. Reading the clock here read it twice —
-  // once server-side, once at hydration — so any card sitting on a rounding
+  // component is server-rendered too. Reading the clock here read it twice -
+  // once server-side, once at hydration - so any card sitting on a rounding
   // boundary rendered "just now" in the HTML and "1m" in the browser, and
   // React threw the whole tree away and rebuilt it. The interval below takes
   // over a moment later, so the only cost is that the first paint can be up to
@@ -200,7 +200,7 @@ export default function Board({
   const nameOf = useCallback((slug: string) => teamLabel(teams, slug), [teams])
 
   // Read through a ref, not a dependency. `announce` feeds `apply`, which the
-  // live stream and the poll both depend on — so with `alerts` in the closure,
+  // live stream and the poll both depend on - so with `alerts` in the closure,
   // hitting the alerts button closed the EventSource and opened a new one,
   // losing whatever was pushed in between.
   const alertsOn = useRef(alerts)
@@ -214,12 +214,12 @@ export default function Board({
     (arrived: BoardRequest[]) => {
     if (!alertsOn.current) return
     // No sound here any more. Everything arrives unaccepted, so the alert
-    // below rings for it in the same tick — a blip half a beat ahead of a
+    // below rings for it in the same tick - a blip half a beat ahead of a
     // two-second ring sounded like a fault rather than a cue.
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       for (const r of arrived.slice(0, 3)) {
         const what = r.items.length ? r.items.map((i) => `${i.qty}× ${i.name}`).join(', ') : r.note || 'New request'
-        new Notification(`Room ${r.room_number} — ${nameOf(r.department)}`, {
+        new Notification(`Room ${r.room_number} - ${nameOf(r.department)}`, {
           body: what,
           tag: r.id,
         })
@@ -357,7 +357,7 @@ export default function Board({
    * The amber alert: every request nobody has accepted yet.
    *
    * It used to wait until a request had eaten 60% of its target before
-   * ringing, which on a ten-minute towel is six minutes of silence — so the
+   * ringing, which on a ten-minute towel is six minutes of silence - so the
    * alarm was almost never sounding at the moment anyone looked at the board,
    * and it read as broken. It rings from the moment the request lands and
    * stops when somebody accepts it, which is what an alarm is for. How old it
@@ -372,7 +372,7 @@ export default function Board({
 
   // Keeps ringing. The blip in `announce` says something arrived; this says
   // something is *still* sitting there, and it repeats until somebody accepts
-  // it — because the arrival blip is the one that was missed.
+  // it - because the arrival blip is the one that was missed.
   //
   // Keyed on the ids rather than the array: `now` ticks every 15s and would
   // otherwise restart the interval before it ever got to fire.
@@ -517,7 +517,7 @@ export default function Board({
             </p>
             {/* Without the sound this is a banner on a screen nobody is looking
                 at, so the offer to turn it on lives here as well as in the
-                toolbar — this is the moment it matters. */}
+                toolbar - this is the moment it matters. */}
             <button
               onClick={() => (alerts ? setSilenced(muted ? null : alarmKey) : enableAlerts())}
               aria-pressed={alerts ? muted : undefined}
@@ -709,8 +709,8 @@ function Card({
     >
       <span className={`absolute inset-y-0 left-0 w-1.5 ${stripe}`} />
       {/* Spans, not divs and paragraphs: a button may only contain phrasing
-          content, and the invalid nesting left this — the card's whole purpose
-          — announcing itself as an unlabelled button. */}
+          content, and the invalid nesting left this - the card's whole purpose
+          - announcing itself as an unlabelled button. */}
       <button
         onClick={() => onOpen(r.id)}
         aria-label={`Room ${r.room_number}, request ${r.ref}: ${summary}`}
@@ -728,7 +728,7 @@ function Card({
 
             A guest can also type 500 characters without a space. Below lg the
             grid has no explicit columns, so one such note sized the whole board
-            to max-content and gave it 4,800px of sideways scroll — hence
+            to max-content and gave it 4,800px of sideways scroll - hence
             `break-words` on every branch here. */}
         {r.items.length > 1 ? (
           <span className="mt-1.5 block space-y-0.5">
@@ -850,7 +850,7 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     document.addEventListener('keydown', onKey)
     // On a phone this fills the screen, and without the lock the board went on
-    // scrolling underneath it — you closed the drawer somewhere else entirely.
+    // scrolling underneath it - you closed the drawer somewhere else entirely.
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
@@ -955,12 +955,12 @@ function RequestDetail({
         </div>
       )}
 
-      {/* The guest's own words, quoted and attributed — not a tracked
+      {/* The guest's own words, quoted and attributed - not a tracked
           all-caps label sitting on top of them. */}
       {r.note && (
         <div className="bg-warn-soft rounded-xl px-3.5 py-3">
           <p className="text-[14px] leading-relaxed">“{r.note}”</p>
-          <p className="text-warn mt-1.5 text-[12px] font-medium">— {r.guest_name ?? 'the guest'}</p>
+          <p className="text-warn mt-1.5 text-[12px] font-medium">- {r.guest_name ?? 'the guest'}</p>
         </div>
       )}
 
@@ -997,7 +997,7 @@ function RequestDetail({
                 <option value="">Nobody yet</option>
                 {assignable.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.name} — {nameOf(s.department)}
+                    {s.name} - {nameOf(s.department)}
                   </option>
                 ))}
               </select>
@@ -1186,7 +1186,7 @@ function Thread({ roomId, onSent }: { roomId: string; onSent: () => void }) {
       <div className="border-line bg-surface sticky bottom-0 border-t">
         {/* These used to be one horizontally scrolling row with the scrollbar
             hidden, so the fourth reply onwards was off the edge with nothing to
-            say it existed — unreachable entirely with a mouse and no sideways
+            say it existed - unreachable entirely with a mouse and no sideways
             wheel. And the sentence being sent lived only in `title`, so you
             could not read what you were about to say to a guest without
             hovering and waiting.

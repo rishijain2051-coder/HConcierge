@@ -13,7 +13,7 @@ const FOCUSABLE =
  * inside the panel, closes on Escape, stops the page underneath scrolling, and
  * hands focus back to whatever opened it.
  *
- * Shared by the item/cart/bill sheets and the concierge panel — the second
+ * Shared by the item/cart/bill sheets and the concierge panel - the second
  * overlay on this screen is exactly where a hand-rolled copy of this starts
  * drifting from the first.
  *

@@ -12,7 +12,7 @@ import { roomFolio } from './folio'
  * **This is not a tax invoice and says so on its face.** A hotel bill in India
  * needs the property's GST registration on it, HConcierge does not hold one,
  * and the PMS issues the real document. What this prints is a summary of what
- * was ordered from the room — the thing a guest asks for at the desk when they
+ * was ordered from the room - the thing a guest asks for at the desk when they
  * want to see what the total is made of.
  *
  * `roomFolio` returns only unvoided, unsettled lines, so a receipt printed
@@ -28,7 +28,7 @@ export type Receipt = {
   printedAt: Date
   lines: { description: string; amount: number }[]
   total: number
-  /** Nothing outstanding — printed after settling, or before anything was ordered. */
+  /** Nothing outstanding - printed after settling, or before anything was ordered. */
   empty: boolean
 }
 
@@ -74,7 +74,7 @@ export const WIDTH_58MM = 32
  * ESC/POS has no rupee sign at any fixed code point.
  *
  * `₹` prints as whatever byte 0x20-0xFF happens to sit at that position in the
- * selected code page — a box, an accented vowel, or nothing — and the printers
+ * selected code page - a box, an accented vowel, or nothing - and the printers
  * that do carry it disagree about where. So there are two ways to get one on
  * paper, and this is the safe one: spell it "Rs", which is what an Indian till
  * roll prints anyway. RUPEE_GLYPH below is the other.
@@ -86,7 +86,7 @@ export const RS_TEXT = 'Rs '
  *
  * ESC/POS lets a host define its own characters and print them in place of an
  * ASCII code, which every clone implements because it is in the original Epson
- * set. `~` is the code borrowed — nothing on a receipt prints a tilde — so one
+ * set. `~` is the code borrowed - nothing on a receipt prints a tilde - so one
  * definition, one mode switch, and the paper carries a real rupee sign.
  *
  * The art is the source of truth rather than a table of hex, because a table of
@@ -230,7 +230,7 @@ export function receiptText(r: Receipt, width = WIDTH_80MM, symbol = RS_TEXT): s
  * Deliberately Font A and nothing clever: no logo raster, no barcode, no code
  * page switching. Every command here is in the original Epson set that every
  * clone implements, so it prints the same on a ₹4,000 no-name 80mm printer as
- * on a TM-T88. The cut is `GS V 66 0` — feed, then partial cut — which is the
+ * on a TM-T88. The cut is `GS V 66 0` - feed, then partial cut - which is the
  * one every clone gets right; `GS V 1` full-cut is the one they do not.
  */
 export function escpos(r: Receipt, width = WIDTH_80MM, opts: { rupeeGlyph?: boolean } = {}): Uint8Array {

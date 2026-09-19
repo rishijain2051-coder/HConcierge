@@ -5,7 +5,7 @@ import type { Staff } from './auth'
 /**
  * One definition of "which properties may this person see".
  *
- * Before the tenant layer, an admin's scope was `true` — every property row in
+ * Before the tenant layer, an admin's scope was `true` - every property row in
  * the database. That was only ever correct while every property belonged to
  * one customer. These fragments are the single place that rule lives now, so
  * there is no second copy to forget when a query is added.
@@ -30,13 +30,13 @@ export function scopeTo(staff: Staff, column: Fragment, propertyId?: string | nu
   // A property filter that cannot be a property id is not a filter.
   if (propertyId != null && !isUuid(propertyId)) return sql`false`
 
-  // HConcierge sees every organisation — until it steps into one, after which
+  // HConcierge sees every organisation - until it steps into one, after which
   // it is scoped to that customer exactly like their own admin.
   if (staff.role === 'platform' && !staff.organisation_id) {
     return propertyId ? sql`${column} = ${propertyId}` : sql`true`
   }
 
-  // An admin sees their own organisation's properties, and nothing else —
+  // An admin sees their own organisation's properties, and nothing else -
   // including when they hand us a property id directly.
   if (staff.role === 'admin' || staff.role === 'platform') {
     const mine = sql`${column} in (select id from properties where organisation_id = ${staff.organisation_id})`
@@ -49,7 +49,7 @@ export function scopeTo(staff: Staff, column: Fragment, propertyId?: string | nu
 
 /**
  * Shorthand for the row shape `canTouchProperty` wants. Every call site that
- * checks a room, request or item already selects its row — widen that select
+ * checks a room, request or item already selects its row - widen that select
  * with a join on properties and hand the result straight to this.
  */
 export const propRef = (row: { property_id: string; organisation_id: string | null }) => ({

@@ -4,7 +4,7 @@
  * The problem it solves is specific. `sendMessage` tries the self-hosted
  * WhatsApp gateway and falls through to Twilio, and the escalation sweep sends
  * to every recipient at once with `Promise.all`. So a gateway on a closed
- * laptop does not fail once — it fails once per recipient, per sweep, every
+ * laptop does not fail once - it fails once per recipient, per sweep, every
  * ten minutes, each one waiting out a TCP connect to a machine that is not
  * answering. A rung that names six managers becomes six hanging requests
  * inside a function with a `maxDuration`, and the sweep that was supposed to
@@ -15,7 +15,7 @@
  * prevents: one dead dependency taking the escalation path down with it.
  *
  * **In-process, per instance**, the same caveat as lib/limit.ts and for the
- * same reason — the hosting scales horizontally, so each instance learns
+ * same reason - the hosting scales horizontally, so each instance learns
  * independently. That is acceptable here in a way it would not be for a
  * quota: the thing being protected is *this* instance's time budget.
  */

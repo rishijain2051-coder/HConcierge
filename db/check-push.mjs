@@ -7,7 +7,7 @@
  * takes the Authorization header lib/push.ts would put on a real send, pulls
  * the JWT apart, and verifies the signature against the public key. That is the
  * one piece of this feature that cannot be eyeballed and fails in a way nobody
- * can read — a push service answers a malformed VAPID token with a bare 401,
+ * can read - a push service answers a malformed VAPID token with a bare 401,
  * and the single most likely cause is the signature being in node's default
  * ASN.1 form rather than the flat 64-byte one JOSE asks for. So it is measured
  * here rather than discovered against Firebase.

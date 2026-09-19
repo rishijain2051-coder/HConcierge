@@ -47,7 +47,7 @@ const entryUnit = (e: CartEntry) => e.item.price_paise + e.modifiers.reduce((s, 
 /**
  * The example note, in the language of the team who will read it. One
  * placeholder read "No onion, extra napkins, leave outside the door" on every
- * item in the hotel — including the wake-up call.
+ * item in the hotel - including the wake-up call.
  */
 const NOTE_HINT: Record<string, string> = {
   fnb: 'No onion, extra spicy, no ice…',
@@ -87,7 +87,7 @@ export default function GuestApp({
 }) {
   const [tab, setTab] = useState<Tab>('home')
   // Which section of each catalogue is open. Held here rather than inside
-  // Catalog, which unmounts on every tab change — so a guest reading the
+  // Catalog, which unmounts on every tab change - so a guest reading the
   // desserts went to check a message and came back to the starters.
   const [section, setSection] = useState<Record<string, string>>({})
   const [cart, setCart] = useState<CartEntry[]>([])
@@ -179,7 +179,7 @@ export default function GuestApp({
         >
           Start again
         </button>
-        {property.phone && <p className="text-faint mt-6 text-[13px]">Front desk — {property.phone}</p>}
+        {property.phone && <p className="text-faint mt-6 text-[13px]">Front desk: {property.phone}</p>}
       </div>
     )
   }
@@ -192,7 +192,7 @@ export default function GuestApp({
       {/* Opaque on a phone, frosted on a desktop.
           A `backdrop-filter` under a sticky or fixed layer is re-run over
           everything behind it on every scrolled frame, and the menu stacks
-          three of them — this header, the category rail below it, and the
+          three of them - this header, the category rail below it, and the
           nav at the bottom. A desktop GPU does that for nothing; a handset
           drops frames and the scroll goes sticky under the thumb, which is
           the single biggest reason this screen felt rusty on a phone. What
@@ -584,7 +584,7 @@ function useClock(active: boolean, serverNow: number) {
  *
  * The rail is the whole point: a status word tells you nothing about how much
  * is left, four beats with a filled line tell you at a glance. It moves the
- * instant the kitchen touches it — the state behind it is pushed, not polled.
+ * instant the kitchen touches it - the state behind it is pushed, not polled.
  */
 function OrderTracker({
   request,
@@ -691,12 +691,12 @@ function OrderTracker({
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="text-muted text-[12.5px]">
           {request.status === 'done'
-            ? `${steps[3]} — thank you`
+            ? `${steps[3]}. Thank you`
             : waiting
               ? 'Booked for the time you picked'
               : left > 0
                 ? `About ${left} min to go`
-                : 'Taking longer than usual — we have flagged it'}
+                : 'Taking longer than usual, we have flagged it'}
         </p>
         {(request.status === 'new' || request.status === 'ack') &&
           (confirming ? (
@@ -888,7 +888,7 @@ function ItemSheet({
             <p className="text-[13px] font-semibold">{g.name}</p>
             <p className="text-faint text-[12px]">
               {picked.filter((p) => p.group === g.name).length >= (g.max ?? 1) && (g.max ?? 1) > 1
-                ? `That is all ${g.max} — tap one off to swap`
+                ? `That is all ${g.max}. Tap one off to swap`
                 : (g.min ?? 0) > 0
                   ? 'Required'
                   : `Up to ${g.max ?? 1}`}
@@ -1026,7 +1026,7 @@ function CartSheet({
   const timed = cart.filter((e) => e.item.needs_time)
   const needsTime = timed.length > 0
   // A wake-up call for yesterday is a typo the server already refuses. The
-  // picker should not offer it in the first place — and the floor is the
+  // picker should not offer it in the first place - and the floor is the
   // hotel's clock, not the phone's, or a guest still on home time is offered
   // hours the hotel has already lived through and refused the ones it has not.
   //
@@ -1057,7 +1057,7 @@ function CartSheet({
     )
     setBusy(false)
     if (res.ok) {
-      onDone(res.refs.length > 1 ? `Sent — ${res.refs.length} teams are on it` : 'Sent to the team')
+      onDone(res.refs.length > 1 ? `Sent. ${res.refs.length} teams are on it` : 'Sent to the team')
     } else {
       onError(res.error)
     }
@@ -1148,7 +1148,7 @@ function CartSheet({
             {busy ? 'Sending…' : needsTime && !when ? 'Choose a time first' : 'Send to the team'}
           </button>
           <p className="text-faint mt-2.5 text-center text-xs">
-            Nothing is charged now — it goes on your room bill and settles at checkout.
+            Nothing is charged now. It goes on your room bill and settles at checkout.
           </p>
         </>
       )}
@@ -1239,7 +1239,7 @@ function BillSheet({
               <p className="brand-text text-[13.5px] font-semibold">Someone is on their way</p>
               <p className="text-muted mt-1 text-[12.5px] leading-relaxed">
                 The front desk has your balance and will come to you to settle it. You can keep ordering in the
-                meantime — anything new is added to this bill.
+                meantime - anything new is added to this bill.
               </p>
             </div>
           ) : (

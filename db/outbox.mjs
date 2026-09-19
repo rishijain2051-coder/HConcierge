@@ -96,7 +96,7 @@ async function drain() {
   await announceOnce()
 
   // Claim and read in one statement, so two drainers cannot send the same
-  // message twice — a duplicate here is a duplicate on somebody's phone.
+  // message twice - a duplicate here is a duplicate on somebody's phone.
   const batch = await sql`
     update outbound_messages
        set claimed_at = now(), attempts = attempts + 1
@@ -127,9 +127,9 @@ async function drain() {
 /**
  * One message, the first time this process finds the session able to send.
  *
- * It is the only signal that proves the whole local half works — gateway up,
+ * It is the only signal that proves the whole local half works - gateway up,
  * session linked, credentials still accepted, a real message out to a real
- * phone — without anyone opening the dashboard. The failure this catches is the
+ * phone - without anyone opening the dashboard. The failure this catches is the
  * quiet one: a bridge that came back but cannot deliver looks exactly like a
  * night with no requests.
  *
@@ -153,7 +153,7 @@ async function announceOnce() {
       '*Bridge is up*',
       when,
       waiting === 0 ? 'Queue empty.' : `${waiting} message${waiting === 1 ? '' : 's'} going out now.`,
-      'Nothing to do — you get this on every start.',
+      'Nothing to do - you get this on every start.',
     ].join('\n'),
   )
   console.log(result.ok ? `startup notice sent to ${ALERT_PHONE}` : `startup notice failed: ${result.error}`)

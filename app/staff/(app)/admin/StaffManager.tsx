@@ -19,15 +19,15 @@ type Me = { id: string; role: string; propertyId: string | null }
 type Property = { id: string; name: string }
 
 const ROLES = [
-  { value: 'staff', label: 'Staff — one department’s board' },
-  { value: 'manager', label: 'Manager — the whole property, gets escalations' },
-  { value: 'admin', label: 'Admin — every property in this organisation' },
-  { value: 'platform', label: 'HConcierge — every organisation' },
+  { value: 'staff', label: 'Staff: one department’s board' },
+  { value: 'manager', label: 'Manager: the whole property, gets escalations' },
+  { value: 'admin', label: 'Admin: every property in this organisation' },
+  { value: 'platform', label: 'HConcierge: every organisation' },
 ]
 
 /**
  * Nobody may mint a role at or above their own. HConcierge reaches this screen
- * only from inside a customer, so it staffs that customer — a new platform
+ * only from inside a customer, so it staffs that customer - a new platform
  * account comes from `npm run db:platform`, not from a hotel's staff list.
  */
 const ASSIGNABLE: Record<string, string[]> = {
@@ -57,15 +57,15 @@ export default function StaffManager({
   const [shown, setShown] = useState<{ username: string; password: string } | null>(null)
   const [confirming, setConfirming] = useState<StaffRow | null>(null)
   const [deleting, setDeleting] = useState<StaffRow | null>(null)
-  // Only a department account can cover extra teams — a manager and an admin
-  // already see all of them — so the form has to know which role is selected,
+  // Only a department account can cover extra teams - a manager and an admin
+  // already see all of them - so the form has to know which role is selected,
   // not only which one it opened with.
   const [role, setRole] = useState<string>('staff')
 
   // Whoever you are editing keeps their own role as an option, even if you
   // could not grant it. Without this, an admin editing an admin saw a select
   // with no "admin" in it, and saving quietly demoted them to staff.
-  // Deleting is not a manager's to do — they can deactivate, which is the
+  // Deleting is not a manager's to do - they can deactivate, which is the
   // reversible half of the same idea. lib/admin says the same thing again.
   const canDelete = me.role === 'admin' || me.role === 'platform'
 
@@ -199,8 +199,8 @@ export default function StaffManager({
       </div>
 
       <p className="text-faint mt-3 text-[12px] leading-relaxed">
-        Deactivating signs someone out immediately — the session is checked against this table on every request, not
-        just at login — and keeps their name readable on the requests they handled. Deleting removes the account for
+        Deactivating signs someone out immediately - the session is checked against this table on every request, not
+        just at login - and keeps their name readable on the requests they handled. Deleting removes the account for
         good: the work stays on record, but their name comes off it.
       </p>
 
@@ -256,15 +256,15 @@ export default function StaffManager({
               options={[...teams, { value: 'all', label: 'All teams' }]}
               // Role-aware because this field means two different things. For a
               // staff account it scopes the board. For anyone above that it
-              // scopes nothing — teamsVisibleTo() returns unscoped for every
-              // non-staff role — and only decides which new-request alerts they
+              // scopes nothing - teamsVisibleTo() returns unscoped for every
+              // non-staff role - and only decides which new-request alerts they
               // get. An admin moving a duty manager onto one team could
               // reasonably fear they were taking the rest of the property away
               // from them; they are not, and nothing here used to say so.
               hint={
                 role === 'staff'
                   ? "This account's board shows this team. “All teams” is for someone who genuinely works all of them."
-                  : 'They see every team’s board whatever this says. It only picks which new-request alerts they get — lateness still reaches them through escalation.'
+                  : 'They see every team’s board whatever this says. It only picks which new-request alerts they get - lateness still reaches them through escalation.'
               }
             />
 
@@ -304,7 +304,7 @@ export default function StaffManager({
               name="phone"
               defaultValue={editing?.phone ?? ''}
               placeholder="+91 98765 43210"
-              hint="Managers and admins with a number here receive the WhatsApp escalations. A number has to be verified before its messages carry one-tap job links — changing it here clears that."
+              hint="Managers and admins with a number here receive the WhatsApp escalations. A number has to be verified before its messages carry one-tap job links - changing it here clears that."
             />
 
             <Button type="submit" variant="primary" full disabled={pending}>

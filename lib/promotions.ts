@@ -13,14 +13,14 @@ export type { Promotion, PromotionKind, GuestPromotion } from './types'
  * What the hotel is offering, and what happens when a guest takes it up.
  *
  * This is not a discount engine and must not become one. HConcierge posts
- * charges and never settles them — there is no card, no payment and no
- * authority to reduce anybody's bill — so a promotion here does exactly what a
+ * charges and never settles them - there is no card, no payment and no
+ * authority to reduce anybody's bill - so a promotion here does exactly what a
  * paper voucher in the room folder does: it says what is on offer, and when
  * the guest wants it the desk is told. The desk honours it at checkout.
  *
  * The one thing the paper cannot do is arithmetic. A spend threshold is read
  * against the room's own unsettled balance, so instead of "spend ₹2,000" the
- * concierge can say "₹740 to go" — and stop offering it once it is claimed.
+ * concierge can say "₹740 to go" - and stop offering it once it is claimed.
  */
 
 /** A stay's fingerprint, the same one lib/guest-session.ts binds a grant to. */
@@ -97,7 +97,7 @@ export async function claimPromotion(
 
   const res = await createFreeformRequest(
     ctx,
-    `Would like to use an offer — ${promo.title}${promo.fine_print ? ` (${promo.fine_print})` : ''}`,
+    `Would like to use an offer - ${promo.title}${promo.fine_print ? ` (${promo.fine_print})` : ''}`,
     promo.department ?? 'front_desk',
   )
   if (!res.ok) {
@@ -152,7 +152,7 @@ export async function savePromotion(
 
   const title = input.title.trim().slice(0, 80)
   const description = input.description.trim().slice(0, 400)
-  if (!title) return fail('Give the offer a name — that is what the guest reads first.')
+  if (!title) return fail('Give the offer a name - that is what the guest reads first.')
   if (!description) return fail('Say what the guest actually gets.')
 
   const kind: PromotionKind = ['coupon', 'pass', 'discount'].includes(input.kind) ? input.kind : 'coupon'
@@ -201,7 +201,7 @@ export async function deletePromotion(actor: Staff, id: string): Promise<Ok> {
   if (!(await canManageProperty(actor, row.property_id))) return fail('Not your property.')
 
   // Claims go with it. They are a record of who asked for what, and the
-  // request each one raised is what the desk worked from — that survives.
+  // request each one raised is what the desk worked from - that survives.
   await sql`delete from promotions where id = ${id}`
   await audit({
     propertyId: row.property_id,

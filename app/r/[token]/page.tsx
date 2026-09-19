@@ -39,7 +39,7 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
           Once you have checked in, the front desk will give you a four-digit code for this room. Scan again then and
           you are straight in.
         </p>
-        {ctx.property.phone && <p className="text-faint mt-6 text-[13px]">Front desk — {ctx.property.phone}</p>}
+        {ctx.property.phone && <p className="text-faint mt-6 text-[13px]">Front desk: {ctx.property.phone}</p>}
       </div>
     )
   }
@@ -49,7 +49,7 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
   }
 
   // The clock has to start from the server's reading, not the phone's. This is
-  // a force-dynamic server component — one render per request — and the purity
+  // a force-dynamic server component - one render per request - and the purity
   // rule is written for client components that re-render.
   // eslint-disable-next-line react-hooks/purity
   const serverNow = Date.now()

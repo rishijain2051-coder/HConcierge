@@ -8,7 +8,7 @@ import type { Staff } from './auth'
  * Proving that a staff phone number really belongs to that staff member.
  *
  * A number used to be write-only: the app sent to it, and a wrong one meant a
- * missed message. WhatsApp job links change that — the link is the credential,
+ * missed message. WhatsApp job links change that - the link is the credential,
  * so one mistyped digit in Manage → Staff hands a stranger a working job list.
  *
  * The code is sent TO the phone and typed IN by someone already signed in. A
@@ -37,7 +37,7 @@ function generateCode(): string {
  * Issue a code and WhatsApp it to the number on file.
  *
  * Deliberately says nothing that is useful to someone who received it by
- * mistake: no room, no guest, no job list — just the property name so the person
+ * mistake: no room, no guest, no job list - just the property name so the person
  * it *was* meant for recognises it, and a sign-in page that is no use without an
  * account.
  */
@@ -70,7 +70,7 @@ export async function sendPhoneCode(staffId: string): Promise<CodeResult> {
 
   // The link matters: without it the only way to the form was a menu item the
   // person holding the phone has no reason to look for. It is an ordinary page
-  // behind a login, not a capability — the code is what proves the handset.
+  // behind a login, not a capability - the code is what proves the handset.
   // Same shape as every other message: the thing you need on the first line,
   // because that is the line a lock screen shows. A six-digit code read out of
   // a notification without unlocking the phone is the whole job here.

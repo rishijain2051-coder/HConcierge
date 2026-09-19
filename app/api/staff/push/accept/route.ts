@@ -9,8 +9,8 @@ import { isUuid } from '@/lib/scope'
  * public/sw.js: a service worker cannot invoke a server action, and it is
  * running with no page at all.
  *
- * Thin on purpose. `setRequestStatus` owns every rule — the property, the
- * department, the legal transition, the audit row — exactly as it does for the
+ * Thin on purpose. `setRequestStatus` owns every rule - the property, the
+ * department, the legal transition, the audit row - exactly as it does for the
  * board and for the WhatsApp link. Nothing about authorisation is
  * re-implemented here, and nothing about it is weaker because the tap came
  * from a lock screen.

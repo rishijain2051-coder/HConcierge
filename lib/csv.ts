@@ -5,7 +5,7 @@
  * Tikka, Half Plate" or a description with a line break in it, at which point
  * every column after it shifts by one and the import silently writes nonsense.
  * So this is a real character scanner: quoted fields, doubled quotes as an
- * escape, commas and newlines inside quotes, and CRLF — which matters because
+ * escape, commas and newlines inside quotes, and CRLF - which matters because
  * Excel on Windows is what will be saving these files.
  *
  * Not a general CSV library. No streaming, no type coercion, no header

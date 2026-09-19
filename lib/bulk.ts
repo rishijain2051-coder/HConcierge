@@ -56,7 +56,7 @@ export const SPECS: Record<ImportKind, Spec> = {
       ['All day dining', 'Chicken Biryani', '', '420', '40', 'fnb', 'no', 'yes'],
       ['Housekeeping', 'Bath towels', 'A fresh pair', '0', '10', 'housekeeping', '', 'yes'],
     ],
-    hint: 'A section that does not exist yet is created. Price is in rupees and may have paise — 260.50 is fine. Leave “veg” blank for anything that is not food.',
+    hint: 'A section that does not exist yet is created. Price is in rupees and may have paise - 260.50 is fine. Leave “veg” blank for anything that is not food.',
   },
   staff: {
     label: 'Staff',
@@ -65,7 +65,7 @@ export const SPECS: Record<ImportKind, Spec> = {
       ['Sunita Rao', 'pune.housekeeping', 'staff', 'housekeeping', ''],
       ['Anil Kumar', 'pune.duty', 'manager', 'all', '+91 98765 43210'],
     ],
-    hint: 'Every account gets a one-time password, listed once when the import finishes. Copy them then — they are not stored and cannot be shown again.',
+    hint: 'Every account gets a one-time password, listed once when the import finishes. Copy them then - they are not stored and cannot be shown again.',
   },
   info: {
     label: 'Hotel info pages',
@@ -74,7 +74,7 @@ export const SPECS: Record<ImportKind, Spec> = {
       ['Wifi', 'wifi', 'Network: RNGrand-Guest\nPassword: welcome2026'],
       ['Checkout', 'checkout', 'Checkout is at 11am. Ask the desk for a later time.'],
     ],
-    hint: 'Slug is what appears in the link and has to be unique. Line breaks inside a cell survive — quote the cell in Excel and they come through.',
+    hint: 'Slug is what appears in the link and has to be unique. Line breaks inside a cell survive - quote the cell in Excel and they come through.',
   },
 }
 
@@ -173,7 +173,7 @@ export async function importCsv(
         return complain(i, `“${r.target_minutes}” is not a target in minutes`)
       }
       if (!teamSlugs.has(r.team)) {
-        return complain(i, `no team called “${r.team}” — this hotel has ${[...teamSlugs].join(', ')}`)
+        return complain(i, `no team called “${r.team}” - this hotel has ${[...teamSlugs].join(', ')}`)
       }
       if (r.veg && !yes(r.veg) && !no(r.veg)) return complain(i, `“${r.veg}” is not yes or no`)
       if (r.available && !yes(r.available) && !no(r.available)) return complain(i, `“${r.available}” is not yes or no`)
@@ -250,7 +250,7 @@ export async function importCsv(
  * Staff, which is the one kind that cannot be all-or-nothing.
  *
  * `createStaff` hashes a generated password, checks the actor may grant the
- * role, and audits — none of which belongs inlined into a transaction here. So
+ * role, and audits - none of which belongs inlined into a transaction here. So
  * this validates everything checkable first (username shape, duplicates inside
  * the file, usernames already taken, role assignability, team exists) and only
  * then creates. What is left that can still fail mid-run is a genuine race with
@@ -299,11 +299,11 @@ export async function importStaffCsv(
     seen.add(u)
 
     if (!grantable.includes(r.role)) {
-      // "a admin" — the one role in the set that takes "an".
+      // "a admin" - the one role in the set that takes "an".
       const article = /^[aeiou]/i.test(r.role) ? 'an' : 'a'
       problems.push({
         line: at(i),
-        says: `you cannot create ${article} “${r.role}” — only ${grantable.join(', ')}`,
+        says: `you cannot create ${article} “${r.role}” - only ${grantable.join(', ')}`,
       })
     }
     if (r.team !== 'all' && !teamSlugs.has(r.team)) {

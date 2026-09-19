@@ -1,7 +1,7 @@
 /**
  * The HConcierge mark: an H whose crossbar is a progress bar, part filled.
  *
- * Same geometry as app/icon.svg, which is the favicon and the apple-icon — one
+ * Same geometry as app/icon.svg, which is the favicon and the apple-icon - one
  * logo drawn twice, because a favicon has to be a file and this has to be a
  * component, and neither can import the other. Change one, change the other.
  *
@@ -9,7 +9,7 @@
  * is ink and the glyph is paper at every size and on every background it is
  * used on. It is the wordmark beside it that takes the colour of its container.
  *
- * Where it belongs: surfaces where HConcierge is the one speaking — the staff
+ * Where it belongs: surfaces where HConcierge is the one speaking - the staff
  * chrome, the sign-in door, the marketing page, its own error screens. Not on
  * anything a guest reads or a hotel hands over. The room page, the welcome card
  * and the folio receipt carry the property's name, the property's colour and
@@ -39,7 +39,7 @@ export function Logo({ size = 18, className }: { size?: number; className?: stri
 /**
  * The mark and the name, locked up.
  *
- * Carries no type of its own — size, weight and colour come from whatever it
+ * Carries no type of its own - size, weight and colour come from whatever it
  * sits in, which is why the same component works in a 13px footer and above a
  * 40px heading without a variant for either.
  */

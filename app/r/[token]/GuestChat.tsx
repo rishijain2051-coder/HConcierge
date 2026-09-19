@@ -61,14 +61,14 @@ export default function GuestChat({
           <div className="border-line rounded-[14px] border border-dashed px-4 py-8 text-center">
             <p className="text-muted text-sm">No messages yet.</p>
             <p className="text-faint mt-1 text-xs">
-              Late checkout, a restaurant recommendation, a question about the bill — start here.
+              Late checkout, a restaurant recommendation, a question about the bill. Start here.
             </p>
           </div>
         ) : (
           <div>
             {/* Grouped. Two replies typed a minute apart by the same person do
                 not each need her name above them and the same time below them
-                — that is four lines of furniture around two sentences. The
+                - that is four lines of furniture around two sentences. The
                 name opens a run, the clock closes it, and the squared-off
                 corner marks the end of the run rather than every bubble. */}
             {messages.map((m, i) => {
@@ -114,7 +114,7 @@ export default function GuestChat({
       {error && <p className="text-late mt-3 text-center text-xs">{error}</p>}
 
       {/* The navigation is fixed to the bottom of the screen, so the composer
-          has to stop above it — flush with bottom-0 it was invisible and every
+          has to stop above it - flush with bottom-0 it was invisible and every
           tap on it hit a nav tab instead. */}
       <form
         onSubmit={send}

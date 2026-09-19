@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
  *
  * Sits outside the app shell, like the password screen, because it is a one-time
  * setup step rather than part of the working day. Until it is done, escalations
- * still arrive on that number — they just carry no one-tap link. See
+ * still arrive on that number - they just carry no one-tap link. See
  * WHATSAPP-TESTING-PLAN.md §5.
  */
 export default async function PhonePage() {
@@ -78,7 +78,7 @@ export default async function PhonePage() {
             type: 'text',
             autoComplete: 'one-time-code',
             autoFocus: true,
-            hint: 'Until this is done, alerts still reach you — just without the one-tap link.',
+            hint: 'Until this is done, alerts still reach you - just without the one-tap link.',
           },
         ]}
       />

@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from 'react'
 import { IconAlarm } from '@/components/icons'
 
 /**
- * "Wake this phone" — the other half of the alerts button beside it.
+ * "Wake this phone" - the other half of the alerts button beside it.
  *
  * *Alerts on* makes this tab ring while somebody is looking at it. This makes
  * the device ring when nobody is: it registers the service worker, subscribes
@@ -22,7 +22,7 @@ export default function PushButton({
   publicKey,
   subscribed: initial,
 }: {
-  /** null when VAPID keys are unset — push is off for the whole install. */
+  /** null when VAPID keys are unset - push is off for the whole install. */
   publicKey: string | null
   subscribed: boolean
 }) {

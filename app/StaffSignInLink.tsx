@@ -30,7 +30,7 @@ type Tunable = {
   baseSpring: { stiffness: number; damping: number; precision: number }
 }
 
-/* The knob. Stock is 100/22, which is overdamped and crawls to a stop — a
+/* The knob. Stock is 100/22, which is overdamped and crawls to a stop - a
    second to cover and two round trip. The fastest shipped preset ('snappy',
    180/20) still took 666ms just to cover. This is stiffer and just under
    critical damping, and the looser precision cuts the long tail where the
@@ -41,7 +41,7 @@ const FADE_MS = 160
 
 /* marketing/brand/logo-lockup-invert.svg, inlined. It lives outside public/
    so it is not servable, and a transition this short cannot wait on a
-   request anyway — this has to paint on the first frame. Only change from
+   request anyway - this has to paint on the first frame. Only change from
    the file on disk: the wordmark's font-family points at the variable
    next/font actually defines, since the literal 'Instrument Sans' does not
    match the scoped family name it generates. */
@@ -59,7 +59,7 @@ const LOCKUP = `
 
 /** Sits one layer above the blob and clears with it. Built by hand for the
  *  same reason the blob is: it has to outlive the React tree it was clicked
- *  from. Decorative — the route change is what a screen reader announces. */
+ *  from. Decorative - the route change is what a screen reader announces. */
 function showLoadingCard() {
   const card = document.createElement('div')
   card.setAttribute('aria-hidden', 'true')
@@ -131,7 +131,7 @@ export default function StaffSignInLink({
 
         // Deliberately not owned by React. This page unmounts the moment the
         // route swaps, and anything tied to that lifecycle would be torn down
-        // mid-cover — cutting to the login screen instead of clearing off it.
+        // mid-cover - cutting to the login screen instead of clearing off it.
         // Both of these live on document.body and clear up after themselves.
         const blob = new motion.LiquidBlobTransition({ color: '#1c1917' })
         const tuned = blob as unknown as Tunable
@@ -144,8 +144,8 @@ export default function StaffSignInLink({
             // One way, not a round trip. trigger() grows the blob out of the
             // click and then shrinks it back into that same point, which
             // reads as a bubble rather than as travel. Moving the origin to
-            // the far corner here — at full occlusion, so the jump is not
-            // visible — makes the second half drain away instead of rewind.
+            // the far corner here - at full occlusion, so the jump is not
+            // visible - makes the second half drain away instead of rewind.
             tuned.setOrigin(window.innerWidth - clientX, window.innerHeight - clientY)
             // Go out with the blob, not after it, or the wordmark is left
             // hanging over the login screen.

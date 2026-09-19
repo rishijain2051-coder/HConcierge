@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Wordmark } from '@/components/Logo'
 
 /**
- * Every unmatched URL that is not a room link — a mistyped staff path, a stale
+ * Every unmatched URL that is not a room link - a mistyped staff path, a stale
  * bookmark. Room links have their own, better-informed page in
  * `app/r/[token]/not-found.tsx`, which is the one a guest will ever see; this
  * exists so the fallback is not Next.js's black-on-white default, which is the

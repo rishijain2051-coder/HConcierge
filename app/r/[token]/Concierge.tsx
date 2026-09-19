@@ -131,7 +131,7 @@ export default function Concierge({
    * Services, grouped the way a guest asks for them: by the team that does the
    * work, not by the shelf the hotel files it on. "Housekeeping" then covers
    * towels, cleaning and laundry at once, which is three of this hotel's own
-   * categories — so they stay as headings inside it rather than being flattened
+   * categories - so they stay as headings inside it rather than being flattened
    * into one long list with no shape.
    */
   const teams = useMemo(() => {
@@ -191,7 +191,7 @@ export default function Concierge({
         case 'food':
           return 'Here is what the kitchen has. Which menu?'
         case 'menu':
-          return `${dining.find((c) => c.id === s.id)?.name ?? 'Menu'} — tap anything to add it to your basket.`
+          return `${dining.find((c) => c.id === s.id)?.name ?? 'Menu'}. Tap anything to add it to your basket.`
         case 'services':
           return 'Which team should I ask?'
         case 'team':
@@ -268,8 +268,8 @@ export default function Concierge({
       const reply = !res.ok
         ? res.error
         : 'already' in res && res.already
-          ? 'You have already taken that one up — the desk has it.'
-          : `Done — I have let the desk know.${promo.fine_print ? ` ${promo.fine_print}` : ''}`
+          ? 'You have already taken that one up. The desk has it.'
+          : `Done. I have let the desk know.${promo.fine_print ? ` ${promo.fine_print}` : ''}`
 
       setLines((prev) => [
         ...prev,
@@ -313,7 +313,7 @@ export default function Concierge({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-[15px] leading-tight font-semibold tracking-[-0.01em]">AI Concierge</p>
-                <p className="text-faint text-[12px] leading-tight">Tap an option — no typing needed</p>
+                <p className="text-faint text-[12px] leading-tight">Tap an option, no typing needed</p>
               </div>
               <button
                 onClick={close}
@@ -341,7 +341,7 @@ export default function Concierge({
             </div>
 
             {/* The app's basket bar lives behind this panel, which on a phone
-                covers the whole screen — so anything added in here had no way
+                covers the whole screen - so anything added in here had no way
                 out. Same control, same words, inside the conversation. */}
             {cartCount > 0 && screen.at !== 'desk' && (
               <div className="border-line shrink-0 border-t px-3 py-2.5">
@@ -420,7 +420,7 @@ export default function Concierge({
 
 /**
  * Split out so the focus trap mounts with the panel rather than with the
- * button — the hook grabs focus and locks the page, which must not happen
+ * button - the hook grabs focus and locks the page, which must not happen
  * while the concierge is merely sitting in the corner.
  */
 function Panel({
@@ -461,7 +461,7 @@ function ConciergeButton({
       onClick={onOpen}
       aria-label={unread > 0 ? `AI Concierge, ${unread} new ${unread === 1 ? 'reply' : 'replies'}` : 'AI Concierge'}
       /* Clear of the tab bar, and clear of the basket bar as well when there
-         is something in the basket — landing on top of it made the one button
+         is something in the basket - landing on top of it made the one button
          a guest most needs to reach unreachable. */
       className={`bg-ink ease-glide fixed right-4 z-40 flex items-center gap-2 rounded-full py-3 pr-4 pl-3.5 text-white shadow-[var(--shadow-float)] transition-all duration-300 active:scale-[0.96] ${
         raised

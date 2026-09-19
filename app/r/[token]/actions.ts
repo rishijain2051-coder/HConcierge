@@ -65,7 +65,7 @@ export async function submitFreeform(token: string, note: string) {
 /**
  * "I would like to settle up."
  *
- * No card is taken here and none ever will be — this puts the guest on the
+ * No card is taken here and none ever will be - this puts the guest on the
  * front desk's board with their balance attached, so somebody walks up with a
  * card machine instead of the guest queueing in the lobby.
  */
@@ -85,7 +85,7 @@ export async function askToSettle(token: string) {
 
   const res = await createFreeformRequest(
     ctx,
-    `Would like to settle the room bill — ${rupees(total)}`,
+    `Would like to settle the room bill - ${rupees(total)}`,
   )
   if (!res.ok) return res
 
@@ -94,7 +94,7 @@ export async function askToSettle(token: string) {
 }
 
 /**
- * Taking up an offer. Nothing is issued and nothing is discounted here — it
+ * Taking up an offer. Nothing is issued and nothing is discounted here - it
  * records the claim against the stay and puts the guest on the desk's board
  * with the offer named. See lib/promotions.ts for why it stops there.
  */
@@ -118,7 +118,7 @@ export async function sendGuestMessage(token: string, body: string) {
   if (!text) return { ok: false as const, error: 'Type a message first.' }
 
   // Count and insert in one statement. Checking first and inserting after let
-  // a fast thumb — or a script — land 24 messages against a cap of 15, because
+  // a fast thumb - or a script - land 24 messages against a cap of 15, because
   // every one of them read the count before any of them had committed.
   const sent = await sql<{ id: string }[]>`
     insert into messages (property_id, room_id, sender, body)

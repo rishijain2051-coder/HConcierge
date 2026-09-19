@@ -7,13 +7,13 @@ import { useEffect } from 'react'
  * Keeps the job list true while somebody is holding it.
  *
  * This page is opened from a message, carried down a corridor, and looked at
- * again a few minutes later — by which time a colleague may have finished the
+ * again a few minutes later - by which time a colleague may have finished the
  * job it is offering. It renders nothing: the page stays a server component and
  * this only asks for a fresh render when the property changes, so there is one
  * definition of what a job list looks like rather than a second copy in the
  * client.
  *
- * Stream first, slow poll as a seatbelt — the same bargain as lib/use-live.ts.
+ * Stream first, slow poll as a seatbelt - the same bargain as lib/use-live.ts.
  * The poll is also what keeps "12m old" honest, since the stream deliberately
  * says nothing when only the clock has moved.
  */

@@ -6,7 +6,7 @@ import { formatAge, howOld, minutesRemaining, notDueYet, since, slaState, WARN_A
  * The rules db/check-amber-alert.mjs asserts against a live board, without
  * needing one. lib/sla.ts is the single definition of "late" shared by the
  * staff board, the guest's status line and the job list behind every WhatsApp
- * message — if these drift, staff stop trusting the board.
+ * message - if these drift, staff stop trusting the board.
  */
 const NOW = new Date('2026-09-18T12:00:00Z')
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000)

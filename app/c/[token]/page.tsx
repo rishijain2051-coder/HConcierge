@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * The welcome card, on the guest's own phone.
  *
  * This is what the front desk sends by WhatsApp at check-in. It shows the same
- * two things the printed card does — the QR and the four digits — so a guest who
+ * two things the printed card does - the QR and the four digits - so a guest who
  * has lost the paper, or never took it, still has them.
  *
  * Three things keep it safe enough to be a link somebody can forward:
@@ -87,7 +87,7 @@ export default async function CardPage({ params }: PageProps<'/c/[token]'>) {
           dangerouslySetInnerHTML={{ __html: svg }}
         />
 
-        {/* On the phone that received this, tapping is the whole point — the QR
+        {/* On the phone that received this, tapping is the whole point - the QR
             is for the other devices in the room. */}
         <Link
           href={`/r/${room.token}`}
@@ -98,7 +98,7 @@ export default async function CardPage({ params }: PageProps<'/c/[token]'>) {
       </div>
 
       <p className="text-muted mt-7 text-[14px] leading-relaxed">
-        Room service, housekeeping, laundry, the front desk — anything at all, without calling down.
+        Room service, housekeeping, laundry, the front desk - anything at all, without calling down.
       </p>
       <p className="text-faint mt-4 text-[12px]">
         No app to install.{room.property_phone ? ` Prefer to call? ${room.property_phone}` : ''}

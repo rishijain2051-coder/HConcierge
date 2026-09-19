@@ -173,7 +173,7 @@ export default function PropertyManager({ properties }: { properties: PropertyRo
                 label="Start the directory from"
                 name="copyFrom"
                 options={[
-                  { value: '', label: 'Empty — I will add everything myself' },
+                  { value: '', label: 'Empty - I will add everything myself' },
                   ...properties.map((p) => ({ value: p.id, label: `Copy ${p.name} (${p.items} items)` })),
                 ]}
                 hint="Copies every section, item, price, target time and hotel info page. You can edit it all afterwards."

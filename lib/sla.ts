@@ -70,7 +70,7 @@ export function minutesRemaining(r: SlaInput, now: Date = new Date()): number {
 }
 
 /**
- * "12m ago", or just "just now" — which does not take an "ago" after it.
+ * "12m ago", or just "just now" - which does not take an "ago" after it.
  *
  * Three screens appended one themselves and all three read wrong for the first
  * sixty seconds of a request's life, which is exactly when people look.

@@ -6,7 +6,7 @@
  *
  * This exists because a miss in `lib/notify.ts` is silent. The board scoping
  * stays correct, so the person still sees the request on their screen and
- * simply never gets told about it — there is no error, no log and no failing
+ * simply never gets told about it - there is no error, no log and no failing
  * page. The only way to know who a late request actually reaches is to make one
  * and look.
  *
@@ -15,7 +15,7 @@
  *   1. Every transport env var is deleted before lib/notify.ts is imported, and
  *      messagingConfigured() is asserted false. viaGateway() and viaTwilio()
  *      both bail on a falsy var, so sendMessage() falls through to a
- *      console.log — nothing reaches WhatsApp, Twilio, or the outbound_messages
+ *      console.log - nothing reaches WhatsApp, Twilio, or the outbound_messages
  *      table the live worker drains.
  *   2. It refuses to run if anything else in the database is already eligible,
  *      so the sweep cannot escalate somebody else's work as a side effect. The
@@ -185,7 +185,7 @@ async function fire({ status, dept, items, note, ageMins, sla, step, assigned })
 
 let failures = 0
 function check(label, ok, detail) {
-  out(`    ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  — ' + detail : ''}`)
+  out(`    ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  - ' + detail : ''}`)
   if (!ok) failures++
 }
 const show = (r) => {

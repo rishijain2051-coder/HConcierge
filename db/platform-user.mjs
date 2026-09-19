@@ -63,7 +63,7 @@ try {
   console.log(`\n  platform account: ${row.username}`)
   console.log(`  password:         ${password}`)
   console.log('\n  Shown once. Change it under Password once you are in.')
-  console.log('  This account sees every organisation — keep it off shared machines.\n')
+  console.log('  This account sees every organisation - keep it off shared machines.\n')
 } catch (err) {
   console.error('✗ failed:', err.message)
   process.exitCode = 1

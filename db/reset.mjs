@@ -7,7 +7,7 @@
 // Cleared: guests, requests, messages, folio entries, audit log
 //
 // QR tokens are NOT rotated by default. The printed desk card is permanent now
-// — the per-stay 4-digit code is what changes between guests — so rotating
+// - the per-stay 4-digit code is what changes between guests - so rotating
 // tokens here would silently invalidate every card already sitting in a room.
 // Pass --rotate-qr only when you intend to reprint them all.
 import postgres from 'postgres'
@@ -30,7 +30,7 @@ try {
            (select count(*)::int from folio_entries)        as folio,
            (select count(*)::int from audit_log)            as audit`
   console.log(
-    `clearing — ${before.occupied} occupied rooms, ${before.requests} requests, ` +
+    `clearing - ${before.occupied} occupied rooms, ${before.requests} requests, ` +
       `${before.messages} messages, ${before.folio} folio entries, ${before.audit} audit rows`,
   )
 
@@ -51,7 +51,7 @@ try {
     for (const r of rooms) {
       await sql`update rooms set token = ${randomBytes(8).toString('base64url')} where id = ${r.id}`
     }
-    console.log(`rotated ${rooms.length} QR tokens — every printed card must be reprinted`)
+    console.log(`rotated ${rooms.length} QR tokens - every printed card must be reprinted`)
   }
 
   console.log('\n✓ clean slate')

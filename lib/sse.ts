@@ -4,7 +4,7 @@
  * Server-sent events rather than a websocket, because the hosting is
  * serverless: there is no long-lived server to hold a socket, and `EventSource`
  * reconnects by itself when a stream ends. The effect a guest sees is the same
- * — their order moves the instant the kitchen touches it, with no polling.
+ * - their order moves the instant the kitchen touches it, with no polling.
  *
  * Every stream closes itself after MAX_MS. That is deliberate: a serverless
  * function billed by the second should not be held open all night, and the
@@ -16,7 +16,7 @@ const HEARTBEAT_MS = 25_000
 // Several rows change together and not all at once: an order is a request row,
 // then its lines a couple of hundred milliseconds later, then a charge. Wait
 // long enough for the whole thing to land so the guest gets one push carrying a
-// complete order, rather than four — the first of which has no dishes on it.
+// complete order, rather than four - the first of which has no dishes on it.
 const SETTLE_MS = 350
 
 export function sseStream<T>({
@@ -27,12 +27,12 @@ export function sseStream<T>({
 }: {
   signal: AbortSignal
   subscribe: (fire: () => void) => () => void
-  /** Returning null means "this viewer is no longer allowed" — the stream closes. */
+  /** Returning null means "this viewer is no longer allowed" - the stream closes. */
   load: () => Promise<T | null>
   /**
    * Run once when the stream ends, however it ends. `shutdown` below is the
-   * single funnel for all four exits — the client hanging up, MAX_MS, a
-   * revoked grant, and the abort signal — which is why a caller holding a
+   * single funnel for all four exits - the client hanging up, MAX_MS, a
+   * revoked grant, and the abort signal - which is why a caller holding a
    * resource for the life of the stream can release it here and not leak.
    */
   onClose?: () => void

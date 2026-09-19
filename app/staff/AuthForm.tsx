@@ -30,7 +30,7 @@ export default function AuthForm({
 }) {
   const [state, formAction, pending] = useActionState(action, {})
   // Controlled on purpose. React empties an uncontrolled form when its action
-  // settles, including when it failed — so a mistyped password wiped the
+  // settles, including when it failed - so a mistyped password wiped the
   // username too, and the next click on Sign in submitted an empty required
   // field and never reached the server at all.
   const [values, setValues] = useState<Record<string, string>>({})

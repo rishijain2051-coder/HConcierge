@@ -66,7 +66,7 @@ export default function Rooms({
   const [rotating, setRotating] = useState<RoomRow | null>(null)
   // Checking out ends the stay: it clears the code, so every device that stay
   // used is signed out. Reissuing the QR asked before doing its damage and
-  // this did not, which was backwards — this is the one a mis-tap on a phone
+  // this did not, which was backwards - this is the one a mis-tap on a phone
   // actually reaches, because it sits in the same row.
   const [checkingOut, setCheckingOut] = useState<RoomRow | null>(null)
   // Settling moves money in the hotel's books and cannot be undone from here.
@@ -129,8 +129,8 @@ export default function Rooms({
               {/* Closed, a room is its number and whether anyone is in it.
                   Twenty-two of those fit on a screen; twenty-two rows carrying
                   a guest, a code, a balance and five buttons did not, on any
-                  screen. The exceptions still speak up — an unanswered request,
-                  a guest waiting to settle, a locked code — because those are
+                  screen. The exceptions still speak up - an unanswered request,
+                  a guest waiting to settle, a locked code - because those are
                   the rooms the desk is actually looking for. */}
               <button
                 onClick={() => setOpenId(open ? null : r.id)}
@@ -165,7 +165,7 @@ export default function Rooms({
                         <>
                           <p className="text-[15px] font-medium">{r.guest_name}</p>
                           <p className="text-faint mt-0.5 text-[12px] leading-relaxed">
-                            In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '—'}
+                            In since {r.checked_in_at ? new Date(r.checked_in_at).toLocaleDateString() : '-'}
                             {r.checkout_at && ` · out ${new Date(r.checkout_at).toLocaleDateString()}`}
                             {r.balance_paise > 0 && (
                               <span className="text-ink font-semibold"> · {rupees(r.balance_paise)} on the bill</span>
@@ -182,7 +182,7 @@ export default function Rooms({
                       </p>
                     </div>
 
-                    {/* The code plus the QR token IS the guest's login — it
+                    {/* The code plus the QR token IS the guest's login - it
                         opens their bill, their thread with the desk, and the
                         ability to charge the room. Only the people who issue it
                         ever receive it; for everyone else it is not in the page
@@ -266,7 +266,7 @@ export default function Rooms({
       </div>
 
       <p className="text-faint mt-3 text-[12px] leading-relaxed">
-        The QR card on the desk is permanent — print it once. The four-digit code is what changes with each guest, so
+        The QR card on the desk is permanent - print it once. The four-digit code is what changes with each guest, so
         a photo of the QR from a previous stay is useless without it. Five wrong codes locks the room for fifteen
         minutes.
       </p>
@@ -275,7 +275,7 @@ export default function Rooms({
         <Modal title={`Room ${owing.room.number} has not settled`} onClose={() => setOwing(null)}>
           <p className="text-muted text-[14px] leading-relaxed">
             There is <span className="text-ink font-semibold">{rupees(owing.amount)}</span> outstanding on this room.
-            Take the payment first — checking out now records it as settled and the guest&rsquo;s screen goes with them.
+            Take the payment first - checking out now records it as settled and the guest&rsquo;s screen goes with them.
           </p>
           <div className="mt-4 flex gap-2">
             <button
@@ -292,14 +292,14 @@ export default function Rooms({
               }}
               className="bg-ink flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white"
             >
-              Settled — check out
+              Settled, check out
             </button>
           </div>
         </Modal>
       )}
 
       {/* Settling is a claim that cash has changed hands, and nothing on this
-          screen can take it back — the charges leave the folio and the guest's
+          screen can take it back - the charges leave the folio and the guest's
           own screen clears. So it asks, it names the figure it is about to
           close, and it offers the paper first, because handing the guest a
           receipt is the step this button usually comes after. */}
@@ -308,7 +308,7 @@ export default function Rooms({
           <p className="text-muted text-[14px] leading-relaxed">
             This records that the desk has taken{' '}
             <span className="text-ink font-semibold">{rupees(settling.balance_paise)}</span>. HConcierge does not take
-            the money and cannot check that it arrived — settling clears the charges from the room and from the
+            the money and cannot check that it arrived - settling clears the charges from the room and from the
             guest&rsquo;s screen, and it cannot be undone from here.
           </p>
           <div className="mt-4">
@@ -329,7 +329,7 @@ export default function Rooms({
               }}
               className="bg-ink flex-1 rounded-xl px-4 py-3 text-[13px] font-semibold text-white"
             >
-              Money taken — settle
+              Money taken, settle
             </button>
           </div>
         </Modal>
@@ -337,14 +337,14 @@ export default function Rooms({
 
       {/* The number is shown in full, and that is the entire point of this
           dialog. The message carries the room's access code, so one mistyped
-          digit hands a stranger working access to an occupied room — the person
+          digit hands a stranger working access to an occupied room - the person
           who typed it is the only one who can catch it, and they can only catch
           it if they are shown it. */}
       {sending && (
         <Confirm
           title={`Send Room ${sending.number}'s card?`}
           body={`It goes by WhatsApp to ${sending.guest_phone}, and carries the access code ${
-            sending.access_code ?? '—'
+            sending.access_code ?? '-'
           } as well as the link. Check the number is right: anyone who receives it can get into the room until the code is reissued.`}
           confirmLabel="Send it"
           onConfirm={() =>
@@ -362,7 +362,7 @@ export default function Rooms({
         <Modal title="Sent" onClose={() => setSent(null)}>
           <p className="text-muted text-[14px] leading-relaxed">
             The welcome card is on its way to <span className="text-ink font-semibold">{sent}</span>. If that is not
-            the guest&rsquo;s number, issue a new code now — the one in that message will stop working.
+            the guest&rsquo;s number, issue a new code now - the one in that message will stop working.
           </p>
           <button
             onClick={() => setSent(null)}
@@ -374,7 +374,7 @@ export default function Rooms({
       )}
 
       {checkingIn && (
-        <Modal title={`Check in — Room ${checkingIn.number}`} onClose={() => setCheckingIn(null)}>
+        <Modal title={`Check in: Room ${checkingIn.number}`} onClose={() => setCheckingIn(null)}>
           <form
             action={(form) => {
               const name = String(form.get('guest') ?? '')
@@ -534,7 +534,7 @@ function Flag({ children, tone }: { children: React.ReactNode; tone?: 'warn' | '
   return <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>{children}</span>
 }
 
-/** Printing opens a new tab, so it is a link — sized to match the buttons. */
+/** Printing opens a new tab, so it is a link - sized to match the buttons. */
 function PrintLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <Link

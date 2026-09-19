@@ -8,7 +8,7 @@ import { rupees } from '../lib/money'
  * part of it a guest can be told a wrong answer about.
  *
  * `offerState` lives in lib/types.ts precisely so the phone and the server run
- * the same function — these assertions are what makes that worth anything.
+ * the same function - these assertions are what makes that worth anything.
  */
 const promo = (over: Partial<Promotion> = {}): Promotion => ({
   id: 'p1',

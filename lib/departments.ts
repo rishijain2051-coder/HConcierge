@@ -25,7 +25,7 @@ const fail = (error: string) => ({ ok: false as const, error })
  * one customer's teams are not another's, and the slug is what every routed
  * column already holds.
  *
- * Cached per request — the board, the staff list and the directory editor all
+ * Cached per request - the board, the staff list and the directory editor all
  * ask for the same list on the same page load.
  */
 export const listTeams = cache(async (organisationId: string | null): Promise<Team[]> => {
@@ -126,8 +126,8 @@ export async function renameTeam(actor: Staff, id: string, name: string): Promis
 }
 
 /**
- * Turning a team off hides it from everything that routes *new* work to it —
- * the directory's "goes to", the staff form, the escalation ladder — without
+ * Turning a team off hides it from everything that routes *new* work to it -
+ * the directory's "goes to", the staff form, the escalation ladder - without
  * orphaning the requests, items and people already pointing at it. That is why
  * there is no delete: a team is referenced by four tables, and a hotel that
  * closes its spa still needs last month's spa requests to read correctly.

@@ -9,8 +9,8 @@ import { Button, Confirm, Err, Field, Modal, Panel, TextArea } from '../../ui'
 /**
  * The desk's canned chat lines, editable at last.
  *
- * Deliberately the same shape as Hotel info next door — a grid of cards, one
- * dialog for both adding and editing — because it is the same job: a list of
+ * Deliberately the same shape as Hotel info next door - a grid of cards, one
+ * dialog for both adding and editing - because it is the same job: a list of
  * one property's words. What it does not have is a reorder control. The board
  * lists these by `sort` then label and this screen appends, so the newest sits
  * last; moving one up means deleting and re-adding it. Worth building when
@@ -88,7 +88,7 @@ export default function RepliesManager({
         ))}
         {replies.length === 0 && (
           <p className="text-faint col-span-full py-16 text-center text-sm">
-            Nothing yet. Start with the one the desk types most — “someone is on the way to your room now”.
+            Nothing yet. Start with the one the desk types most - “someone is on the way to your room now”.
           </p>
         )}
       </div>
@@ -113,7 +113,7 @@ export default function RepliesManager({
               required
               autoFocus
               placeholder="On the way"
-              hint="What the desk sees in the list. Short — it is read at a glance."
+              hint="What the desk sees in the list. Short - it is read at a glance."
             />
             <TextArea
               label="What gets sent"

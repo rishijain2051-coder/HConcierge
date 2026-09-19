@@ -1,4 +1,4 @@
-# Tenant layer — implementation plan
+# Tenant layer - implementation plan
 
 **Status: not started.** Written 2026-09-14. Nothing in this file is built yet.
 
@@ -6,7 +6,7 @@
 
 `admin` currently means "sees every property row in the database". `rn.admin` holds it.
 That is fine while every property belongs to RN Hospitality. The moment a second hotel
-*group* is onboarded, RN's admin sees their rooms, orders and revenue — there is nothing
+*group* is onboarded, RN's admin sees their rooms, orders and revenue - there is nothing
 above `properties` to scope by.
 
 Concretely, the scope expressions that are wrong today:
@@ -86,7 +86,7 @@ update staff set organisation_id = (select id from organisations where slug = 'r
 
 Then `alter table properties alter column organisation_id set not null;`.
 
-The platform user has to be created by script — there is no sign-up screen, and no
+The platform user has to be created by script - there is no sign-up screen, and no
 existing user may promote themselves to `platform`. Add `db/platform-user.mjs`.
 
 ---
@@ -95,7 +95,7 @@ existing user may promote themselves to `platform`. Add `db/platform-user.mjs`.
 
 - `Role` gains `'platform'`. `Staff` gains `organisation_id: string | null` and
   `organisation_name?: string | null`.
-- `getStaff()` — join `organisations`, select both.
+- `getStaff()` - join `organisations`, select both.
 - Add `requirePlatform()`. Keep `requireAdmin()` but it should accept `platform` too
   (platform can do anything an admin can).
 - **`canTouchProperty(staff, propertyId)` is the hard one.** It currently answers from the
@@ -104,7 +104,7 @@ existing user may promote themselves to `platform`. Add `db/platform-user.mjs`.
 
   Change the signature to `canTouchProperty(staff, property: { id, organisation_id })`.
   Most call sites already `select` the row first (`roomFor`, `setRequestStatus`,
-  `loadRoomThread`, `createItem`, …) — widen those selects to include
+  `loadRoomThread`, `createItem`, …) - widen those selects to include
   `organisation_id` via a join on `properties`. Do **not** add a lookup inside the
   helper; that turns one query into two on every permission check.
 
@@ -130,15 +130,15 @@ export function propertyScope(staff: Staff, propertyId?: string | null) {
 
 Then rewrite, in this order:
 
-1. `lib/board.ts` — `propertyScope`, `loadChatRooms`, and the `canTouchProperty` call sites
+1. `lib/board.ts` - `propertyScope`, `loadChatRooms`, and the `canTouchProperty` call sites
    in `loadRoomThread`, `markThreadRead`, `replyToRoom`, `setRequestStatus`,
    `assignRequest`, `loadAssignableStaff`
-2. `lib/history.ts` — `scopes()`
-3. `lib/admin.ts` — `canManageProperty`, `listStaff`, `listProperties`, `listAudit`,
+2. `lib/history.ts` - `scopes()`
+3. `lib/admin.ts` - `canManageProperty`, `listStaff`, `listProperties`, `listAudit`,
    `adminOverview` (six subqueries, each with its own admin ternary), `createProperty`
    (must set `organisation_id`)
-4. `app/staff/(app)/rooms/page.tsx` — `scopeId`
-5. `app/staff/(app)/rooms/print/page.tsx` — same unscoped `propertyId` pattern
+4. `app/staff/(app)/rooms/page.tsx` - `scopeId`
+5. `app/staff/(app)/rooms/print/page.tsx` - same unscoped `propertyId` pattern
 
 ### Role assignment rules
 
@@ -173,25 +173,25 @@ leaks one client's escalations to another. Scope it to the property's organisati
 
 ## 5. Admin panel
 
-- `app/staff/(app)/admin/layout.tsx` — add an **Organisations** tab, visible only to
+- `app/staff/(app)/admin/layout.tsx` - add an **Organisations** tab, visible only to
   `platform`.
-- New `app/staff/(app)/admin/organisations/` — list orgs with property/staff/room counts;
+- New `app/staff/(app)/admin/organisations/` - list orgs with property/staff/room counts;
   create an org and provision its first `admin` in one step, returning a one-time password
   (reuse the existing `PasswordOnce` component).
-- `properties/page.tsx` — currently `requireAdmin()`. Allow `platform` too, and add an
+- `properties/page.tsx` - currently `requireAdmin()`. Allow `platform` too, and add an
   organisation selector for platform users. An `admin` creating a property gets their own
   org assigned automatically.
-- `StaffManager.tsx` — the `ROLES` array needs `platform`, filtered by what the actor may
+- `StaffManager.tsx` - the `ROLES` array needs `platform`, filtered by what the actor may
   assign.
 
 ---
 
 ## 6. Scripts
 
-- `db/seed.mjs` — create the organisation first, attach the property and staff to it.
-- `db/reset.mjs` — unaffected (it clears operational data only), but the summary tables
+- `db/seed.mjs` - create the organisation first, attach the property and staff to it.
+- `db/reset.mjs` - unaffected (it clears operational data only), but the summary tables
   should group by organisation.
-- `db/platform-user.mjs` — new. Creates or resets the HConcierge platform account. This is
+- `db/platform-user.mjs` - new. Creates or resets the HConcierge platform account. This is
   the break-glass path and the only way a `platform` user can ever exist.
 
 ---
@@ -201,12 +201,12 @@ leaks one client's escalations to another. Scope it to the property's organisati
 The test that actually proves it:
 
 1. Create a second organisation with its own property and admin.
-2. Sign in as `rn.admin` — the second org's property must not appear in Properties,
+2. Sign in as `rn.admin` - the second org's property must not appear in Properties,
    Rooms, Board, History, Directory or Activity.
 3. Try to reach it directly by id (`/staff/rooms?property=<other-org-id>`,
-   `/staff/admin/catalog?property=<other-org-id>`) — must be empty or refused, not just
+   `/staff/admin/catalog?property=<other-org-id>`) - must be empty or refused, not just
    hidden from the picker.
-4. Sign in as the platform user — both organisations visible.
+4. Sign in as the platform user - both organisations visible.
 5. Confirm an escalation in org B does not message org A's admin.
 
 Step 3 is the one that matters. Hiding a row from a dropdown is not isolation.
@@ -216,7 +216,7 @@ Step 3 is the one that matters. Hiding a row from a dropdown is not isolation.
 ## Sequencing
 
 Steps 1 and the backfill are additive and break nothing, so they can land first and
-independently. Everything from step 2 onward should land together — a half-migrated
+independently. Everything from step 2 onward should land together - a half-migrated
 `canTouchProperty` will silently widen access rather than narrow it.
 
 The guest side (`lib/guest.ts`, `lib/requests.ts`, `lib/guest-session.ts`, `app/r/[token]/`)

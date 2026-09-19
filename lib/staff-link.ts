@@ -3,8 +3,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 /**
  * The token behind a staff member's WhatsApp job-list link.
  *
- * Same construction as the guest grant in lib/guest-session.ts — an HMAC over a
- * payload carrying its own expiry — but packed as bytes rather than JSON,
+ * Same construction as the guest grant in lib/guest-session.ts - an HMAC over a
+ * payload carrying its own expiry - but packed as bytes rather than JSON,
  * because this one has to survive being read off a phone screen inside a
  * WhatsApp message. The JSON form of the same three facts is ~170 characters and
  * wraps over three lines; this is 42.
@@ -22,7 +22,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
  * /w/, and the alternative is 29 more characters in every message to guard a
  * capability that expires within a shift.
  *
- * The token is only a pointer — it names a person, never a request. Authority is
+ * The token is only a pointer - it names a person, never a request. Authority is
  * re-read from the staff row on every render (app/w/[token]/page.tsx), so
  * deactivating someone or changing their number kills the link on the next tap
  * without any token state to revoke.
@@ -103,7 +103,7 @@ export function signStaffLink(staffId: string, hours = DEFAULT_HOURS): string {
   return sign(V_STAFF, staffId, hours)
 }
 
-/** The staff id this token names, or null — expired, forged, or the wrong token family. */
+/** The staff id this token names, or null - expired, forged, or the wrong token family. */
 export function readStaffLink(token: string): { staffId: string; expiresAt: Date } | null {
   const r = read(V_STAFF, token)
   return r && { staffId: r.id, expiresAt: r.expiresAt }
@@ -114,7 +114,7 @@ export function readStaffLink(token: string): { staffId: string; expiresAt: Date
  *
  * Three days, not twelve hours: a guest may check in on Friday and want their
  * code again on Sunday, and the message stays in their chat history the whole
- * stay. The expiry is the backstop, not the control — `app/c/[token]` re-reads
+ * stay. The expiry is the backstop, not the control - `app/c/[token]` re-reads
  * the room on every open and refuses once the room is no longer occupied, so
  * checking out kills the link the moment it happens rather than three days
  * later. Same property the guest cookie has, for the same reason.

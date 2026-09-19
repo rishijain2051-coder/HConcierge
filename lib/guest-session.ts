@@ -62,7 +62,7 @@ const stayOf = (room: Pick<Room, 'checked_in_at'>) =>
  *
  * Takes the raw cookie rather than reading the jar, so a long-lived stream can
  * re-check it against a freshly loaded room on every push. A grant is bound to
- * the stay, so a checkout — or a checkout and a new guest — invalidates it
+ * the stay, so a checkout - or a checkout and a new guest - invalidates it
  * without anything having to be revoked.
  */
 export function accessFor(raw: string | undefined, room: Room): boolean {

@@ -112,18 +112,18 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
         <Stat label="Requests" value={String(stats.total)} />
         <Stat
           label="Answered on time"
-          value={slaRate === null ? '—' : `${slaRate}%`}
+          value={slaRate === null ? '-' : `${slaRate}%`}
           tone={slaRate === null ? undefined : slaRate >= 90 ? 'ok' : slaRate >= 70 ? 'warn' : 'late'}
           sub={`${stats.within_sla} of ${stats.done} completed`}
         />
         <Stat
           label="Picked up in"
-          value={stats.avg_response === null ? '—' : `${stats.avg_response} min`}
+          value={stats.avg_response === null ? '-' : `${stats.avg_response} min`}
           sub="average"
         />
         <Stat
           label="Finished in"
-          value={stats.avg_resolve === null ? '—' : `${stats.avg_resolve} min`}
+          value={stats.avg_resolve === null ? '-' : `${stats.avg_resolve} min`}
           sub="average"
         />
         <Stat label="Billed to rooms" value={rupees(stats.revenue_paise)} sub={`${stats.escalated} escalated`} />
@@ -138,7 +138,7 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
                 <div key={d.department} className="p-3.5">
                   <p className="text-[13px] font-semibold">{teamLabel(labels, d.department)}</p>
                   <p className="text-muted mt-1 text-[12px]">
-                    {d.total} request{d.total === 1 ? '' : 's'} · {d.avg_resolve ?? '—'} min average
+                    {d.total} request{d.total === 1 ? '' : 's'} · {d.avg_resolve ?? '-'} min average
                   </p>
                   <div className="bg-paper mt-2 h-1.5 overflow-hidden rounded-full">
                     <div
@@ -175,14 +175,14 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
             <tbody className="divide-line divide-y">
               {rows.map((r) => {
                 // The same test as the on-time figure above the table, decided
-                // once in SQL — see DUE_FROM in lib/history.ts.
+                // once in SQL - see DUE_FROM in lib/history.ts.
                 const late = r.status === 'done' && !r.on_time
                 return (
                   <tr key={r.id} className="hover:bg-paper/60">
                     <Td className="text-faint tabular-nums">#{r.ref}</Td>
                     <Td className="font-semibold tabular-nums">{r.room_number}</Td>
                     <Td className="max-w-[22rem]">
-                      <span className="block truncate">{r.summary ?? r.note ?? '—'}</span>
+                      <span className="block truncate">{r.summary ?? r.note ?? '-'}</span>
                       {r.assigned_name && <span className="text-faint text-[11px]">{r.assigned_name}</span>}
                     </Td>
                     <Td className="text-muted">{teamLabel(labels, r.department)}</Td>
@@ -194,9 +194,9 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
                         minute: '2-digit',
                       })}
                     </Td>
-                    <Td className="tabular-nums">{r.response_minutes === null ? '—' : `${r.response_minutes} min`}</Td>
+                    <Td className="tabular-nums">{r.response_minutes === null ? '-' : `${r.response_minutes} min`}</Td>
                     <Td className={`tabular-nums ${late ? 'text-late font-semibold' : ''}`}>
-                      {r.resolve_minutes === null ? '—' : `${r.resolve_minutes} min`}
+                      {r.resolve_minutes === null ? '-' : `${r.resolve_minutes} min`}
                     </Td>
                     <Td>
                       <span
@@ -212,7 +212,7 @@ export default async function HistoryPage({ searchParams }: PageProps<'/staff/hi
                       </span>
                       {r.escalated_at && <span className="text-late ml-1 text-[11px]">escalated</span>}
                     </Td>
-                    <Td className="text-right tabular-nums">{r.total_paise > 0 ? rupees(r.total_paise) : '—'}</Td>
+                    <Td className="text-right tabular-nums">{r.total_paise > 0 ? rupees(r.total_paise) : '-'}</Td>
                   </tr>
                 )
               })}

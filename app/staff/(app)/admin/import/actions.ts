@@ -8,7 +8,7 @@ import { importCsv, importStaffCsv, type ImportKind } from '@/lib/bulk'
  * One action for every kind. The file arrives as text rather than as FormData
  * because a server action receiving a File would have to be multipart, and a
  * spreadsheet a hotel is willing to paste into Excel is small enough to send
- * as a string — the importers cap the row count anyway.
+ * as a string - the importers cap the row count anyway.
  */
 export async function runImport(kind: ImportKind, propertyId: string, text: string) {
   const actor = await requireManager()

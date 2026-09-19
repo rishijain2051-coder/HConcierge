@@ -21,12 +21,12 @@ const KINDS: { value: Kind; label: string; hint: string }[] = [
   {
     value: 'items',
     label: 'Directory items',
-    hint: 'A section that does not exist yet is created. Price is in rupees and may carry paise — 260.50 is fine. Leave “veg” blank for anything that is not food.',
+    hint: 'A section that does not exist yet is created. Price is in rupees and may carry paise - 260.50 is fine. Leave “veg” blank for anything that is not food.',
   },
   {
     value: 'staff',
     label: 'Staff',
-    hint: 'Every account gets a one-time password, listed once when the import finishes. Copy them then — they are not stored and cannot be shown again.',
+    hint: 'Every account gets a one-time password, listed once when the import finishes. Copy them then - they are not stored and cannot be shown again.',
   },
   {
     value: 'info',
@@ -159,7 +159,7 @@ export default function ImportManager({
           {result.passwords && result.passwords.length > 0 && (
             <>
               <p className="text-muted mt-2 text-[13px] leading-relaxed">
-                These are shown once. Copy them now — they are stored as hashes and cannot be read back. Anyone who
+                These are shown once. Copy them now - they are stored as hashes and cannot be read back. Anyone who
                 misses theirs can be reset from Manage → Staff.
               </p>
               <pre className="border-line bg-paper mt-3 overflow-x-auto rounded-lg border p-3 text-[13px] leading-relaxed select-all">

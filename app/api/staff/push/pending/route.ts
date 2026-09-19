@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 /**
  * What the service worker should say.
  *
- * The push itself carries nothing, so this is the message — read at the moment
+ * The push itself carries nothing, so this is the message - read at the moment
  * the phone wakes up rather than at the moment the push was queued. A request
  * that has been accepted in between says so, which is the whole reason the
  * payload is not in the push.

@@ -53,7 +53,7 @@ describe('the layout', () => {
       const line = out.find((l) => l.startsWith('Tea'))!
       expect(line).toHaveLength(width)
       // Derived from rupees(), not spelled out: how money is formatted is that
-      // module's decision — and it drops a zero fraction — while what this
+      // module's decision - and it drops a zero fraction - while what this
       // asserts is the alignment and the stand-in symbol.
       expect(line.endsWith(rupees(12000).replace('₹', RS_TEXT))).toBe(true)
     })
@@ -159,7 +159,7 @@ describe('the drawn rupee sign', () => {
     expect(drawnTotal).toContain(`\x7e${amount}`)
     // Both fill the paper exactly, because the amount is right-aligned to the
     // width either way. The drawn sign is two characters narrower, so it is the
-    // padding that absorbs the difference — which only works if the symbol is
+    // padding that absorbs the difference - which only works if the symbol is
     // known before the columns are worked out.
     expect(plainTotal).toHaveLength(WIDTH_80MM)
     expect(drawnTotal).toHaveLength(WIDTH_80MM)

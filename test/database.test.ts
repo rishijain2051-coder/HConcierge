@@ -7,7 +7,7 @@ import type { Staff } from '../lib/auth'
  * The half of the db/check-* scripts that needs a database, as assertions.
  *
  * Skipped without DATABASE_URL, so `npm test` is still meaningful in CI or on a
- * fresh clone — and the skip is loud rather than a silent pass. Everything it
+ * fresh clone - and the skip is loud rather than a silent pass. Everything it
  * writes it takes back in `afterAll`, keyed by id rather than by description:
  * "Masala Dosa" is a real menu item and deleting by name once removed a real
  * row from the shared development database.
@@ -26,7 +26,7 @@ type Lib = {
 
 /**
  * 20s, not vitest's 5s. Every assertion in here is a round trip to ap-south-1
- * — a dozen of them in the quick-replies case — and from a developer's own
+ * - a dozen of them in the quick-replies case - and from a developer's own
  * connection that is 60ms each before the dev server is also holding pool
  * connections open for an SSE stream. These were timing out at exactly 5010ms
  * while passing in isolation, which is a clock running out, not a wrong answer.
@@ -131,7 +131,7 @@ describe.skipIf(!HAVE_DB)('against the real database', { timeout: 20_000 }, () =
      * Only the paths that refuse, plus the constraint itself.
      *
      * A successful claim raises a request, and creating a request pushes a
-     * notification to every subscribed staff device — a real buzz on a real
+     * notification to every subscribed staff device - a real buzz on a real
      * phone, every time anybody runs `npm test`. The refusals and the unique
      * index are where the bugs would be anyway: the happy path is four lines
      * of glue over createFreeformRequest, which the app exercises constantly.

@@ -6,11 +6,11 @@ import { useFormStatus } from 'react-dom'
  * The submit button, and the only client component on this page.
  *
  * The action re-reads the whole board, so on hotel wifi there is a second or
- * more between the tap and the list changing — during which the page looked
+ * more between the tap and the list changing - during which the page looked
  * exactly as it did before. That reads as a dead button, and a dead button on a
  * corridor handset gets tapped again: `done` posts the folio charge and
  * NEXT_STATUS has no way back out of it, so the second tap is the expensive
- * one. `useFormStatus` is the whole fix — it disables the button and says what
+ * one. `useFormStatus` is the whole fix - it disables the button and says what
  * it is doing, in the same frame as the tap.
  *
  * It has to be its own component because `useFormStatus` reads the state of the
@@ -24,7 +24,7 @@ export default function ActButton({
   primary,
 }: {
   label: string
-  /** Same verb in the continuous — "Accepting…". */
+  /** Same verb in the continuous - "Accepting…". */
   busy: string
   primary?: boolean
 }) {

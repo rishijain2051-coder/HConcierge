@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 /**
  * Live server state, pushed.
  *
- * The stream is the real channel — the screen updates the moment a row
+ * The stream is the real channel - the screen updates the moment a row
  * changes. The poll behind it is a seatbelt on two counts: hotel wifi drops
  * streams, and the board's escalation sweep is time-based, so something has to
  * knock on the server even when nothing is happening.
@@ -27,7 +27,7 @@ export function useLive<T>({
 }): { state: T; refresh: () => void; live: boolean; gone: boolean } {
   const [state, setState] = useState(initial)
   const [live, setLive] = useState(false)
-  // The server has stopped recognising us — checked out, or the grant expired.
+  // The server has stopped recognising us - checked out, or the grant expired.
   const [gone, setGone] = useState(false)
   const inFlight = useRef(false)
 
@@ -91,7 +91,7 @@ export function useLive<T>({
 
     // A phone in a pocket should cost nothing: drop the stream when the screen
     // goes away, and take one fresh reading when it comes back. Coming back is
-    // also the moment to retry a stream that gave up — without that, one server
+    // also the moment to retry a stream that gave up - without that, one server
     // restart left the phone a minute behind for the rest of the stay.
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {

@@ -6,7 +6,7 @@ import { IconClose } from '@/components/icons'
 
 /** Small shared pieces for the staff screens. Six of them need the same modal,
  *  the same field and the same destructive-confirm, so they live here rather
- *  than being reimplemented per screen — which is how Rooms ended up with a
+ *  than being reimplemented per screen - which is how Rooms ended up with a
  *  modal that did not lock the page behind it. */
 
 export function Panel({
@@ -97,7 +97,7 @@ export function Field({
   step?: string
   /**
    * Controlled, for the handful of fields something else has to read as it is
-   * typed — a confirmation that gates a button, rather than a value a form
+   * typed - a confirmation that gates a button, rather than a value a form
    * submit collects. Both optional, so every existing uncontrolled caller is
    * untouched. `Select` already worked this way.
    */
@@ -286,7 +286,7 @@ export function Tag({ children, tone }: { children: React.ReactNode; tone?: 'ok'
 /**
  * Shown once after a create or a reset. The password is never stored in the
  * clear, so if this is dismissed without copying it the only way forward is
- * another reset — which the copy says plainly.
+ * another reset - which the copy says plainly.
  */
 export function PasswordOnce({ username, password, onClose }: { username: string; password: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false)
@@ -294,7 +294,7 @@ export function PasswordOnce({ username, password, onClose }: { username: string
     <Modal title="One-time password" onClose={onClose}>
       <p className="text-muted text-[14px] leading-relaxed">
         Give this to <span className="text-ink font-semibold">{username}</span>. It is shown once and cannot be read
-        back — if it is lost, issue another. They can set their own under Password once they are in.
+        back - if it is lost, issue another. They can set their own under Password once they are in.
       </p>
       <div className="border-line bg-paper mt-4 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3">
         <code className="text-[17px] font-semibold tracking-wide tabular-nums select-all">{password}</code>
@@ -313,7 +313,7 @@ export function PasswordOnce({ username, password, onClose }: { username: string
         </Button>
       </div>
       <p className="text-faint mt-3 text-[12px] leading-relaxed">
-        This is the only time it is shown. Nothing stores it in readable form — if you lose it, reset the password
+        This is the only time it is shown. Nothing stores it in readable form - if you lose it, reset the password
         again.
       </p>
       <div className="mt-4">

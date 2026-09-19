@@ -44,7 +44,7 @@ export type Role = 'platform' | 'admin' | 'manager' | 'staff'
 
 /**
  * The four every organisation is seeded with. Kept as the offline fallback for
- * code paths that have no organisation to load from — not as the set of teams
+ * code paths that have no organisation to load from - not as the set of teams
  * that may exist, which is `listTeams` in lib/departments.ts.
  */
 export const DEPARTMENTS: { value: string; label: string }[] = [
@@ -58,8 +58,8 @@ export const DEPARTMENTS: { value: string; label: string }[] = [
  * A readable name for a team slug, without a database round trip.
  *
  * Server code that has the organisation should prefer `teamLabels()`, which
- * knows the hotel's own names. This is what the paths that cannot — the
- * escalation messages in lib/notify.ts, for one — fall back to, so a custom
+ * knows the hotel's own names. This is what the paths that cannot - the
+ * escalation messages in lib/notify.ts, for one - fall back to, so a custom
  * team reads as "Spa wellness" rather than "spa_wellness".
  */
 /**
@@ -69,7 +69,7 @@ export const DEPARTMENTS: { value: string; label: string }[] = [
  */
 /**
  * Which teams a staff member may see the requests of. An empty list means every
- * team — what a manager, an admin and HConcierge get.
+ * team - what a manager, an admin and HConcierge get.
  *
  * Kept pure and dependency-free: this decides whether one department account
  * can read another team's guests, so it should stay readable on its own.
@@ -108,7 +108,7 @@ export type Property = {
   address: string | null
   phone: string | null
   brand_color: string
-  // IANA zone. Every scheduled time is read and written in it — see lib/clock.ts.
+  // IANA zone. Every scheduled time is read and written in it - see lib/clock.ts.
   timezone: string
 }
 
@@ -215,7 +215,7 @@ export type GuestState = {
  * These were 'Sent · Picked up · On the way · Delivered', which is a courier
  * describing a parcel. Nobody picks up a blocked drain and nothing is on its
  * way when the shower is being looked at. What actually happens is that a
- * person takes the request and then does the work — and what that work looks
+ * person takes the request and then does the work - and what that work looks
  * like depends entirely on which team has it, so the words do too.
  *
  * Step two is 'Accepted' everywhere on purpose: it is the word on the button
@@ -307,7 +307,7 @@ export const KIND_LABEL: Record<PromotionKind, string> = {
  * Whether a guest can take this up, and what to say if not.
  *
  * Pure, and living here rather than in lib/promotions.ts so the guest's screen
- * can call the same function the server does — that module reaches the
+ * can call the same function the server does - that module reaches the
  * database and cannot be imported into a client component. This is the only
  * place the rule exists. A threshold that reads as met on the phone and unmet
  * on the server is the one bug in this feature that reaches a guest as a
@@ -319,7 +319,7 @@ export function offerState(
   claimed: boolean,
 ): { available: boolean; shortBy: number; note: string } {
   const shortBy = Math.max(0, promo.min_spend_paise - Math.max(0, balancePaise))
-  if (claimed) return { available: false, shortBy, note: 'Claimed — the desk has it' }
+  if (claimed) return { available: false, shortBy, note: 'Claimed - the desk has it' }
   if (shortBy > 0) {
     return { available: false, shortBy, note: `${rupees(shortBy)} more on the room to unlock this` }
   }

@@ -102,7 +102,7 @@ export default function TeamManager({ teams, usage }: { teams: Team[]; usage: Re
               hint={
                 editing
                   ? 'Only the name changes. Everything already routed to this team stays with it.'
-                  : 'Anything a guest can ask for that a different set of people handles — a spa, a valet desk, a business centre.'
+                  : 'Anything a guest can ask for that a different set of people handles - a spa, a valet desk, a business centre.'
               }
             />
             <Button type="submit" variant="primary" full disabled={pending}>
@@ -117,7 +117,7 @@ export default function TeamManager({ teams, usage }: { teams: Team[]; usage: Re
           title={`Close ${closing.name}?`}
           body={
             (usage[closing.slug] ?? 0) > 0
-              ? `Nothing routed to ${closing.name} is touched — the requests, the menu items and the people stay exactly as they are. It simply stops being offered when someone sets up something new. You can reopen it at any time.`
+              ? `Nothing routed to ${closing.name} is touched - the requests, the menu items and the people stay exactly as they are. It simply stops being offered when someone sets up something new. You can reopen it at any time.`
               : `${closing.name} stops being offered on the directory, the staff form and the escalation ladder. You can reopen it at any time.`
           }
           confirmLabel="Close the team"

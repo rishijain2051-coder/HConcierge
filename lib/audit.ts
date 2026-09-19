@@ -1,13 +1,13 @@
 import { sql } from './db'
 
-/** JSON-safe values only — this ends up in a jsonb column. */
+/** JSON-safe values only - this ends up in a jsonb column. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json }
 
 export type AuditEntry = {
   propertyId?: string | null
   organisationId?: string | null
   staffId?: string | null
-  actor: string // 'Room 204' or 'Anita (Housekeeping)' — readable without a join
+  actor: string // 'Room 204' or 'Anita (Housekeeping)' - readable without a join
   action: string
   entity?: string
   entityId?: string
@@ -15,13 +15,13 @@ export type AuditEntry = {
 }
 
 /**
- * Audit must never break the thing it is recording — a failed log line should
+ * Audit must never break the thing it is recording - a failed log line should
  * not roll back a guest's order. Swallow and report to the server log instead.
  */
 export async function audit(e: AuditEntry): Promise<void> {
   try {
     // An admin belongs to no single property, so the event that grants someone
-    // the run of an organisation carries a null property_id — and every
+    // the run of an organisation carries a null property_id - and every
     // organisation-scoped view of this log filters on property_id, so it fell
     // out of the one place it needed to appear. The organisation is resolved
     // here, in the same statement, rather than at forty call sites: from the

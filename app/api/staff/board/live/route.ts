@@ -17,7 +17,7 @@ export const maxDuration = 300
  * lives for minutes, and deactivating someone has to log them out of a board
  * they are already watching, not just the next one they open.
  *
- * The board keeps a slow poll alongside this — that is what runs the escalation
+ * The board keeps a slow poll alongside this - that is what runs the escalation
  * sweep, which is time-based and so has nothing to notify it.
  */
 export async function GET(req: Request) {

@@ -11,7 +11,7 @@ export default async function BoardPage() {
   const staff = await requireOperational()
 
   // The clock has to start from the server's reading, not the phone's. This is
-  // a force-dynamic server component — one render per request — and the purity
+  // a force-dynamic server component - one render per request - and the purity
   // rule is written for client components that re-render.
   // eslint-disable-next-line react-hooks/purity
   const serverNow = Date.now()

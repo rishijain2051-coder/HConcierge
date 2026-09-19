@@ -5,7 +5,7 @@
  *
  * Nothing is written, sent or sounded.
  *
- * The trigger itself is one word — nobody has accepted it — and needs no
+ * The trigger itself is one word - nobody has accepted it - and needs no
  * checking. What this covers is the part that is easy to get wrong and
  * invisible until somebody is standing in front of a real board: which rows
  * the alert carries, and which of them it calls overdue. A scheduled request

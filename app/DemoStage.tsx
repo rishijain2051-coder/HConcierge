@@ -66,7 +66,7 @@ export default function DemoStage() {
   const laneRefs = useRef<Partial<Record<DemoDept, HTMLDivElement | null>>>({})
   const nextRef = useRef(1)
   // The autoplay script schedules send() on a timer, so send() cannot read the
-  // basket or the clock from its own closure — by the time it fires, both are
+  // basket or the clock from its own closure - by the time it fires, both are
   // several renders out of date. Mirror them.
   const basketRef = useRef<Basket[]>([])
   const minuteRef = useRef(0)
@@ -96,7 +96,7 @@ export default function DemoStage() {
   // back. Folding both into this ref latched it off: hiding the tab set it
   // false, and returning could not set it true again, since the observer only
   // fires when intersection *changes*. A visitor who switched tabs once came
-  // back to a dead clock — no countdown, no late, no escalation — for good.
+  // back to a dead clock - no countdown, no late, no escalation - for good.
   useEffect(() => {
     const el = stage.current
     if (!el) return
@@ -115,7 +115,7 @@ export default function DemoStage() {
   // Escalation is emergent, not scripted: anything still unaccepted past its
   // own target trips, exactly as lib/notify.ts does in the real product.
   useEffect(() => {
-    // Driven by the minute timer above — an external clock, which is exactly
+    // Driven by the minute timer above - an external clock, which is exactly
     // what an effect is for, even though the rule sees only the setState.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTickets((prev) => {
@@ -245,7 +245,7 @@ export default function DemoStage() {
         dept,
         lines: entries.map((e) => ({ name: e.item.name, qty: e.qty })),
         total: entries.reduce((s, e) => s + e.item.price * e.qty, 0),
-        // The request inherits the slowest item in it — you are not done until
+        // The request inherits the slowest item in it - you are not done until
         // the whole tray arrives.
         sla: Math.max(...entries.map((e) => e.item.sla)),
         status: 'new',
@@ -273,7 +273,7 @@ export default function DemoStage() {
         if (t.id !== id) return t
         if (t.status === 'new') return { ...t, status: 'ack' }
         if (t.status === 'ack') {
-          // Charges post on completion, never on order — same rule as lib/folio.ts.
+          // Charges post on completion, never on order - same rule as lib/folio.ts.
           if (t.total > 0) setFolio((f) => f + t.total)
           return { ...t, status: 'done' }
         }
@@ -315,7 +315,7 @@ export default function DemoStage() {
     at(3000, () => add(byId('chai')))
     at(4000, () => send())
 
-    // The kitchen picks its ticket up. Housekeeping does not — and ten demo
+    // The kitchen picks its ticket up. Housekeeping does not - and ten demo
     // minutes after it landed, the escalation fires on its own.
     at(6400, () => onlyDept('fnb', (t) => ({ ...t, status: 'ack' })))
     at(15500, () => onlyDept('housekeeping', (t) => ({ ...t, status: 'ack' })))
@@ -402,7 +402,7 @@ export default function DemoStage() {
                 <IconAlert size={15} className="text-late mt-px shrink-0" />
                 <p className="text-late text-[12px] leading-snug">
                   <span className="font-semibold">WhatsApp sent to Priya Deshmukh, duty manager.</span>{' '}
-                  Room {escalation.room} — {escalation.what} (#{escalation.ref}) is {escalation.minutes} min old, past
+                  Room {escalation.room} - {escalation.what} (#{escalation.ref}) is {escalation.minutes} min old, past
                   its target and still unaccepted.
                 </p>
               </div>

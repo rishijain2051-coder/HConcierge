@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
  * This is the path for a printer reached over the network on port 9100, or one
  * driven by a local helper. A front desk whose printer is installed as an
  * ordinary Windows driver wants /staff/rooms/receipt instead, which is the same
- * receipt as an 80mm page and goes through the print dialog — the button on the
+ * receipt as an 80mm page and goes through the print dialog - the button on the
  * Rooms screen points there, because that is the path that needs nothing set up.
  *
  * `staff` is excluded for the same reason it is excluded from the folio export:

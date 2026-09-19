@@ -1,18 +1,18 @@
 import postgres from 'postgres'
 
 const url = process.env.DATABASE_URL
-if (!url) throw new Error('DATABASE_URL is not set — copy .env.example to .env.local')
+if (!url) throw new Error('DATABASE_URL is not set - copy .env.example to .env.local')
 
 /**
  * `prepare: false` is not optional, however tempting it looks.
  *
  * Without prepared statements Postgres re-plans every join and correlated
- * subquery on each execution, which is roughly half the cost of a query here —
+ * subquery on each execution, which is roughly half the cost of a query here -
  * turning them on measured a clean 2x on a single statement repeated in a
  * loop, over hundreds of executions with no errors.
  *
- * It still does not work. Run a realistic mix instead — a dozen DIFFERENT
- * statements, concurrently, over a pool — and Supabase's transaction pooler
+ * It still does not work. Run a realistic mix instead - a dozen DIFFERENT
+ * statements, concurrently, over a pool - and Supabase's transaction pooler
  * hands the connection a backend that has never seen the statement:
  *
  *     PostgresError: prepared statement "iszaizk1v24" does not exist
@@ -26,7 +26,7 @@ function connect() {
     ssl: 'require',
     max: 10,
     // Every reconnect to Supabase costs a TLS handshake and an auth round trip
-    // to ap-south-1 — a quarter of a second before a single row moves. At 20s
+    // to ap-south-1 - a quarter of a second before a single row moves. At 20s
     // a reception screen paid that on almost every navigation. Five minutes
     // keeps the connection warm across a shift without holding it overnight.
     idle_timeout: 300,

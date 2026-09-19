@@ -14,7 +14,7 @@ import { Button, Check, Confirm, Err, Field, Modal, Panel, Select, Tag, TextArea
  * Same shape as Hotel info and Quick replies next door, because it is the same
  * job: a list of one property's words. What is different is that these have
  * conditions attached, and a condition the desk cannot honour is worse than no
- * offer at all — so the form says plainly, every time, that nothing here
+ * offer at all - so the form says plainly, every time, that nothing here
  * discounts a bill by itself. The app tells the desk; the desk honours it.
  */
 export default function PromotionsManager({
@@ -62,7 +62,7 @@ export default function PromotionsManager({
   return (
     <Panel
       title="Promotions"
-      description="What the concierge offers a guest under Promotions. Nothing here changes a bill on its own — HConcierge never settles anything. When a guest takes one up it lands on the board as a request with the offer named, and the desk honours it at checkout, exactly as it would a voucher from the room folder."
+      description="What the concierge offers a guest under Promotions. Nothing here changes a bill on its own - HConcierge never settles anything. When a guest takes one up it lands on the board as a request with the offer named, and the desk honours it at checkout, exactly as it would a voucher from the room folder."
       action={
         <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (
@@ -155,9 +155,9 @@ export default function PromotionsManager({
               defaultValue={editing?.kind ?? 'coupon'}
               onChange={(v) => setKind(v as PromotionKind)}
               options={[
-                { value: 'coupon', label: 'Complimentary — something free' },
-                { value: 'pass', label: 'Pass — access to something' },
-                { value: 'discount', label: 'Discount — a percentage off' },
+                { value: 'coupon', label: 'Complimentary - something free' },
+                { value: 'pass', label: 'Pass - access to something' },
+                { value: 'discount', label: 'Discount - a percentage off' },
               ]}
             />
             {kind === 'discount' && (
@@ -208,7 +208,7 @@ export default function PromotionsManager({
       {confirming && (
         <Confirm
           title={`Delete “${confirming.title}”?`}
-          body="Guests stop seeing it straight away, and so does the record of who claimed it. Requests already raised from it are not touched — turn it off instead if you only want to pause it."
+          body="Guests stop seeing it straight away, and so does the record of who claimed it. Requests already raised from it are not touched - turn it off instead if you only want to pause it."
           confirmLabel="Delete"
           onConfirm={() => run(() => deletePromotion(confirming.id), () => setConfirming(null))}
           onClose={() => setConfirming(null)}

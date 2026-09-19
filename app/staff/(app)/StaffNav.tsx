@@ -14,8 +14,8 @@ type Item = { href: string; label: string }
  *
  * A reception monitor has room for the brand, four destinations, who is signed
  * in and two account controls on one line. A 375px phone does not: the same row
- * pushed the whole app into sideways scroll, and the compromise — a second row
- * of tabs — spent a third of the board's vertical space on chrome that is
+ * pushed the whole app into sideways scroll, and the compromise - a second row
+ * of tabs - spent a third of the board's vertical space on chrome that is
  * looked at twice a shift.
  *
  * So below sm this collapses to one button, and everything that was crowding

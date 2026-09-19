@@ -6,7 +6,7 @@
  *
  * Worth having because the screen behind Manage → Quick replies is a
  * manager-only screen, so the only way to reach it by hand is to sign in as
- * somebody — and the two things most likely to be wrong here are the two that
+ * somebody - and the two things most likely to be wrong here are the two that
  * are invisible from the screen anyway: whether a manager at one property can
  * write into another's words, and whether a line longer than the reply box can
  * be saved and then arrive silently cut.
@@ -44,7 +44,7 @@ const { listQuickReplies, saveQuickReply, deleteQuickReply } = await import(new 
 
 let failures = 0
 const check = (label, ok, detail) => {
-  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  — ' + detail : ''}`)
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  - ' + detail : ''}`)
   if (!ok) failures++
 }
 
@@ -62,7 +62,7 @@ try {
      where s.role = 'manager' and s.active and s.property_id is not null
      order by s.name limit 1`
   if (!mgr) {
-    console.log('no manager with a property in this database — nothing to check')
+    console.log('no manager with a property in this database - nothing to check')
     await sql.end()
     process.exit(0)
   }
@@ -82,19 +82,19 @@ try {
   if (other) {
     const read = await listQuickReplies(mgr, other.id)
     check("a manager reads none of another property's replies", read.length === 0, `got ${read.length}`)
-    const wrote = await saveQuickReply(mgr, other.id, { label: 'Check — should refuse', body: 'x' })
+    const wrote = await saveQuickReply(mgr, other.id, { label: 'Check - should refuse', body: 'x' })
     check("a manager cannot write into another property's replies", wrote.ok === false, wrote.error)
   }
 
   const blank = await saveQuickReply(mgr, mgr.property_id, { label: '   ', body: 'Something' })
   check('a nameless reply is refused', blank.ok === false, blank.error)
-  const empty = await saveQuickReply(mgr, mgr.property_id, { label: 'Check — empty', body: '  \n ' })
+  const empty = await saveQuickReply(mgr, mgr.property_id, { label: 'Check - empty', body: '  \n ' })
   check('a reply with nothing to send is refused', empty.ok === false, empty.error)
 
   /* The board's reply box is maxLength 1000. A canned line longer than that
      would be cut by the browser after it was pasted in, so it is cut here
      instead, where the manager is the one looking at it. */
-  const label = 'Check — delete me'
+  const label = 'Check - delete me'
   const made = await saveQuickReply(mgr, mgr.property_id, { label, body: 'A'.repeat(1200) })
   check('a valid reply saves', made.ok === true, made.error)
   const after = await listQuickReplies(mgr, mgr.property_id)

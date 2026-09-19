@@ -115,7 +115,7 @@ export async function loadStats(staff: Staff, f: HistoryFilters): Promise<Histor
   return row
 }
 
-/** Which teams are carrying the load — the slide that sells this to a GM. */
+/** Which teams are carrying the load - the slide that sells this to a GM. */
 export async function loadByDepartment(staff: Staff, f: HistoryFilters) {
   return sql<
     { department: string; total: number; done: number; within_sla: number; avg_resolve: number | null }[]

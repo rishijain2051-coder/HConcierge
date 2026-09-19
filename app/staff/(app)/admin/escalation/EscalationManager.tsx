@@ -69,7 +69,7 @@ export default function EscalationManager({
   return (
     <Panel
       title="When something runs late"
-      description="Every request promises a time — ten minutes for towels, forty for a biryani. If it passes that, HConcierge tells someone. Set up who, and how long it waits first."
+      description="Every request promises a time - ten minutes for towels, forty for a biryani. If it passes that, HConcierge tells someone. Set up who, and how long it waits first."
       action={
         <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (

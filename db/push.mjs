@@ -1,4 +1,4 @@
-// Applies db/schema.sql. Idempotent — every statement is create-if-not-exists.
+// Applies db/schema.sql. Idempotent - every statement is create-if-not-exists.
 //   npm run db:push
 import { readFileSync } from 'node:fs'
 import postgres from 'postgres'
@@ -18,7 +18,7 @@ try {
   const [{ count }] = await sql`
     select count(*)::int as count from information_schema.tables
      where table_schema = 'public'`
-  console.log(`✓ schema applied — ${count} tables in public`)
+  console.log(`✓ schema applied - ${count} tables in public`)
 } catch (err) {
   console.error('✗ schema failed:', err.message)
   process.exitCode = 1

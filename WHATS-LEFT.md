@@ -7,7 +7,7 @@ had stopped being true, it now says what is.
 The first session added bill viewing and settling, live order tracking, in-place
 quantity steppers and a speed pass, and ran four testing agents over the whole
 app. The second made both halves work at 375px, cleared every open finding, and
-turned two things that were structure into data. Sections §8–§10 are that day,
+turned two things that were structure into data. Sections §8-§10 are that day,
 in order.
 
 Everything the testing pass classified as **blocker** or **major** is fixed.
@@ -25,8 +25,8 @@ pasted into a chat transcript early in the project's life; it lives only in
 `.env.local`, which is gitignored, and has never been committed, but it is in a
 transcript and has not been rotated. `hc.ops` and `rn.admin` joined it on 15
 September, and on 16 September the one-time passwords for all five department
-accounts — `rn.frontdesk`, `rn.housekeeping`, `rn.kitchen`, `rn.maintenance`,
-`rn.spa` — were pasted in as well.
+accounts - `rn.frontdesk`, `rn.housekeeping`, `rn.kitchen`, `rn.maintenance`,
+`rn.spa` - were pasted in as well.
 
 There is no forced change on any of them: `db/schema.sql:41` drops
 `must_change_password` deliberately, and `resetStaffPassword` only writes a new
@@ -39,7 +39,7 @@ The username is **`rn.maintenance`**. It has been written down elsewhere as
 `rn.maintainence`, which will not sign in.
 
 **Check the Vercel region actually took.** `vercel.json` asks for `bom1`. On
-Hobby, multi-region is not available and the setting may be ignored — confirm
+Hobby, multi-region is not available and the setting may be ignored - confirm
 in the Vercel dashboard under Project → Settings → Functions that the region is
 Mumbai. Left at the default, functions run in Washington while the database is
 in Mumbai: a ~230ms round trip, and a page that makes five of them spends over
@@ -47,7 +47,7 @@ a second on network alone. This is the largest single performance factor in the
 project and it cannot be verified from a development machine.
 
 **Run `npm run db:push` wherever this deploys.** Already applied to the shared
-development database, so it is a no-op there — but the schema moved four times
+development database, so it is a no-op there - but the schema moved four times
 on 15 September and a fresh environment needs all of it: the settlement columns
 and `hc_notify` triggers, `audit_log.organisation_id`, the `departments` table
 with its seed and the four dropped CHECK constraints, and `staff.extra_teams`.
@@ -55,7 +55,7 @@ It is idempotent.
 
 ~~A production build has not been run since any of this.~~ **Done, 17
 September.** `next build` passes: compiles, TypeScript clean, all 28 routes
-generated. `npm run lint` is at zero errors as well — it had been reporting 872,
+generated. `npm run lint` is at zero errors as well - it had been reporting 872,
 all but two of them coming from an agent worktree under `.claude/`, which is now
 ignored. Re-run the build after anything substantial; it takes about a minute.
 
@@ -64,7 +64,7 @@ ignored. Re-run the build after anything substantial; it takes about a minute.
 ## 2. Open findings from the four-agent pass
 
 **All clear as of 15 September.** Every MINOR and POLISH finding this section
-listed has been fixed — the five on the guest screens, the assignee tag on the
+listed has been fixed - the five on the guest screens, the assignee tag on the
 board, the five in the admin panel, and the three in the API and data layer.
 See commit `45eb136` for what each one was and why it mattered. Reproductions
 for the originals remain in [`docs/qa-2026-09-14/`](docs/qa-2026-09-14/).
@@ -87,11 +87,11 @@ What is still open lives in §8.
 
 Leave these alone unless the reasoning changes. All four are also recorded in
 `PRODUCT.md` under Capabilities and Constraints, which is the canonical record
-— if the two ever disagree, `PRODUCT.md` wins. The reproductions live in the
+- if the two ever disagree, `PRODUCT.md` wins. The reproductions live in the
 code comments at `lib/db.ts` and `lib/realtime.ts`.
 
 **Prepared statements are off, on purpose.** `prepare: true` measures a clean
-2.0x on every query — one statement in a loop, hundreds of executions, no
+2.0x on every query - one statement in a loop, hundreds of executions, no
 errors. Then a realistic mix (a dozen different statements, concurrently, over a
 pool) fails within seconds:
 
@@ -103,13 +103,13 @@ Supabase's transaction pooler hands the connection a backend that has never
 seen the statement. The comment in `lib/db.ts` carries this. Speed has to come
 from making fewer round trips, not cheaper ones.
 
-**Server-sent events, not websockets.** The hosting is serverless — there is no
+**Server-sent events, not websockets.** The hosting is serverless - there is no
 long-lived process to hold a socket. SSE is a real push channel, `EventSource`
 reconnects by itself, and streams close after four minutes so a function billed
 by the second is not held open all night.
 
 **The listener connects to port 5432, not 6543.** `LISTEN` is silently dropped
-by the transaction pooler — no error, nothing ever arrives. `lib/realtime.ts`
+by the transaction pooler - no error, nothing ever arrives. `lib/realtime.ts`
 uses the session pooler. Override with `DATABASE_URL_SESSION` if the endpoint
 moves.
 
@@ -125,20 +125,20 @@ nothing. They reopen on focus and on every safety poll.
 ## 4. Not tested
 
 - **768px.** The staff screens were walked at 375px and 1440px on 15 September.
-  The tablet middle — a reception iPad in portrait — is still unseen, and it is
+  The tablet middle - a reception iPad in portrait - is still unseen, and it is
   the width where the board's single column is at its least convincing.
 - **An unavailable item.** No row in the seed has `available = false`, so the
   guest app's unavailable branch has never been exercised.
 - **A modifier group at its maximum.** The only multi-select group has `max: 3`
-  and exactly three options, so the limit is unreachable with this data — which
-  also means the new "that is all 3 — tap one off to swap" state and the
+  and exactly three options, so the limit is unreachable with this data - which
+  also means the new "that is all 3 - tap one off to swap" state and the
   disabled options behind it have never been seen on screen.
 - **Multi-property anything.** The one organisation owns one property, so the
   property pickers, the board's property filter, and "copy catalogue from"
   are only lightly covered.
 - ~~**Twilio delivery.** Escalation subscriptions were verified; no message was
   ever actually sent.~~ **Delivered since.** The WhatsApp path has sent 20
-  messages, and `sweepEscalations` fired a rung that arrived on a real handset —
+  messages, and `sweepEscalations` fired a rung that arrived on a real handset -
   see `WHATSAPP-TESTING-PLAN.md`. `rn.duty` carries a verified number.
 - **Real devices.** Everything was an emulated viewport.
 
@@ -152,13 +152,13 @@ Counted against the live database on 17 September, not remembered.
   items**, 7 info pages, 2 escalation rungs, 22 rooms.
 - **Six teams**, five of them open: the four that were hardcoded, plus **Spa &
   wellness** (10 items routed to it) and **Valet desk**, which was created to
-  prove the flow and then closed. Closed teams stay as rows on purpose — four
+  prove the flow and then closed. Closed teams stay as rows on purpose - four
   tables point at a team and last month's requests still have to read.
 - **Four staff, all active,** as of the evening of 17 September: `rn.admin`
   (admin), `hc.ops` (platform), `rn.duty` (manager, **front_desk**, phone
   verified, receives the escalations) and `rn.staff` (housekeeping, phone
   verified). The five department accounts and the two test accounts have all
-  been deleted since — the delete button has had plenty of real use.
+  been deleted since - the delete button has had plenty of real use.
 - **Three teams have nobody with a phone**: F&B, maintenance and spa. That is
   not a bug, but it means `notifyNewRequest` for those teams logs the
   zero-recipient warning added on 17 September rather than reaching anyone.
@@ -184,7 +184,7 @@ Counted against the live database on 17 September, not remembered.
 ## 6. From the distill pass
 
 `PRODUCT.md` now exists and is the product record: users, purpose, positioning,
-constraints, and — most importantly — an **Evidence on Hand** section that says
+constraints, and - most importantly - an **Evidence on Hand** section that says
 plainly that RN Hospitality has not committed and that every row in the database
 is invented. Read that section before writing a word of marketing copy.
 
@@ -193,12 +193,12 @@ tools were blocked for that session:
 
 - **No visual inspection round.** The cuts were verified at the source level and
   with a clean build, type-check, lint and design-detector run. Both halves have
-  since been walked at 375px in a browser — the staff screens in §8, the guest
+  since been walked at 375px in a browser - the staff screens in §8, the guest
   screens in §9. Neither has been seen at 1600px, and the guest app has never
   been seen on real glass.
 - **The double-bezel reversal is unreviewed.** Commit `88738ac` removed the
   tray-and-plate surface that `/high-end-visual-design` had introduced. It is a
-  deliberate call — nested cards are the thing distill removes first — but it
+  deliberate call - nested cards are the thing distill removes first - but it
   reverses an earlier explicit instruction, so it deserves a look before it
   settles. Reverting that one commit restores the previous look.
 
@@ -211,7 +211,7 @@ path available.
 ## 7. Session conveniences
 
 Cleared on 16 September. `.claude/launch.json` had grown to three server
-entries — `hconcierge` on 3000, `hconcierge-prod` on 3100 for measuring
+entries - `hconcierge` on 3000, `hconcierge-prod` on 3100 for measuring
 production timings without stopping the dev server, and `concierge-wa` on 3200
 so the WhatsApp session could run a second dev server alongside the first. Both
 extras existed only because two things were being worked at once. Only
@@ -220,12 +220,12 @@ extras existed only because two things were being worked at once. Only
 Still on disk and no longer needed:
 
 - **`D:\concierge-wa`.** Both the worktree registration and the
-  `whatsapp-links` branch are already gone — `git worktree list` shows only
+  `whatsapp-links` branch are already gone - `git worktree list` shows only
   `D:/Concierge`, and the branch is on neither the local repo nor the remote.
   That work is on `main` as `2e88cc9`. What is left is an orphaned directory, so
   the old instruction here (`git worktree remove`) would now fail; it is a plain
   `rm -rf` if you want it gone. **Check the OpenWA gateway is not holding its
-  log files first** — it was, and killing it sends nothing but breaks the
+  log files first** - it was, and killing it sends nothing but breaks the
   bridge.
 - The `.claude/worktrees/` agent worktree was removed on 17 September, along
   with its merged `claude/sla-scheduled-requests` branch.
@@ -249,7 +249,7 @@ than using it (`3ad66e4`): the header's destinations, name, Password and Sign
 out moved into a left navigation panel, putting the header back on one line;
 and the room list collapsed to `Room 401 · Occupied`, with the guest, the code,
 the bill and that room's own actions behind the tap. The separate grid of all
-twenty-two room numbers for reissuing a QR is gone — each room carries it now.
+twenty-two room numbers for reissuing a QR is gone - each room carries it now.
 
 Still open from this pass:
 
@@ -259,11 +259,11 @@ Still open from this pass:
 | POLISH | `app/staff/(app)/board/Board.tsx` `Card` | The 6px coloured left stripe is the pattern the craft floor refuses. It is kept deliberately: it is the only thing that separates on-time from amber at a glance across a lobby, which is what principle 2 asks for. Revisit only if the card surface starts carrying that state instead. |
 | POLISH | `app/staff/(app)/board/Board.tsx` toolbar | At 375px the overdue count and the alerts button wrap to their own right-aligned line once the Requests tab carries a number. Ragged, not broken. |
 | MINOR | `lib/admin.ts`, `lib/guest.ts` | The `icon` column is written by nothing and read by nothing. The two admin fields were removed and existing values ride along untouched on save. Deliberately not dropped in the 15 September migration: dropping it destroys the seeded values for no gain. Drop it when something else needs a migration anyway. |
-| DONE | `app/r/[token]/GuestApp.tsx` | Walked at 375px on 15 September through a throwaway development-only harness that rendered the components against the real directory with an invented stay — the four-digit gate cannot be typed into, and it was not bypassed. Home, Dining, Hotel info and the bill sheet were all seen. The harness has been deleted. |
+| DONE | `app/r/[token]/GuestApp.tsx` | Walked at 375px on 15 September through a throwaway development-only harness that rendered the components against the real directory with an invented stay - the four-digit gate cannot be typed into, and it was not bypassed. Home, Dining, Hotel info and the bill sheet were all seen. The harness has been deleted. |
 
 Three `react-hooks/set-state-in-effect` errors that §2 used to list are gone.
-Two were restructured — the chat poll also stopped letting the previous room's
-reply land in the open thread — and one, the sign-in clock, carries a documented
+Two were restructured - the chat poll also stopped letting the previous room's
+reply land in the open thread - and one, the sign-in clock, carries a documented
 `eslint-disable` because a clock has to start empty on the server.
 
 ---
@@ -272,7 +272,7 @@ reply land in the open thread — and one, the sign-in clock, carries a document
 
 Commit `45eb136`. §2 went to zero. The database gained one column
 (`audit_log.organisation_id`), which `npm run db:push` has already applied and
-backfilled here — anyone deploying elsewhere needs to run it.
+backfilled here - anyone deploying elsewhere needs to run it.
 
 The guest screens were the other half of this pass. They were described as
 feeling cluttered, and the three things actually doing it were: a section
@@ -280,7 +280,7 @@ heading printed directly under the rail whose selected pill already said the
 same word, item rows running to four lines of text each, and 160px reserved at
 the foot of every screen for a basket bar that only exists when there is a
 basket. All three are gone. The rest of the guest changes were the open
-findings — a tile with no control on it, a button that said "Choose" over a
+findings - a tile with no control on it, a button that said "Choose" over a
 sheet with nothing to choose, a modifier group that went silent at its maximum,
 and a one-tap cancel with nothing between it and gone.
 
@@ -303,7 +303,7 @@ rather than its surface.
 five tables and a constant in `lib/types.ts`, so a customer with a spa, a valet
 desk or a business centre could not have one without a migration and a release.
 They are rows in `departments` now, owned by the organisation. Manage → Teams,
-admin and above. The routed columns still hold the slug — an FK rewrite across
+admin and above. The routed columns still hold the slug - an FK rewrite across
 requests, items, staff and escalation rules buys referential integrity the
 application already enforces, at the cost of touching every query in the
 product.
@@ -335,7 +335,7 @@ Things a later change should not undo:
 
 ---
 
-## 12. From the 16–17 September sessions
+## 12. From the 16-17 September sessions
 
 Six commits on 16 September (the clock fixes, the marketing films, the
 escalation and SLA work) and four on 17 September (the staff delete, the lint
@@ -344,12 +344,12 @@ those left behind:
 
 | | Where | What |
 |---|---|---|
-| DECIDE | `lib/sla.ts`, `lib/history.ts`, `lib/notify.ts` | "When the clock starts" now exists in three places: `startsAt()`, `DUE_FROM`, and `dueFrom`. The follow-up is **collapse to two, not one** — `lib/sla.ts` is imported by three client components and `lib/db.ts:4` throws at module load without `DATABASE_URL`, so importing `sql` there puts the postgres client in the browser bundle. |
+| DECIDE | `lib/sla.ts`, `lib/history.ts`, `lib/notify.ts` | "When the clock starts" now exists in three places: `startsAt()`, `DUE_FROM`, and `dueFrom`. The follow-up is **collapse to two, not one** - `lib/sla.ts` is imported by three client components and `lib/db.ts:4` throws at module load without `DATABASE_URL`, so importing `sql` there puts the postgres client in the browser bundle. |
 | MINOR | `app/r/[token]/not-found.tsx` | `notFound()` returns HTTP 200 with the correct 404 body: metadata resolves and the shell starts streaming before it throws. Next.js behaviour, cosmetic here, and the route is `noindex` anyway. |
 | NOTE | verification | Modals render outside `<main>`, so `get_page_text` misses them and an open dialog reads exactly like a click that did nothing. Use `read_page` or a screenshot. Two sessions lost time to this independently. |
 | NOTE | verification | **`tsc --noEmit` is not a sufficient gate.** A `{/* */}` comment beside an element inside a ternary branch gives that branch two roots; TypeScript accepted it and Turbopack refused it. Only `next build` catches that class, so run it before pushing anything with JSX in it. |
-| NOTE | lint | `npm run lint` covers the product only. `.claude/`, `.agents/` and `marketing/` are ignored in `eslint.config.mjs` — all three have buried real errors under hundreds of their own, twice. Anything reporting problems nobody here can fix belongs on that list. |
-| DECIDE | print | The welcome card was rebuilt to fill an A4 page on 17 September and **has never been seen on paper or in a print preview** — it needs a signed-in manager, which no agent session has. One look at Rooms → Print welcome card would close it. |
+| NOTE | lint | `npm run lint` covers the product only. `.claude/`, `.agents/` and `marketing/` are ignored in `eslint.config.mjs` - all three have buried real errors under hundreds of their own, twice. Anything reporting problems nobody here can fix belongs on that list. |
+| DECIDE | print | The welcome card was rebuilt to fill an A4 page on 17 September and **has never been seen on paper or in a print preview** - it needs a signed-in manager, which no agent session has. One look at Rooms → Print welcome card would close it. |
 
 ---
 

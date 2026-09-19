@@ -10,7 +10,7 @@ import type { RoomContext } from './guest'
 /**
  * Creating a request is the one place a guest writes to the database, so this
  * is a trust boundary. The client sends item ids, quantities and modifier
- * *names* — never prices. Every price is re-resolved here from the DB, because
+ * *names* - never prices. Every price is re-resolved here from the DB, because
  * a price sent from a phone is a price the guest chose.
  */
 
@@ -22,7 +22,7 @@ export type CartLine = {
 }
 
 export type CreateResult = { ok: true; refs: string[] } | { ok: false; error: string }
-/** As above, plus the one row it made — see claimPromotion in lib/promotions.ts. */
+/** As above, plus the one row it made - see claimPromotion in lib/promotions.ts. */
 export type FreeformResult = { ok: true; refs: string[]; id: string } | { ok: false; error: string }
 
 const MAX_QTY = 20
@@ -100,7 +100,7 @@ export async function createRequests(
   // A `datetime-local` value carries no offset, and only one reading of it is
   // ever what the guest meant: the clock in the building they are standing in.
   // Their phone is often still on home time and this function can run in any
-  // region, so neither of those clocks gets a vote — the property's zone is
+  // region, so neither of those clocks gets a vote - the property's zone is
   // what turns the string into an instant, in Postgres, which owns the tz
   // database and its DST history.
   let when: Date | null = null
@@ -108,7 +108,7 @@ export async function createRequests(
     if (!isWallClock(opts.scheduledFor)) return { ok: false, error: 'That time is not valid.' }
     // Both `::text` casts are load-bearing, however redundant they look.
     // With `prepare: false` postgres.js asks the server what type each
-    // parameter is and then serialises to it — given a bare `::timestamp` it
+    // parameter is and then serialises to it - given a bare `::timestamp` it
     // decides the string is a date and rewrites it through *this process's*
     // timezone before sending, which lands the result 5½ hours out and is the
     // same class of bug this function exists to fix. Sent as text it arrives
@@ -172,7 +172,7 @@ export async function createRequests(
 
   for (const [department, lines] of groups) {
     const total = lines.reduce((s, l) => s + l.linePaise, 0)
-    // Promise the slowest item's time, not the fastest — the request is only
+    // Promise the slowest item's time, not the fastest - the request is only
     // done when the whole tray arrives.
     const slaMinutes = Math.max(...lines.map((l) => l.item.sla_minutes))
     const kind = KIND_BY_CATEGORY[lines[0].item.category_kind] ?? 'other'
@@ -210,7 +210,7 @@ export async function createRequests(
 
   // after(), not a bare promise: a messaging hiccup must not fail the guest's
   // order, but on serverless an un-awaited fetch is abandoned when the function
-  // freezes at response time — so the order would be placed and nobody told.
+  // freezes at response time - so the order would be placed and nobody told.
   for (const id of created) {
     after(() => notifyNewRequest(id).catch((err) => console.error('[notify] new request failed', err)))
   }
@@ -218,7 +218,7 @@ export async function createRequests(
   return { ok: true, refs }
 }
 
-/** Free-text "something else" — becomes a front desk ticket. */
+/** Free-text "something else" - becomes a front desk ticket. */
 export async function createFreeformRequest(
   ctx: RoomContext,
   note: string,
@@ -262,7 +262,7 @@ export async function cancelOwnRequest(ctx: RoomContext, requestId: string): Pro
        set status = 'cancelled', cancel_reason = 'Cancelled by guest', completed_at = now()
      where id = ${requestId} and room_id = ${ctx.room.id} and status in ('new', 'ack')
     returning id`
-  if (rows.length === 0) return { ok: false, error: 'That request is already being worked on — send us a message instead.' }
+  if (rows.length === 0) return { ok: false, error: 'That request is already being worked on - send us a message instead.' }
 
   await audit({
     propertyId: ctx.property.id,

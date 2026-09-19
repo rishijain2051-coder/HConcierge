@@ -3,7 +3,7 @@
  * demo. It is a snapshot rather than a live query on purpose: a pitch page
  * should render instantly and must never 500 because a database is asleep.
  *
- * Keep these in step with db/seed.mjs — the point of the demo is that it shows
+ * Keep these in step with db/seed.mjs - the point of the demo is that it shows
  * the product's actual catalogue, prices and target times, not a mock-up.
  */
 
@@ -71,10 +71,10 @@ export const DEMO_SECTIONS: DemoSection[] = [
     label: 'Services',
     tab: 'services',
     items: [
-      { id: 'shirt', name: 'Shirt — wash & press', note: 'Back by 7 pm', price: 12000, dept: 'housekeeping', sla: 30 },
-      { id: 'suit', name: 'Suit — dry clean', price: 45000, dept: 'housekeeping', sla: 30 },
+      { id: 'shirt', name: 'Shirt - wash & press', note: 'Back by 7 pm', price: 12000, dept: 'housekeeping', sla: 30 },
+      { id: 'suit', name: 'Suit - dry clean', price: 45000, dept: 'housekeeping', sla: 30 },
       { id: 'massage', name: 'Swedish Massage', note: '60 minutes', price: 320000, dept: 'front_desk', sla: 20 },
-      { id: 'airport', name: 'Airport drop — sedan', price: 140000, dept: 'front_desk', sla: 20 },
+      { id: 'airport', name: 'Airport drop - sedan', price: 140000, dept: 'front_desk', sla: 20 },
       { id: 'doctor', name: 'Doctor on call', note: 'Available 24 hours', price: 120000, dept: 'front_desk', sla: 10 },
       { id: 'luggage', name: 'Luggage pickup', price: 0, dept: 'front_desk', sla: 15 },
     ],
@@ -84,7 +84,7 @@ export const DEMO_SECTIONS: DemoSection[] = [
 /**
  * Everything a guest can ask for, grouped by the team that owns it.
  *
- * Flat, this was 118 names in one paragraph — a wall on a phone that argued
+ * Flat, this was 118 names in one paragraph - a wall on a phone that argued
  * only "there are a lot". Grouped it makes the better argument: each line is
  * routed, and the routing is the product. Straight from the seed either way.
  */
@@ -96,8 +96,8 @@ export const DIRECTORY_BREADTH: { team: string; items: string[] }[] = [
       'Toiletries kit', 'Toothbrush & toothpaste', 'Shaving kit', 'Toilet paper', 'Slippers',
       'Sanitary kit', 'Clean my room now', 'Turndown service', 'Empty the bin', 'Do not disturb',
       'Collect laundry bag', 'Iron & ironing board', 'Extra hangers', 'Phone charger',
-      'Universal adapter', 'Hair dryer', 'Extra drinking water', 'Shirt — wash & press',
-      'Trousers — wash & press', 'Suit — dry clean', 'Saree — dry clean', 'Kurta — wash & press',
+      'Universal adapter', 'Hair dryer', 'Extra drinking water', 'Shirt - wash & press',
+      'Trousers - wash & press', 'Suit - dry clean', 'Saree - dry clean', 'Kurta - wash & press',
       'Express laundry',
     ],
   },
@@ -133,7 +133,7 @@ export const DIRECTORY_BREADTH: { team: string; items: string[] }[] = [
   {
     team: 'Front desk',
     items: [
-      'Airport drop — sedan', 'Airport drop — SUV', 'Airport pickup', 'Taxi to city',
+      'Airport drop - sedan', 'Airport drop - SUV', 'Airport pickup', 'Taxi to city',
       'Car with driver', 'City tour booking', 'Doctor on call', 'Pharmacy run', 'Baby cot',
       'Babysitting', 'Florist or cake', 'Wake-up call', 'Late checkout', 'Extend my stay',
       'Show me my bill', 'Check out', 'Luggage pickup', 'Luggage storage', 'Printing or photocopy',

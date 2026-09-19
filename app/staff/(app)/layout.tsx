@@ -63,7 +63,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             {/* The subtitle is what gives way when the row runs short of
                 width. Between sm and lg it wrapped onto a third line and shoved
                 the account controls out of alignment; the name never wraps.
-                Nothing is lost by dropping it — the phone drawer heads itself
+                Nothing is lost by dropping it - the phone drawer heads itself
                 with the same line, and a reception monitor is well past lg. */}
             <div className="text-right whitespace-nowrap">
               <p className="text-[13px] leading-tight font-medium">{staff.name}</p>

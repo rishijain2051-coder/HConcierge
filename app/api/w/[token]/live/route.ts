@@ -11,7 +11,7 @@ export const maxDuration = 300
  * The live channel for the job list behind every WhatsApp message.
  *
  * Somebody opens that link, walks to the room, and comes back to a page that
- * was true when they tapped it — so a job a colleague finished in the meantime
+ * was true when they tapped it - so a job a colleague finished in the meantime
  * still sat there offering an Accept button, and `done` is irreversible. This
  * is the same channel the board has, authorised by the signed link instead of
  * a session.

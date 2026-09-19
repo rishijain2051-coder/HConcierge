@@ -111,7 +111,7 @@ export type QuickReply = { id: string; label: string; body: string }
  * The desk's canned replies for this room's property.
  *
  * quick_replies has been seeded per property since the beginning, and
- * lib/admin.ts copies it when a property starts from another's catalogue — but
+ * lib/admin.ts copies it when a property starts from another's catalogue - but
  * nothing ever read it. Eight written-out sentences sat in the database while
  * staff typed "someone is on the way to your room now" by hand.
  *
@@ -206,7 +206,7 @@ export async function setRequestStatus(
            cancel_reason = ${next === 'cancelled' ? (reason?.slice(0, 300) ?? 'Cancelled by staff') : null}
      where id = ${requestId}`
 
-  // Charge on delivery, not on order — a guest should never be billed for food
+  // Charge on delivery, not on order - a guest should never be billed for food
   // that never arrived. postCharge is idempotent, so a double-tap is harmless.
   if (next === 'done' && current.total_paise > 0) {
     await postCharge({

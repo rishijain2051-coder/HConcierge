@@ -11,7 +11,7 @@ import { departmentLabel } from './types'
  * Outbound WhatsApp/SMS.
  *
  * Two transports, and this is the only place in the app that either of them is
- * reached from — sweepEscalations, notifyNewRequest, the board poll and the
+ * reached from - sweepEscalations, notifyNewRequest, the board poll and the
  * pg_cron backstop all come through sendMessage.
  *
  *   OPENWA_URL set  →  a self-hosted WhatsApp gateway (see
@@ -41,7 +41,7 @@ export function messagingConfigured(): boolean {
  * Staff phones are typed by hand into Manage → Staff, so they arrive as
  * "+91 98765 43210" as often as not. The gateway wants bare digits.
  *
- * A number stored without its country code cannot be repaired here — prefixing
+ * A number stored without its country code cannot be repaired here - prefixing
  * a default would send someone else's phone a guest's room number. It is
  * refused instead, and the caller logs it.
  */
@@ -138,7 +138,7 @@ async function viaTwilio(to: string, body: string): Promise<boolean> {
  * The fall-through is the point, not a nicety. The gateway is a process on
  * somebody's laptop; Twilio is a service. If the gateway were the only path
  * whenever it happens to be configured, a closed lid would silence escalation
- * while a working transport sat there unused — an invisible failure of the one
+ * while a working transport sat there unused - an invisible failure of the one
  * thing this file exists to do. So a gateway that is unreachable, unauthorised
  * or simply slow hands off rather than giving up.
  *
@@ -149,7 +149,7 @@ async function viaTwilio(to: string, body: string): Promise<boolean> {
 export async function sendMessage(to: string, body: string): Promise<boolean> {
   // OPENWA_OUTBOX reverses the direction: write the message down and let a
   // drainer beside the gateway pick it up. This exists because Tailscale Funnel
-  // does not serve this tailnet, so Vercel cannot reach the gateway at all —
+  // does not serve this tailnet, so Vercel cannot reach the gateway at all -
   // see WHATSAPP-TESTING-PLAN.md §2. Queueing also means a laptop that is asleep
   // delays a message rather than losing it.
   //
@@ -163,7 +163,7 @@ export async function sendMessage(to: string, body: string): Promise<boolean> {
       return true
     } catch (err) {
       console.error('[notify] could not queue a message', err)
-      // Fall through — a broken queue must not be quieter than no queue.
+      // Fall through - a broken queue must not be quieter than no queue.
     }
   }
 
@@ -177,7 +177,7 @@ type Recipient = { id: string; name: string; phone: string; phone_verified_at: D
 
 /**
  * Never let a missing origin stop an escalation. baseUrl() reads the live
- * request, and every caller of the sweep is inside one — but a message that
+ * request, and every caller of the sweep is inside one - but a message that
  * arrives without its link still gets somebody to the room, and one that never
  * arrives does not.
  */
@@ -197,7 +197,7 @@ export async function linkBase(): Promise<string | null> {
  * identical across every message they get, and `?r=` only says which row to
  * highlight.
  *
- * An unverified number gets the words and no link — see
+ * An unverified number gets the words and no link - see
  * WHATSAPP-TESTING-PLAN.md §5. It is never simply skipped: a late request
  * reaching nobody because of a settings flag is precisely the failure this path
  * exists to prevent, and it would be invisible.
@@ -232,7 +232,7 @@ function actionLine(base: string | null, who: Recipient, ref: string): string {
  *
  * "HConcierge" is gone from the body entirely. It was there to make an unknown
  * sender trustworthy, but the recipient has had the same number messaging them
- * all week — repeating the brand on every line is the clutter, not the trust.
+ * all week - repeating the brand on every line is the clutter, not the trust.
  * The property stays, because one person covering two hotels cannot read a room
  * number alone, but it moves to the facts line where it belongs.
  *
@@ -256,7 +256,7 @@ function facts(...parts: (string | null | undefined)[]): string {
  * The items, as a line or as a list.
  *
  * One thing reads better inline. Three joined with commas is a run-on sentence
- * somebody has to parse in a corridor — "2× Bath towels, Clean my room,
+ * somebody has to parse in a corridor - "2× Bath towels, Clean my room,
  * Toiletries kit" is three jobs pretending to be one. The board learned this
  * first; the message and the job-list page were still joining with commas,
  * which is what a list on one screen and prose on another looks like.
@@ -284,7 +284,7 @@ function waiting(status: string): string {
  * Teams became rows on main, so an organisation can rename "Spa & wellness" or
  * add one the four hardcoded slugs never covered. `departmentLabel` humanises an
  * unknown slug to "Spa wellness", which is not wrong but is not what anybody
- * typed either — so every query here joins `departments` on its unique
+ * typed either - so every query here joins `departments` on its unique
  * (organisation_id, slug) index. A join rather than a separate lookup because
  * this file is on the escalation path, and round trips are the cost this project
  * is explicitly trying not to spend.
@@ -297,7 +297,7 @@ function teamName(team: string | null, department: string): string {
  * Who hears about a request on this team, at this property.
  *
  * One definition because this predicate has now drifted twice behind a schema
- * change — teams became rows, then one person could cover several — and it is
+ * change - teams became rows, then one person could cover several - and it is
  * read by both the new-request ping and the completion notice. A miss here is
  * silent: the board scoping stays correct, so the person still sees the request
  * and simply never gets told about it.
@@ -306,7 +306,7 @@ function teamName(team: string | null, department: string): string {
  * still holds their main one, so a housekeeper also covering the spa is reached
  * by either.
  *
- * `includeSupervisors` is whether managers and admins are reached by *role* —
+ * `includeSupervisors` is whether managers and admins are reached by *role* -
  * every manager at the property, whatever team the request belongs to. The
  * new-request ping turns it off, because a manager whose phone buzzes for every
  * towel stops reading any of them, and lateness is what they are for. They keep
@@ -382,7 +382,7 @@ type FiredRow = {
 /**
  * The nudge sideways, to whoever can actually clear it.
  *
- * The ladder tells managers, and that is the point of it — but the person who
+ * The ladder tells managers, and that is the point of it - but the person who
  * could finish the job in ninety seconds is not on the ladder, so a late
  * request used to travel upwards and never sideways. The manager's first move
  * was always to go and tell them anyway.
@@ -399,7 +399,7 @@ type FiredRow = {
  * one cost this file is careful about. `was` is the pre-sweep step, so 0 is the
  * first rung whatever the ladder is numbered.
  *
- * Anyone already on the rung's own list is dropped — at a small hotel the duty
+ * Anyone already on the rung's own list is dropped - at a small hotel the duty
  * manager's department really is housekeeping, and two messages about one towel
  * is how somebody learns to ignore both.
  */
@@ -446,7 +446,7 @@ async function remindOwners(r: FiredRow, already: Recipient[], base: string | nu
  * Walks the escalation ladder and tells whoever that rung names.
  *
  * A request carries `escalation_step`, so each rung fires once. The join picks
- * every rung a request has now passed and `distinct on` keeps the highest —
+ * every rung a request has now passed and `distinct on` keeps the highest -
  * so a request that sat through two rungs while nobody was looking escalates
  * straight to the second, rather than trickling up one sweep at a time.
  *
@@ -465,7 +465,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
    *
    * Measuring from created_at woke a duty manager for work that was not due
    * yet. Observed on the running app: a spa treatment booked at 17:02 for
-   * 19:06 with a 20-minute target escalated at 17:22 — one hour forty-four
+   * 19:06 with a 20-minute target escalated at 17:22 - one hour forty-four
    * minutes before anybody could have started it. A 7am wake-up call ordered
    * at midnight escalates at ten past twelve.
    */
@@ -537,7 +537,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
 
   for (const r of fired) {
     // Recipients are resolved per rung: the groups it switched on, plus anyone
-    // named on it. Admins are scoped to the property's OWN organisation — the
+    // named on it. Admins are scoped to the property's OWN organisation - the
     // previous `or role = 'admin'` sent every escalation to every admin in the
     // database, which across customers is a leak.
     const people = await sql<Recipient[]>`
@@ -595,7 +595,7 @@ export async function sweepEscalations(propertyId?: string): Promise<number> {
  *
  * Two channels with two different rules. Push goes out every time: it costs
  * nothing, it needs no phone number, and it is the only thing that reaches
- * anybody when there is no board open — which at 4am is the whole point.
+ * anybody when there is no board open - which at 4am is the whole point.
  * WhatsApp stays behind NOTIFY_ON_NEW, because new requests are by far the
  * largest source of message volume and every one of them is billed.
  */
@@ -626,7 +626,7 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
   // written; this path never needed to, because the role clause meant a
   // property with any manager on it always had a recipient. Narrowing the
   // audience is what makes an empty result reachable, so it gets the same
-  // warning — a team whose only phone was deactivated is otherwise silent.
+  // warning - a team whose only phone was deactivated is otherwise silent.
   if (targets.length === 0) {
     console.warn(`[notify] new ${r.department} request #${r.ref} names nobody with a phone number`)
   }
@@ -650,7 +650,7 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
  * because the code shipped.
  *
  * Carries no link. There is nothing left to act on, and a link here would
- * invite a tap that lands on a list this request has already left — which is
+ * invite a tap that lands on a list this request has already left - which is
  * the stale-picture problem the single live link exists to avoid. It names who
  * closed it and what it cost, which is what makes it verifiable.
  */
@@ -659,7 +659,7 @@ export async function notifyNewRequest(requestId: string): Promise<void> {
  *
  * NOTIFY_ON_DONE was already off by default and three completion notices still
  * went out, because one `NOTIFY_ON_DONE=1 npm run dev` in one terminal is all
- * it takes — a flag in an environment nobody owns is not a decision anybody can
+ * it takes - a flag in an environment nobody owns is not a decision anybody can
  * rely on. lib/board.ts no longer calls this at all; this constant is the
  * second lock, so restoring it is two deliberate edits.
  *

@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic'
  * The guest screen's fallback.
  *
  * Live updates come down /api/guest/[token]/live, which pushes. This is what
- * the phone falls back to when that stream cannot be held — hotel wifi, a
- * proxy that buffers, a listener that failed to start — and it is deliberately
+ * the phone falls back to when that stream cannot be held - hotel wifi, a
+ * proxy that buffers, a listener that failed to start - and it is deliberately
  * slow: once a minute, and never while the screen is in a pocket.
  */
 export async function GET(req: Request, ctx: RouteContext<'/api/guest/[token]/state'>) {

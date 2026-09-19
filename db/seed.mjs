@@ -137,7 +137,7 @@ const CATALOG = [
     kind: 'fnb',
     name: 'Breakfast',
     icon: '🍳',
-    note: 'Served 7:00–10:30 am',
+    note: 'Served 7:00-10:30 am',
     items: [
       { name: 'Masala Dosa', price: R(260), veg: true, sla: 30, mods: [SPICE] },
       { name: 'Idli Sambar', desc: 'Three pieces, coconut chutney', price: R(220), veg: true, sla: 25 },
@@ -231,7 +231,7 @@ const CATALOG = [
     kind: 'fnb',
     name: 'Bar',
     icon: '🍷',
-    note: 'Served 12:00 pm–11:00 pm. Guests must be 21 or older.',
+    note: 'Served 12:00 pm-11:00 pm. Guests must be 21 or older.',
     items: [
       { name: 'Kingfisher Premium', desc: '650 ml', price: R(380), veg: false, sla: 20 },
       { name: 'Bira White', desc: '330 ml', price: R(320), veg: false, sla: 20 },
@@ -250,11 +250,11 @@ const CATALOG = [
     department: 'housekeeping',
     note: 'Given before 9 am, returned same day by 7 pm.',
     items: [
-      { name: 'Shirt — wash & press', price: R(120), unit: 'per piece', sla: 30 },
-      { name: 'Trousers — wash & press', price: R(140), unit: 'per piece', sla: 30 },
-      { name: 'Suit — dry clean', price: R(450), unit: 'per piece', sla: 30 },
-      { name: 'Saree — dry clean', price: R(400), unit: 'per piece', sla: 30 },
-      { name: 'Kurta — wash & press', price: R(150), unit: 'per piece', sla: 30 },
+      { name: 'Shirt - wash & press', price: R(120), unit: 'per piece', sla: 30 },
+      { name: 'Trousers - wash & press', price: R(140), unit: 'per piece', sla: 30 },
+      { name: 'Suit - dry clean', price: R(450), unit: 'per piece', sla: 30 },
+      { name: 'Saree - dry clean', price: R(400), unit: 'per piece', sla: 30 },
+      { name: 'Kurta - wash & press', price: R(150), unit: 'per piece', sla: 30 },
       { name: 'Express service surcharge', desc: 'Returned within 4 hours', price: R(250), sla: 30 },
     ],
   },
@@ -263,7 +263,7 @@ const CATALOG = [
     name: 'Spa & wellness',
     icon: '💆',
     department: 'front_desk',
-    note: 'Open 9 am–9 pm. Booking confirmed by the spa desk.',
+    note: 'Open 9 am-9 pm. Booking confirmed by the spa desk.',
     items: [
       { name: 'Swedish Massage', desc: '60 minutes', price: R(3200), sla: 20, needs_time: true },
       { name: 'Deep Tissue Massage', desc: '60 minutes', price: R(3800), sla: 20, needs_time: true },
@@ -278,11 +278,11 @@ const CATALOG = [
     icon: '🚗',
     department: 'front_desk',
     items: [
-      { name: 'Airport drop — sedan', price: R(1400), sla: 20, needs_time: true },
-      { name: 'Airport drop — SUV', price: R(2100), sla: 20, needs_time: true },
+      { name: 'Airport drop - sedan', price: R(1400), sla: 20, needs_time: true },
+      { name: 'Airport drop - SUV', price: R(2100), sla: 20, needs_time: true },
       { name: 'Airport pickup', price: R(1500), sla: 20, needs_time: true },
       { name: 'Taxi to city', desc: 'Metered, billed on return', price: 0, sla: 15, needs_time: true },
-      { name: 'Car with driver — 8 hours', price: R(3500), sla: 30, needs_time: true },
+      { name: 'Car with driver - 8 hours', price: R(3500), sla: 30, needs_time: true },
       { name: 'City tour booking', price: 0, sla: 30, needs_time: true },
     ],
   },
@@ -332,25 +332,25 @@ const INFO_PAGES = [
     slug: 'timings',
     title: 'Check-in & checkout',
     icon: '🕐',
-    body: 'Check-in: 2:00 pm\nCheckout: 11:00 am\n\nLate checkout until 2:00 pm is complimentary when the hotel has space — just ask from the Front desk menu. After 2:00 pm, half a day is charged.\n\nEarly check-in depends on the previous night. We will always try.',
+    body: 'Check-in: 2:00 pm\nCheckout: 11:00 am\n\nLate checkout until 2:00 pm is complimentary when the hotel has space - just ask from the Front desk menu. After 2:00 pm, half a day is charged.\n\nEarly check-in depends on the previous night. We will always try.',
   },
   {
     slug: 'dining',
     title: 'Dining hours',
     icon: '🍽️',
-    body: 'Breakfast buffet — 7:00 to 10:30 am, ground floor\nLunch — 12:30 to 3:00 pm\nDinner — 7:00 to 11:00 pm\nBar — 12:00 noon to 11:00 pm\n\nRoom service runs 24 hours. Between 11:00 pm and 7:00 am, a limited night menu applies and a ₹150 tray charge is added.',
+    body: 'Breakfast buffet - 7:00 to 10:30 am, ground floor\nLunch - 12:30 to 3:00 pm\nDinner - 7:00 to 11:00 pm\nBar - 12:00 noon to 11:00 pm\n\nRoom service runs 24 hours. Between 11:00 pm and 7:00 am, a limited night menu applies and a ₹150 tray charge is added.',
   },
   {
     slug: 'facilities',
     title: 'Pool, gym & spa',
     icon: '🏊',
-    body: 'Swimming pool — 6:00 am to 8:00 pm, terrace level. Towels are at the pool desk.\nGym — open 24 hours, key card access, second floor.\nSpa — 9:00 am to 9:00 pm, book from the Services menu.\n\nChildren under 12 must be accompanied at the pool.',
+    body: 'Swimming pool - 6:00 am to 8:00 pm, terrace level. Towels are at the pool desk.\nGym - open 24 hours, key card access, second floor.\nSpa - 9:00 am to 9:00 pm, book from the Services menu.\n\nChildren under 12 must be accompanied at the pool.',
   },
   {
     slug: 'emergency',
     title: 'Emergency & safety',
     icon: '🚨',
-    body: 'Front desk — dial 9 from the room phone, or message us here.\nMedical emergency — dial 9, or 108 for an ambulance.\nFire — break glass alarms are at both ends of every corridor.\n\nYour nearest fire exit is marked on the back of your room door. Lifts are not to be used during an alarm.\n\nA doctor can be called to your room 24 hours a day from the Services menu.',
+    body: 'Front desk - dial 9 from the room phone, or message us here.\nMedical emergency - dial 9, or 108 for an ambulance.\nFire - break glass alarms are at both ends of every corridor.\n\nYour nearest fire exit is marked on the back of your room door. Lifts are not to be used during an alarm.\n\nA doctor can be called to your room 24 hours a day from the Services menu.',
   },
   {
     slug: 'house-rules',
@@ -362,7 +362,7 @@ const INFO_PAGES = [
     slug: 'nearby',
     title: 'Around the hotel',
     icon: '📍',
-    body: 'The front desk can arrange a car for any of these.\n\nWalking distance — the main market (8 min), a pharmacy (5 min), an ATM in the lobby.\n\nWorth a trip — the old fort (20 min by car), the riverside promenade (15 min), the craft bazaar, open Saturdays.\n\nAsk us for recommendations. We live here.',
+    body: 'The front desk can arrange a car for any of these.\n\nWalking distance - the main market (8 min), a pharmacy (5 min), an ATM in the lobby.\n\nWorth a trip - the old fort (20 min by car), the riverside promenade (15 min), the craft bazaar, open Saturdays.\n\nAsk us for recommendations. We live here.',
   },
 ]
 
@@ -373,19 +373,19 @@ const QUICK_REPLIES = [
   { label: 'Late checkout ok', body: 'Late checkout until 2:00 pm is confirmed for you, with our compliments.' },
   { label: 'Checkout time', body: 'Checkout is at 11:00 am. Let us know if you would like us to request a later time.' },
   { label: 'Wi-Fi', body: 'Connect to RN-Guest and use the password rnstay2026. Tell us if it still will not connect.' },
-  { label: 'Kitchen delay', body: 'Apologies — the kitchen is running about 15 minutes behind. Your order is being prepared.' },
+  { label: 'Kitchen delay', body: 'Apologies - the kitchen is running about 15 minutes behind. Your order is being prepared.' },
   { label: 'Anything else', body: 'Happy to help. Anything else you need, just message here.' },
 ]
 
 /**
- * What the hotel is running this season. The desk honours these at checkout —
+ * What the hotel is running this season. The desk honours these at checkout -
  * nothing here discounts a folio by itself, see lib/promotions.ts.
  */
 const PROMOTIONS = [
   {
     title: 'Welcome drink, on us',
     description:
-      'A complimentary drink at the lobby bar — a cocktail, a mocktail or a filter coffee, whichever suits the hour.',
+      'A complimentary drink at the lobby bar - a cocktail, a mocktail or a filter coffee, whichever suits the hour.',
     kind: 'coupon',
     minSpend: 0,
     percentOff: null,
@@ -405,7 +405,7 @@ const PROMOTIONS = [
   {
     title: '15% off every spa treatment',
     description:
-      'Fifteen per cent off the whole spa menu for the length of your stay — massages, facials, the lot.',
+      'Fifteen per cent off the whole spa menu for the length of your stay - massages, facials, the lot.',
     kind: 'discount',
     minSpend: 0,
     percentOff: 15,
@@ -558,11 +558,11 @@ async function main() {
   const demo = roomLinks.filter((r) => ['204', '301'].includes(r.number) && r.property === 'RN Grand, Pune')
 
   console.log(`\n✓ ${STAFF.length} staff · ${roomLinks.length} rooms · ${CATALOG.length} directory sections`)
-  console.log(`\n  Staff login — ${base}/staff/login`)
+  console.log(`\n  Staff login - ${base}/staff/login`)
   for (const s of STAFF) console.log(`    ${s.username.padEnd(20)} ${s.name}`)
   console.log(`\n  Password for all of them: ${SEED_PASSWORD}`)
   console.log('  (every account is flagged to change it at first login)')
-  console.log('\n  Occupied demo rooms — open these on a phone:')
+  console.log('\n  Occupied demo rooms - open these on a phone:')
   for (const r of demo) console.log(`    Room ${r.number}  ${base}/r/${r.token}`)
   console.log('')
 }

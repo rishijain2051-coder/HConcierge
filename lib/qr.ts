@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 
 /**
  * QR codes are rendered as inline SVG on the server rather than fetched one by
- * one from an endpoint — a print sheet of 34 rooms would otherwise be 34
+ * one from an endpoint - a print sheet of 34 rooms would otherwise be 34
  * round-trips, and this way the sheet prints correctly from a cold page.
  */
 export function qrSvg(text: string, size = 220): Promise<string> {
@@ -20,7 +20,7 @@ export function qrSvg(text: string, size = 220): Promise<string> {
 /**
  * The origin to print into room QR codes. Taken from the live request so the
  * codes are right on localhost, on a preview deployment and in production
- * without anyone remembering to set an env var — NEXT_PUBLIC_BASE_URL only
+ * without anyone remembering to set an env var - NEXT_PUBLIC_BASE_URL only
  * overrides it when a hotel is on a custom domain behind something odd.
  */
 export async function baseUrl(): Promise<string> {

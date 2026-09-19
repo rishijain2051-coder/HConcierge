@@ -45,7 +45,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
   return (
     <Panel
       title="Organisations"
-      description="Each customer is one organisation and owns its own properties, staff and data. Open one to manage its properties, staff, directory and escalation — you work inside a single customer at a time, never across them."
+      description="Each customer is one organisation and owns its own properties, staff and data. Open one to manage its properties, staff, directory and escalation - you work inside a single customer at a time, never across them."
       action={
         <Button
           variant="primary"
@@ -88,7 +88,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
                 </Button>
               )}
               {/* Only offered once suspended. lib/organisations refuses it
-                  otherwise too — this just stops the button being a question
+                  otherwise too - this just stops the button being a question
                   the operator has to be told the answer to. */}
               {o.suspended_at && (
                 <Button
@@ -130,7 +130,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
       {offboarding && (
         <Modal wide title={`Off-board ${offboarding.summary.name}`} onClose={() => setOffboarding(null)}>
           <p className="text-muted text-[14px] leading-relaxed">
-            This deletes the customer and everything of theirs, for good. There is no undo and no export — take
+            This deletes the customer and everything of theirs, for good. There is no undo and no export - take
             anything they are owed out first.
           </p>
 
@@ -165,7 +165,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
             <div className="mt-3">
               <Err>
                 ₹{(offboarding.summary.unsettled_paise / 100).toFixed(2)} is outstanding on their rooms. This will be
-                refused until it is settled or voided — deleting now destroys the only record of it.
+                refused until it is settled or voided - deleting now destroys the only record of it.
               </Err>
             </div>
           )}
@@ -284,7 +284,7 @@ export default function OrganisationManager({ organisations }: { organisations: 
           >
             <Field label="Company name" name="name" defaultValue={editing.name} required autoFocus />
             <p className="text-faint text-[12px]">
-              The short name <span className="text-ink font-medium">/{editing.slug}</span> cannot change — other
+              The short name <span className="text-ink font-medium">/{editing.slug}</span> cannot change - other
               things point at it.
             </p>
             <Button type="submit" variant="primary" full disabled={pending}>

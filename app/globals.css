@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* HConcierge — one warm, light theme.
+/* HConcierge - one warm, light theme.
    Deliberately no dark mode: these screens live on a printed-QR landing page
    and a reception monitor, and a half-tested dark variant is worse than none. */
 
@@ -9,7 +9,7 @@
   --color-surface: #ffffff;
   --color-ink: #1c1917;
   --color-muted: #5f5852; /* 6.7:1 on paper */
-  --color-faint: #78716c; /* 4.6:1 on paper — the lightest tone that is still readable */
+  --color-faint: #78716c; /* 4.6:1 on paper - the lightest tone that is still readable */
   --color-line: #e7e2da;
 
   --color-ok: #15803d;
@@ -32,7 +32,7 @@
      invisible on paper and cost a repaint each. */
   --shadow-float: 0 12px 32px -16px rgb(28 25 23 / 0.22);
 
-  /* What sits *over* the page — a drawer, a dialog. Deeper than --shadow-float
+  /* What sits *over* the page - a drawer, a dialog. Deeper than --shadow-float
      because it has to read as a separate plane, and tinted with the ink rather
      than pure black, which went grey against warm paper. Tailwind's shadow-2xl
      was doing this job in three places and belonged to no palette. */
@@ -62,7 +62,7 @@ body {
 /* Two things that only matter on a phone, both set on the root because they
    are about the whole document rather than any component in it.
 
-   `touch-action: manipulation` keeps pinch-zoom — guests will pinch a menu —
+   `touch-action: manipulation` keeps pinch-zoom - guests will pinch a menu -
    and drops double-tap-to-zoom. That is what removes the ~300ms a browser
    otherwise waits after every tap to see whether a second one is coming: with
    zoom left on (viewport `maximumScale: 5`) that wait applies to every button,
@@ -71,7 +71,7 @@ body {
 
    `overscroll-behavior-y` turns off pull-to-refresh. Every link page is
    `force-dynamic`, so a stray upward flick at the top of the list re-runs the
-   whole query and the page appears to hang — and these pages are opened from
+   whole query and the page appears to hang - and these pages are opened from
    WhatsApp's in-app browser, which is exactly where that gesture is easiest to
    trigger by accident. */
 html {
@@ -80,8 +80,8 @@ html {
 }
 
 /* Safari zooms the page in when a field smaller than 16px takes focus, and it
-   does not zoom back out. The staff screens are deliberately dense at 13–14px,
-   which is right on a monitor and a trap on a phone — so the floor is raised
+   does not zoom back out. The staff screens are deliberately dense at 13-14px,
+   which is right on a monitor and a trap on a phone - so the floor is raised
    only where a touch keyboard is what opens. */
 @media (pointer: coarse) {
   input,
@@ -122,7 +122,7 @@ html {
 }
 
 /* A welcome card is one page, and the page is the design.
-   `margin: 0` is what removes the browser's own printed header and footer —
+   `margin: 0` is what removes the browser's own printed header and footer -
    the document title at the top and the page URL at the bottom. Chrome has no
    other way to suppress them from a stylesheet, and a guest's card with a
    localhost URL along the bottom edge looks like a mistake. The card supplies
@@ -190,7 +190,7 @@ a {
 
 /* The one authored entrance on the staff side, and it is the product's whole
    claim in one gesture: a request the guest just made, landing on the board as
-   it is written. It fires for arrivals only — the cards already sitting there
+   it is written. It fires for arrivals only - the cards already sitting there
    when the page loads do not flutter, because that is a page transition
    wearing an arrival's clothes. */
 @keyframes hc-card-in {
@@ -220,7 +220,7 @@ a {
 /* ---------------------------------------------------------------------------
    Guest surfaces.
 
-   One surface, one hairline. This was a tray holding a plate — an outer tinted
+   One surface, one hairline. This was a tray holding a plate - an outer tinted
    wrapper around an inner card, with concentric radii. It read as machined
    hardware and it was a card inside a card, which is two containers doing the
    work of none. What separates things here is space.
@@ -234,7 +234,7 @@ a {
 
 /* The one authored entrance, and it belongs to a single thing: a request
    arriving on the guest's screen. It used to be on the greeting, the bill
-   lines, the hotel-info rows, the basket bar and both loading screens — which
+   lines, the hotel-info rows, the basket bar and both loading screens - which
    is not an authored moment, it is a transition applied to everything. */
 @keyframes hc-rise {
   from {
@@ -312,7 +312,7 @@ a {
   }
 }
 
-/* The same arrival, from whichever edge the panel is anchored to — the request
+/* The same arrival, from whichever edge the panel is anchored to - the request
    drawer comes in from the right, the phone navigation from the left, so the
    offset is the caller's to set. Both used to appear with no transition at all,
    which read as a page swap next to the guest sheet that eases in. */

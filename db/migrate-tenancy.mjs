@@ -1,5 +1,5 @@
 // Backfills the tenant layer and the default escalation ladder.
-// Idempotent — safe to re-run.
+// Idempotent - safe to re-run.
 //
 //   npm run db:migrate
 //
@@ -32,7 +32,7 @@ try {
      where organisation_id is null returning name`
   console.log(`  attached ${props.length} propert${props.length === 1 ? 'y' : 'ies'}`)
 
-  // Platform accounts belong to no organisation — that is the whole point.
+  // Platform accounts belong to no organisation - that is the whole point.
   const people = await sql`
     update staff set organisation_id = ${org.id}
      where organisation_id is null and role <> 'platform' returning username`
@@ -66,7 +66,7 @@ try {
         from organisations o order by o.name`,
   )
   console.table(await sql`
-    select username, role, coalesce(o.name,'—') as organisation
+    select username, role, coalesce(o.name,'-') as organisation
       from staff s left join organisations o on o.id = s.organisation_id
      order by case s.role when 'platform' then 0 when 'admin' then 1 when 'manager' then 2 else 3 end`)
 } catch (err) {

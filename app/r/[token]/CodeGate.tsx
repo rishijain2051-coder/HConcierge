@@ -48,7 +48,7 @@ export default function CodeGate({
         Room {room.number}
       </h1>
       <p className="text-muted mt-3 text-[15px] leading-relaxed">
-        Enter the four-digit code on your welcome card and everything in the hotel is one tap away — room service,
+        Enter the four-digit code on your welcome card and everything in the hotel is one tap away - room service,
         housekeeping, the front desk.
       </p>
 

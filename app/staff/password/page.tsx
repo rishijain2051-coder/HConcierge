@@ -15,7 +15,7 @@ export default async function PasswordPage() {
       subtitle="Update the password on your account."
       submitLabel="Save password"
       // This screen sits outside the app shell, so it has no header to go back
-      // through — and without this the only way out was the browser button.
+      // through - and without this the only way out was the browser button.
       footer={
         <Link href={homeFor(staff)} className="hover:text-ink underline">
           Back to work

@@ -27,7 +27,7 @@ export async function login(_prev: FormState, form: FormData): Promise<FormState
   await startSession(result.staff.id)
   await audit({ staffId: result.staff.id, actor: username, action: 'staff.login' })
 
-  // redirect throws by design — it must be outside any try/catch.
+  // redirect throws by design - it must be outside any try/catch.
   redirect(homeFor(result.staff))
 }
 

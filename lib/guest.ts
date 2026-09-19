@@ -46,7 +46,7 @@ export async function readRoom(token: string): Promise<RoomContext | null> {
 /**
  * Memoised per request: `generateMetadata` and the page itself both need the
  * room, and without this the guest paid two identical round trips before a
- * single pixel rendered. Streams use `readRoom` — they exist to notice change.
+ * single pixel rendered. Streams use `readRoom` - they exist to notice change.
  */
 export const loadRoom = cache(readRoom)
 
@@ -84,7 +84,7 @@ const RECENT_MESSAGES = 60
 /**
  * Everything the guest screen shows, in a single round trip.
  *
- * This used to be four parallel queries and then a fifth for the order lines —
+ * This used to be four parallel queries and then a fifth for the order lines -
  * two crossings to Mumbai, paid on every load and every push. Assembling it in
  * the database costs nothing there and removes a whole wave here.
  */

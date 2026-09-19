@@ -11,7 +11,7 @@ web
 **Guests, in the room, on their own phone.** They arrive with no app installed and
 no account. They scan a printed card on the desk, type the four digits the front
 desk gave them at check-in, and are in for the rest of the stay. They are often
-tired, sometimes at 2am, and their alternative is dialling reception — which is
+tired, sometimes at 2am, and their alternative is dialling reception - which is
 the behaviour this product exists to replace.
 
 **Hotel staff, across two device classes that are both primary.** Reception works
@@ -21,7 +21,7 @@ pocket. Neither is secondary: every board decision has to hold at 375px and at
 1600px.
 
 **A hotel group's admin.** One or two people per customer who set up the property
-once — rooms, directory, staff, target times, escalation — and then rarely return.
+once - rooms, directory, staff, target times, escalation - and then rarely return.
 
 **HConcierge itself**, a platform account that onboards customers and manages
 their properties without ever seeing a guest's live traffic.
@@ -43,7 +43,7 @@ A phone call leaves no trace. It has no owner, no clock and no record that it
 happened at all.
 
 Every request here is routed by department, timed against its own target, and
-escalated up a per-property ladder when it runs late — without anyone watching a
+escalated up a per-property ladder when it runs late - without anyone watching a
 screen, because the escalation sweep runs on a schedule as well as on the board.
 That accountability, not the ordering interface, is the part a neighbouring
 product cannot truthfully claim by adding a menu to a QR code.
@@ -74,7 +74,7 @@ product cannot truthfully claim by adding a menu to a QR code.
   Four roles: `platform` > `admin` > `manager` > `staff`. Nothing may assume a
   single hotel. RN Hospitality is customer one, not the only customer.
 - **Hosting is serverless**, so live updates are server-sent events over an HTTP
-  push channel, not websockets — there is no long-lived process to hold a socket.
+  push channel, not websockets - there is no long-lived process to hold a socket.
 - **The database is Supabase Postgres behind a transaction pooler.** Prepared
   statements fail on it under a realistic mix; `LISTEN` is silently dropped and
   needs the session pooler. Both are load-bearing constraints, recorded with
@@ -85,7 +85,7 @@ product cannot truthfully claim by adding a menu to a QR code.
   permits one cron run per day.
 - **Twilio is optional.** Escalation degrades to in-app only when it is unset.
 - **Nothing in the product calls a language model.** The AI Concierge is a
-  decision tree read from the hotel's own directory — no model, no inference,
+  decision tree read from the hotel's own directory - no model, no inference,
   no provider, no key, no bill. It cannot quote a price the kitchen did not
   set, promise a service the property does not run, or need anybody to review
   what it said to a guest at 3am.
@@ -98,15 +98,15 @@ product cannot truthfully claim by adding a menu to a QR code.
 
 ## Brand Commitments
 
-The product is named **HConcierge**. **RN Hospitality** — specifically RN Grand,
-Pune — is the named prospect the current build is dressed for.
+The product is named **HConcierge**. **RN Hospitality** - specifically RN Grand,
+Pune - is the named prospect the current build is dressed for.
 
 The guest-facing assistant is the **AI Concierge**, and in this product **AI**
 stands for **Automatically Intelligent**: a concierge assembled automatically
 from the hotel's own directory, which answers only with what that hotel
 actually offers. It is not artificial intelligence and there is no model behind
 it. `app/r/[token]/Concierge.tsx` opens by pointing back here and by describing
-the mechanism, so nobody maintaining it is misled — and so the expansion itself
+the mechanism, so nobody maintaining it is misled - and so the expansion itself
 lives in exactly one place.
 
 **The expansion belongs in this document and nowhere else.** It must not appear
@@ -117,8 +117,8 @@ that stops to explain its own name has raised the question it was answering.
 
 **RN Hospitality has not committed. Nothing in this repository is their data.**
 
-Every row in the database — the 22 rooms, the 113 directory items, their prices
-and target times, the 7 hotel-info pages, the property name and address — is a
+Every row in the database - the 22 rooms, the 113 directory items, their prices
+and target times, the 7 hotel-info pages, the property name and address - is a
 plausible invention made to demonstrate the product. It is a pitch, not a
 deployment.
 
@@ -126,8 +126,8 @@ Future work must not claim, imply or design around:
 
 - a live installation, a running pilot, or guests currently using it;
 - RN Hospitality as a customer, a reference or a logo;
-- any measured result — call volume reduced, response times improved, revenue
-  lifted — because none has been measured;
+- any measured result - call volume reduced, response times improved, revenue
+  lifted - because none has been measured;
 - testimonials, case studies, press or named staff.
 
 What is genuinely on hand is the working system itself, which is the pitch: a
@@ -156,5 +156,5 @@ controls, keyboard reach, visible focus, and honoured reduced-motion.
 
 The guest app is **English only, deliberately and for now**. Guest-facing strings
 sit in components ready to lift, and the directory is data rather than hardcoded
-copy, so neither decision is load-bearing — but no translation machinery should
+copy, so neither decision is load-bearing - but no translation machinery should
 be built on a guess.

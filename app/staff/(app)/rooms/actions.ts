@@ -194,7 +194,7 @@ export async function checkOut(roomId: string, settleOutstanding = false) {
   return { ok: true as const }
 }
 
-/** A new code for the same stay — for a guest who lost the welcome card. */
+/** A new code for the same stay - for a guest who lost the welcome card. */
 export async function newAccessCode(roomId: string) {
   const staff = await requireManager()
   const room = await roomFor(staff, roomId)
@@ -243,7 +243,7 @@ export async function unlockRoomCode(roomId: string) {
 }
 
 /**
- * Reissues the QR itself. Rarely needed now that the card is permanent — only
+ * Reissues the QR itself. Rarely needed now that the card is permanent - only
  * for one that has been damaged, or photographed by someone who should not have
  * it. The printed card MUST be replaced afterwards; the old one stops working.
  */

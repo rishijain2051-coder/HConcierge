@@ -32,7 +32,7 @@ const LOCK_MINUTES = 15
 
 function secret(): string {
   const s = process.env.SESSION_SECRET
-  if (!s) throw new Error('SESSION_SECRET is not set — see .env.example')
+  if (!s) throw new Error('SESSION_SECRET is not set - see .env.example')
   return s
 }
 
@@ -170,7 +170,7 @@ export async function staffFromToken(token?: string, enteredOrg?: string): Promi
  *
  * Deliberately stricter than `staffFromToken`, because this capability lives in
  * a chat log rather than an httpOnly cookie: the row is re-read on every render
- * and the phone must still be verified. So revocation needs no token state —
+ * and the phone must still be verified. So revocation needs no token state -
  * deactivate someone, or change their number (which the `staff_phone_reset`
  * trigger un-verifies), and the link in their chat dies on the next tap.
  *
@@ -199,7 +199,7 @@ export async function staffFromLinkToken(token: string): Promise<Staff | null> {
 /**
  * The signed-in staff member for this request.
  *
- * `cache` keeps that to one query per request, not one per component — which
+ * `cache` keeps that to one query per request, not one per component - which
  * also means it must NOT be used inside a long-lived stream, where the whole
  * point is to notice that something changed. Streams call `staffFromToken`.
  */
@@ -229,7 +229,7 @@ export async function requireAdmin(): Promise<Staff> {
 }
 
 /**
- * The panel screens that belong to one customer — staff, directory, escalation,
+ * The panel screens that belong to one customer - staff, directory, escalation,
  * info, activity. HConcierge has to step into an organisation first, or these
  * would be a list of every customer's people and data at once.
  */
@@ -242,7 +242,7 @@ export async function requireInOrganisation(): Promise<Staff> {
 /**
  * Where a role lands after signing in.
  *
- * HConcierge runs the product, not anybody's front desk — it has no shift, no
+ * HConcierge runs the product, not anybody's front desk - it has no shift, no
  * board and no reason to be reading a hotel's live guest traffic.
  */
 export function homeFor(staff: Pick<Staff, 'role'>): string {
@@ -251,7 +251,7 @@ export function homeFor(staff: Pick<Staff, 'role'>): string {
 
 /**
  * The day-to-day screens: board, rooms, history. Platform accounts are sent to
- * the panel instead — a customer's live requests are their business.
+ * the panel instead - a customer's live requests are their business.
  */
 export async function requireOperational(): Promise<Staff> {
   const staff = await requireStaff()
@@ -284,7 +284,7 @@ export function generatePassword(): string {
  * Which teams' requests this person may see. Empty means every team, which is
  * what a manager, an admin and HConcierge get.
  *
- * A department account is pinned to its own — plus any it also covers, so the
+ * A department account is pinned to its own - plus any it also covers, so the
  * head of housekeeping who also runs the laundry sees both boards instead of
  * having to be promoted to manager to see the second one.
  */
@@ -303,7 +303,7 @@ export function canTouchDepartment(staff: Staff, department: string): boolean {
  *
  * This takes the property rather than just its id because an admin's reach is
  * decided by the PROPERTY's organisation, which the Staff object cannot know.
- * Call sites already select the row they are checking — widen that select with
+ * Call sites already select the row they are checking - widen that select with
  * a join on properties rather than making this do a second query per check.
  */
 export function canTouchProperty(
@@ -325,7 +325,7 @@ export type LoginResult =
 
 /**
  * Counting failures on the staff row rather than in memory means the lockout
- * survives a serverless cold start — an in-memory counter on Vercel resets
+ * survives a serverless cold start - an in-memory counter on Vercel resets
  * every few minutes and protects nobody.
  */
 export async function attemptLogin(username: string, password: string): Promise<LoginResult> {

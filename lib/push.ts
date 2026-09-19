@@ -8,7 +8,7 @@ import { sql } from './db'
  * this implements RFC 8291: an ECDH key agreement with the browser's keys, HKDF
  * to derive a content key, then AES128GCM. That is a lot of cryptography to
  * hand-roll and a whole dependency to avoid hand-rolling, and it buys something
- * this app does not want — a copy of what a guest asked for, sitting in a queue
+ * this app does not want - a copy of what a guest asked for, sitting in a queue
  * on Google's or Mozilla's push service until the phone next comes online.
  *
  * So the push here is empty. It is a doorbell: the service worker wakes up,
@@ -90,7 +90,7 @@ const b64url = (b: Buffer) => b.toString('base64url')
  * Exported so db/check-push.mjs can verify the signature against the public key
  * rather than take it on trust. Nothing else should call it.
  *
- * `aud` is the push service's origin and not our own — the token proves to
+ * `aud` is the push service's origin and not our own - the token proves to
  * Firebase that the sender of this message is the same party that the browser
  * subscribed to, so it is scoped to whoever is being asked to deliver it.
  */
@@ -159,7 +159,7 @@ async function ring(endpoint: string): Promise<Outcome> {
  * Wake every device these people have subscribed, and forget the dead ones.
  *
  * Takes ids rather than the `Recipient` rows the WhatsApp side passes around,
- * because push has no use for a phone number — which is the point. A
+ * because push has no use for a phone number - which is the point. A
  * housekeeper with no number on file, or one whose number was never verified,
  * is unreachable by message and perfectly reachable here.
  */

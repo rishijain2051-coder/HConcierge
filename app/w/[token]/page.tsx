@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * message tapped forty minutes late still lands on live work. `?r=` only says
  * which row the message was about, so it gets a marker and nothing else.
  *
- * No session, because on a shared housekeeping handset nobody is signed in —
+ * No session, because on a shared housekeeping handset nobody is signed in -
  * that is the entire reason this exists rather than a deep link into the board.
  * Authority is the signed token plus a re-read of the staff row; see
  * lib/auth.ts staffFromLinkToken.
@@ -36,7 +36,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * open fast on bad hotel wifi, and app/staff/(app)/ui.tsx's nicer Button is a
  * client component in another route group. The classes below match it. The one
  * piece of client JavaScript here is ./ActButton, which does nothing but say
- * that a tap landed — see the note in that file for why it is worth the bytes.
+ * that a tap landed - see the note in that file for why it is worth the bytes.
  */
 export default async function JobsPage({ params, searchParams }: PageProps<'/w/[token]'>) {
   const { token } = await params
@@ -67,7 +67,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
         {staff.name} · {departmentLabel(staff.department)}
       </p>
 
-      {/* A refusal from setRequestStatus — someone else finished it, or it is not
+      {/* A refusal from setRequestStatus - someone else finished it, or it is not
           this department's to touch. Shown rather than swallowed, because the
           alternative is a button that looks like it did nothing. */}
       {refused && (
@@ -78,7 +78,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
 
       {open.length === 0 ? (
         <p className="text-muted mt-8 text-[15px] leading-relaxed">
-          Everything on your board is done. This page stays live — open it again from any
+          Everything on your board is done. This page stays live - open it again from any
           HConcierge message.
         </p>
       ) : (
@@ -143,7 +143,7 @@ export default async function JobsPage({ params, searchParams }: PageProps<'/w/[
                 </p>
 
                 {/* Emphasis follows the expected next step, because `done` is
-                    irreversible — NEXT_STATUS has no exit from it — and posts the
+                    irreversible - NEXT_STATUS has no exit from it - and posts the
                     folio charge. While a job is still new the big button is
                     Accept; Mark done only becomes primary once it has been
                     accepted, which is when it is actually the obvious action.
@@ -176,7 +176,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 /**
  * One form per button. The request id is a form field and therefore whatever the
- * client says it is — which is fine, because setRequestStatus authorises it
+ * client says it is - which is fine, because setRequestStatus authorises it
  * against this staff member's property and department regardless of how it
  * arrived.
  */
@@ -215,7 +215,7 @@ function Expired() {
         This link has expired
       </h1>
       <p className="text-muted mt-3 text-[15px] leading-relaxed">
-        Job links last one shift. The next HConcierge message carries a fresh one — or sign in to
+        Job links last one shift. The next HConcierge message carries a fresh one - or sign in to
         the board directly.
       </p>
       <a

@@ -6,7 +6,7 @@ import type { Staff } from './auth'
 /**
  * Customers. RN Hospitality is one organisation and owns its properties.
  *
- * Only a `platform` account reaches any of this — an organisation admin must
+ * Only a `platform` account reaches any of this - an organisation admin must
  * never be able to see, create or rename another customer.
  */
 
@@ -87,7 +87,7 @@ export async function offboardingSummary(actor: Staff, id: string): Promise<Offb
  * Bites in two places and both are load-bearing: `staffFromToken` refuses a
  * suspended customer's staff on the next request, and `readRoom` refuses their
  * guests, so nothing new arrives that nobody is going to answer. A hotel that
- * has given notice wants exactly this — the data intact, the doors shut.
+ * has given notice wants exactly this - the data intact, the doors shut.
  *
  * A platform account is deliberately exempt, or HConcierge could suspend a
  * customer and then be unable to reach them to undo it.
@@ -123,12 +123,12 @@ export async function setOrganisationSuspended(actor: Staff, id: string, suspend
  *
  * An unsettled balance refuses outright. Deleting a customer who still owes a
  * room money loses the only record that they did, and no off-boarding is urgent
- * enough to justify that — settle or void it first.
+ * enough to justify that - settle or void it first.
  *
  * Everything cascades: properties, rooms, requests, items, folio, teams, staff.
  * The audit log does not. Its foreign keys are `on delete set null` and the
  * trigger in db/schema.sql lets that one update through, so the trail of what
- * HConcierge did for this customer survives the customer — including this row.
+ * HConcierge did for this customer survives the customer - including this row.
  */
 export async function deleteOrganisation(actor: Staff, id: string, typedName: string): Promise<Ok> {
   if (actor.role !== 'platform') return fail('Only HConcierge can delete a customer.')
@@ -144,7 +144,7 @@ export async function deleteOrganisation(actor: Staff, id: string, typedName: st
   }
   if (summary.unsettled_paise > 0) {
     return fail(
-      `₹${(summary.unsettled_paise / 100).toFixed(2)} is still outstanding on their rooms. Settle or void it first — deleting now destroys the only record of it.`,
+      `₹${(summary.unsettled_paise / 100).toFixed(2)} is still outstanding on their rooms. Settle or void it first - deleting now destroys the only record of it.`,
     )
   }
 
@@ -189,7 +189,7 @@ export async function createOrganisation(
   const name = input.name.trim().slice(0, 120)
   const slug = input.slug.trim().toLowerCase().slice(0, 60)
   if (!name) return fail('Enter a name.')
-  if (!/^[a-z0-9-]{3,60}$/.test(slug)) return fail('Slugs use 3–60 lowercase letters, numbers and dashes.')
+  if (!/^[a-z0-9-]{3,60}$/.test(slug)) return fail('Slugs use 3-60 lowercase letters, numbers and dashes.')
 
   const [clash] = await sql`select 1 from organisations where slug = ${slug}`
   if (clash) return fail(`The slug “${slug}” is taken.`)

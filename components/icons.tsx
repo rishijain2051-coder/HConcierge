@@ -35,7 +35,7 @@ export function IconHome(p: IconProps) {
   )
 }
 
-/** Dining: a cloche, not cutlery — it reads as room service rather than a restaurant. */
+/** Dining: a cloche, not cutlery - it reads as room service rather than a restaurant. */
 export function IconDining(p: IconProps) {
   return (
     <Icon {...p}>

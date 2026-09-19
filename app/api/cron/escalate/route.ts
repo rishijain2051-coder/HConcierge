@@ -6,7 +6,7 @@ export const maxDuration = 60
 
 /**
  * Backstop for the escalation sweep that the staff board already runs on every
- * poll. This is the path that matters at 4am when nobody has a board open —
+ * poll. This is the path that matters at 4am when nobody has a board open -
  * which is exactly when a forgotten request turns into a complaint.
  *
  * Called every ten minutes by Supabase pg_cron, which sends

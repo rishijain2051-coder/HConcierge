@@ -9,7 +9,7 @@
  * and takes those exact rows back by id afterwards.
  *
  * Worth having because the two things most likely to break here are invisible
- * until paper comes out of a machine nobody has plugged in yet — a column that
+ * until paper comes out of a machine nobody has plugged in yet - a column that
  * does not line up because the width changed, and a byte above 0x7F that a
  * printer renders as a box. Both are asserted rather than eyeballed.
  */
@@ -45,7 +45,7 @@ const { buildReceipt, receiptText, escpos, WIDTH_80MM, WIDTH_58MM } = await impo
 let failures = 0
 const lent = []  // ids of the charges this check lent, to give back by id
 const check = (label, ok, detail) => {
-  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  — ' + detail : ''}`)
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${label}${detail ? '  - ' + detail : ''}`)
   if (!ok) failures++
 }
 
@@ -68,7 +68,7 @@ try {
 
   /* The money columns are the part most likely to be wrong, and they only
      appear when something is owed. If nothing is, lend the room two charges
-     for the length of this check and take them back — including one long
+     for the length of this check and take them back - including one long
      enough to force the wrap, which is the branch that never gets exercised by
      a real dosa. */
   if (row.owed === 0) {

@@ -10,7 +10,7 @@ import type { Staff } from './auth'
 /**
  * The escalation ladder, per property.
  *
- * Replaces the rule that used to be hardcoded in lib/notify.ts — "past its
+ * Replaces the rule that used to be hardcoded in lib/notify.ts - "past its
  * target, tell every manager and admin, then again at twice the target".
  *
  * `after_minutes` counts from the moment a request misses its OWN target, so a
@@ -83,7 +83,7 @@ export async function saveEscalationRule(actor: Staff, propertyId: string, input
     return fail('Choose between 0 and 1440 minutes late.')
   }
   if (!input.notifyManagers && !input.notifyAdmins && input.staffIds.length === 0) {
-    return fail('Choose at least one person or group to tell — a step that tells nobody does nothing.')
+    return fail('Choose at least one person or group to tell - a step that tells nobody does nothing.')
   }
   const [clash] = await sql`
     select 1 from escalation_rules

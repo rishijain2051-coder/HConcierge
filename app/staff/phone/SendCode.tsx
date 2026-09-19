@@ -6,7 +6,7 @@ import { requestOwnCode } from './actions'
 /**
  * "Send me a code", next to the form that asks for it.
  *
- * Its own component because AuthForm owns one action and this is a second one —
+ * Its own component because AuthForm owns one action and this is a second one -
  * and because the throttle message ("try again in 40s") is the whole point of
  * showing a result here rather than silently doing nothing.
  */

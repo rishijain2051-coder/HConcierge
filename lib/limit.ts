@@ -3,7 +3,7 @@
  *
  * **Known limitation, and it is the important part of this file.** These maps
  * live in one server instance's memory, and the hosting scales instances
- * horizontally — so this blunts one source hammering one instance and nothing
+ * horizontally - so this blunts one source hammering one instance and nothing
  * more. A distributed flood needs Vercel's firewall rules or something upstream
  * of the application, and no amount of code in this repo substitutes for that.
  * The same caveat, for the same reason, is on the escalation sweep throttle in
@@ -13,7 +13,7 @@
  * room from the database *before* they can check the guest's cookie, because
  * the cookie is scoped to a room they do not know yet. That makes an
  * unauthenticated request cost a query and a pooled connection, and the pool is
- * the scarce resource here — far scarcer than CPU. A cheap reject in front of
+ * the scarce resource here - far scarcer than CPU. A cheap reject in front of
  * it keeps a flood of invented tokens away from Postgres entirely.
  */
 
@@ -50,7 +50,7 @@ export function allow(key: string, perMinute: number, burst = perMinute): boolea
 }
 
 /**
- * Claim a slot for one open stream, or refuse. Returns the release function —
+ * Claim a slot for one open stream, or refuse. Returns the release function -
  * so the only way to take a slot is to be handed the way to give it back.
  */
 export function openStream(roomId: string, max: number): (() => void) | null {
@@ -74,7 +74,7 @@ export function openStream(roomId: string, max: number): (() => void) | null {
 
 /**
  * Who to count against. `x-forwarded-for` is a list when proxies chain, and the
- * left-most entry is the client — the rest are the proxies, which is why the
+ * left-most entry is the client - the rest are the proxies, which is why the
  * whole header cannot be the key.
  *
  * A spoofed header is not a concern behind Vercel, which overwrites it. Behind

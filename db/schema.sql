@@ -47,7 +47,7 @@ alter table staff add constraint staff_property_required
 
 -- -------------------------------------------------------------------- rooms
 -- token is what the printed QR encodes, and it is permanent: the card is
--- printed once and lives on the desk. Checkout does NOT rotate it — an earlier
+-- printed once and lives on the desk. Checkout does NOT rotate it - an earlier
 -- comment here claimed it did, which is the kind of sentence a later change
 -- ends up trusting. What checkout clears is access_code below, and that is the
 -- gate. Rotating the token is a deliberate act from the Rooms screen, for a
@@ -70,7 +70,7 @@ create table if not exists rooms (
 -- Per-stay access code. The QR token identifies the room and is permanent, so
 -- the printed card never has to be replaced; this 4-digit code is the part that
 -- changes with the guest. Alone it is only 10,000 combinations, which is why
--- code_attempts/code_locked_until exist — it is a second factor behind a random
+-- code_attempts/code_locked_until exist - it is a second factor behind a random
 -- token that lives physically inside the room, not a password.
 alter table rooms add column if not exists access_code       text;
 alter table rooms add column if not exists code_set_at        timestamptz;
@@ -327,7 +327,7 @@ create index if not exists properties_org_idx on properties (organisation_id);
 create index if not exists staff_org_idx      on staff (organisation_id);
 
 -- 'platform' is HConcierge itself: above every organisation, held by nobody
--- else. It can only be created by db/platform-user.mjs — no in-app path
+-- else. It can only be created by db/platform-user.mjs - no in-app path
 -- promotes anyone to it.
 alter table staff drop constraint if exists staff_role_check;
 alter table staff add constraint staff_role_check
@@ -376,7 +376,7 @@ create table if not exists escalation_rule_staff (
 -- =========================================================================
 -- Settling the bill.
 --
--- HConcierge does not take payment — a guest asks to settle, the front desk
+-- HConcierge does not take payment - a guest asks to settle, the front desk
 -- takes the money the way it always has, and marks the folio settled. What
 -- the app adds is that the guest can see the bill before that conversation
 -- instead of being handed a printout at checkout.
@@ -395,8 +395,8 @@ alter table rooms add column if not exists settle_requested_at timestamptz;
 --
 -- One NOTIFY per changed row, on two channels: the guest screen watches its
 -- room, the staff board watches its property. Putting this in a trigger
--- rather than in the write paths means every writer publishes — guest
--- actions, staff actions and the escalation cron alike — and there is no
+-- rather than in the write paths means every writer publishes - guest
+-- actions, staff actions and the escalation cron alike - and there is no
 -- call site to forget when a new one is added.
 -- =========================================================================
 
@@ -434,7 +434,7 @@ create trigger hc_notify_rooms after insert or update or delete on rooms
   for each row execute function hc_notify();
 
 -- An order's lines arrive as their own rows, moments after the request itself.
--- Without a trigger here the pushed frame can carry "items": [] — the kitchen
+-- Without a trigger here the pushed frame can carry "items": [] - the kitchen
 -- sees an order with no dishes on it until the next poll.
 create or replace function hc_notify_request_item() returns trigger language plpgsql as $$
 declare parent record;
@@ -454,7 +454,7 @@ create trigger hc_notify_request_items after insert or update or delete on reque
 
 -- ------------------------------------------------------------- audit scope
 -- Every organisation-scoped view filters the log on property_id, and the most
--- auditable event in the panel — an admin being created — is filed with
+-- auditable event in the panel - an admin being created - is filed with
 -- property_id null, because an admin belongs to no single property. The result
 -- was that granting someone the run of an organisation was invisible to that
 -- organisation. The log now carries the organisation too.
@@ -473,7 +473,7 @@ create index if not exists audit_log_org_idx on audit_log (organisation_id, crea
 -- The four teams used to be a CHECK constraint repeated on five tables, which
 -- meant a hotel with a spa, a valet or a concierge desk could not have one
 -- without a migration. They are rows now, owned by the organisation, and the
--- columns that route to them keep holding the slug — an FK rewrite across
+-- columns that route to them keep holding the slug - an FK rewrite across
 -- requests, items, staff and escalation_rules buys referential integrity that
 -- the application already enforces, at the cost of touching every query in the
 -- product.
@@ -504,7 +504,7 @@ select o.id, d.slug, d.name, d.sort
  on conflict (organisation_id, slug) do nothing;
 
 -- The constraints that made a fifth team impossible. The set of teams is now a
--- table, and which slugs are legal depends on the organisation — which a CHECK
+-- table, and which slugs are legal depends on the organisation - which a CHECK
 -- constraint cannot express.
 alter table staff            drop constraint if exists staff_department_check;
 alter table items            drop constraint if exists items_department_check;
@@ -524,11 +524,11 @@ alter table staff add constraint staff_department_present check (length(departme
 -- An array rather than a join table: it is a handful of slugs, it is read with
 -- the staff row on every single request, and the routed columns elsewhere
 -- already hold slugs rather than ids. `department` stays the person's main
--- team — it is what the header shows, and what lib/notify.ts matches on.
+-- team - it is what the header shows, and what lib/notify.ts matches on.
 alter table staff add column if not exists extra_teams text[] not null default '{}';
 -- ------------------------------------------------- staff phone verification
 -- A staff phone number used to be write-only: the app sent to it and a wrong
--- number meant a missed message. WhatsApp action links change the stakes —
+-- number meant a missed message. WhatsApp action links change the stakes -
 -- the link IS the credential, so one mistyped digit hands a stranger a working
 -- job list. The number now has to prove itself before it earns a link.
 --
@@ -542,7 +542,7 @@ alter table staff add column if not exists phone_code_attempts     int not null 
 alter table staff add column if not exists phone_code_locked_until timestamptz;
 
 -- Verification follows the number, not the row. A trigger rather than a line in
--- updateStaff, because updateStaff is not the only writer — createStaff,
+-- updateStaff, because updateStaff is not the only writer - createStaff,
 -- db/seed.mjs and a hand-run update all change phones, and a verification flag
 -- that outlives the number it verified is worse than no flag at all. One guard
 -- where every path already converges.
@@ -587,7 +587,7 @@ create index if not exists outbound_pending_idx
   on outbound_messages (created_at) where sent_at is null;
 
 -- ------------------------------------------------- the audit log is append-only
--- The logging itself was already complete — 48 call sites and 42 actions, board
+-- The logging itself was already complete - 48 call sites and 42 actions, board
 -- status transitions included. What was missing was the guarantee: `audit_log`
 -- was an ordinary table and the application's own role could rewrite or delete
 -- any row in it, which makes "audit log" a description of intent rather than a
@@ -595,7 +595,7 @@ create index if not exists outbound_pending_idx
 --
 -- A trigger rather than `revoke update, delete`, for two reasons. Supabase's
 -- pooled role is frequently the table owner, and an owner ignores its own
--- revokes — so a grant-based approach can be a silent no-op. And a revoke is
+-- revokes - so a grant-based approach can be a silent no-op. And a revoke is
 -- lost the moment a role is recreated, while a trigger travels with the schema
 -- and shows up in every dump.
 --
@@ -614,7 +614,7 @@ begin
   -- pointer to a row that no longer exists.
   --
   -- Refused outright, the audit log becomes the reason a customer cannot be
-  -- off-boarded — found the first time it was tried, and then found a second
+  -- off-boarded - found the first time it was tried, and then found a second
   -- time with `staff_id`, because deleting an organisation cascades to its
   -- staff before it reaches the log.
   --
@@ -654,8 +654,8 @@ alter table rooms add column if not exists guest_phone text;
 
 -- -------------------------------------------------------------- off-boarding
 -- A customer leaving is not one button. Suspending is reversible and takes
--- effect everywhere immediately — nobody on that customer can sign in and no
--- guest link opens — which is what a hotel that has given notice, or is
+-- effect everywhere immediately - nobody on that customer can sign in and no
+-- guest link opens - which is what a hotel that has given notice, or is
 -- disputing an invoice, actually needs. Deleting is the separate, final step,
 -- and `lib/organisations.ts` will not do it until the customer has been
 -- suspended first.

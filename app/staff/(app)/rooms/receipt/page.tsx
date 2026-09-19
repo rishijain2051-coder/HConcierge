@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic'
  *
  * It renders `receiptText()` in a monospace block rather than laying the
  * receipt out again in HTML, which means the paper is identical whichever route
- * printed it — including how the rupee sign is spelled. `?glyph=1` switches
+ * printed it - including how the rupee sign is spelled. `?glyph=1` switches
  * both to a real ₹: the byte stream defines and draws one, and this page stops
  * writing "Rs". Without it both spell it out, because ESC/POS has the sign at
  * no fixed code point and a receipt that disagrees with itself between two
@@ -42,11 +42,11 @@ export default async function ReceiptPage({ searchParams }: PageProps<'/staff/ro
 
   return (
     <div className="mx-auto max-w-[900px] px-4 py-6">
-      {/* A receipt is 80mm of paper, not a sheet of A4 — and globals.css sets
+      {/* A receipt is 80mm of paper, not a sheet of A4 - and globals.css sets
           `@page { size: A4 }` for every printed page in the app. This overrides
           it for this page only: inline so it lands after that rule in document
           order, and `!important` as well so it does not depend on landing
-          there — a receipt that silently prints on A4 wastes a whole sheet per
+          there - a receipt that silently prints on A4 wastes a whole sheet per
           bill and nobody would notice until the roll ran out unused.
           `auto` height is what stops a short bill feeding a whole page out. */}
       <style>{`
@@ -59,7 +59,7 @@ export default async function ReceiptPage({ searchParams }: PageProps<'/staff/ro
           <h1 className="text-[22px] font-semibold tracking-tight">Receipt</h1>
           <p className="text-muted mt-1 max-w-[65ch] text-sm">
             {receipt
-              ? 'In-room charges only, and it says so on the paper — the tax invoice is the hotel’s to issue.'
+              ? 'In-room charges only, and it says so on the paper - the tax invoice is the hotel’s to issue.'
               : 'That room is not one you can see.'}
           </p>
         </div>

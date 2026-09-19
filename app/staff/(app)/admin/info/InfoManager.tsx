@@ -37,7 +37,7 @@ export default function InfoManager({
   return (
     <Panel
       title="Hotel info"
-      description="The read-only pages under Hotel on the guest's phone. This is where the wifi password, the checkout time and the pool hours live — the questions that generate the most calls and need no request at all."
+      description="The read-only pages under Hotel on the guest's phone. This is where the wifi password, the checkout time and the pool hours live - the questions that generate the most calls and need no request at all."
       action={
         <div className="flex flex-wrap gap-2">
           {properties.length > 1 && (
@@ -79,7 +79,7 @@ export default function InfoManager({
         ))}
         {pages.length === 0 && (
           <p className="text-faint col-span-full py-16 text-center text-sm">
-            No pages yet. Start with the wifi password — it is the single most asked question in any hotel.
+            No pages yet. Start with the wifi password - it is the single most asked question in any hotel.
           </p>
         )}
       </div>

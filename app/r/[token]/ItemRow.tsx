@@ -7,7 +7,7 @@
  * Pulled out of GuestApp so the Concierge panel can list the same items the
  * menu tabs do. A guest who taps "Extra towels" through the concierge and a
  * guest who finds it under Services are looking at one row with one set of
- * rules about price, availability and what "add" means — rather than at two
+ * rules about price, availability and what "add" means - rather than at two
  * that drifted apart the first time either was edited.
  */
 

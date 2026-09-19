@@ -1,4 +1,4 @@
--- HConcierge — escalation sweep via Supabase pg_cron.
+-- HConcierge - escalation sweep via Supabase pg_cron.
 --
 -- Run this ONCE in the Supabase SQL editor (Dashboard -> SQL Editor -> New query)
 -- after the app is deployed and you know its URL.
@@ -26,14 +26,14 @@
 --
 -- The secret is deliberately NOT stored in this file, because this file is tracked by
 -- git. It does end up inside cron.job.command once scheduled, which is unavoidable
--- with pg_net — treat CRON_SECRET as a shared secret between Supabase and the app
+-- with pg_net - treat CRON_SECRET as a shared secret between Supabase and the app
 -- rather than a user credential. Vault does not help here: the job body has to
 -- resolve it at call time either way.
 
 create extension if not exists pg_cron;
 
 -- `with schema extensions`, because without it pg_net is created in whatever schema
--- happens to be current — usually `public`, which Supabase's linter flags and which a
+-- happens to be current - usually `public`, which Supabase's linter flags and which a
 -- destructive schema reset would drop along with the app's own tables. The functions
 -- themselves always live in `net` regardless, which is why the cron command below
 -- calls `net.http_post`.
@@ -77,7 +77,7 @@ select cron.schedule(
 -- ------------------------------------------------------ if escalations go silent
 -- The dangerous failure, because Postgres calls it a success: the URL above going
 -- stale. net.http_post only QUEUES the request, so cron.job_run_details records
--- `succeeded` as soon as the statement runs — it never learns what came back. A
+-- `succeeded` as soon as the statement runs - it never learns what came back. A
 -- renamed or deleted deployment will produce thousands of consecutive "successful"
 -- ticks that all got a 404, while no escalation is sent at all.
 --
@@ -92,7 +92,7 @@ select cron.schedule(
 --   create extension if not exists pg_net with schema extensions;
 --
 -- Keep `with schema extensions`. pg_net reports extrelocatable = false, so
--- ALTER EXTENSION ... SET SCHEMA is refused afterwards — the schema is only choosable
+-- ALTER EXTENSION ... SET SCHEMA is refused afterwards - the schema is only choosable
 -- at creation. To move an existing one out of `public`, drop and recreate in a single
 -- transaction so no tick can land while net.http_post is absent:
 --
@@ -121,7 +121,7 @@ select cron.schedule(
 --   order by created desc
 --   limit 20;
 --
--- A 200 with {"escalated":0} is the normal idle result — the sweep ran and nothing
+-- A 200 with {"escalated":0} is the normal idle result - the sweep ran and nothing
 -- was overdue.
 --
 -- -------------------------------------------------------------------- teardown

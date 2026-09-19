@@ -13,7 +13,7 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url)
-  // Scoped inside exportCsv — an id from the query string is a request, not a
+  // Scoped inside exportCsv - an id from the query string is a request, not a
   // permission.
   const propertyId = url.searchParams.get('property') || staff.property_id
 

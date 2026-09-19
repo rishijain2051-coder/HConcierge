@@ -13,7 +13,7 @@ async function leaveOrganisation(): Promise<void> {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  // Managers get the panel too, scoped to their own property — otherwise the
+  // Managers get the panel too, scoped to their own property - otherwise the
   // sign-in screen's promise that a duty manager can reset a password is a lie.
   const staff = await requireManager()
   const stats = await adminOverview(staff)

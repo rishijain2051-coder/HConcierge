@@ -11,7 +11,7 @@ export const maxDuration = 300
 
 /**
  * The guest screen's live channel. Their order moves here the moment the
- * kitchen touches it — no polling, no refresh.
+ * kitchen touches it - no polling, no refresh.
  *
  * The grant is re-checked on every push against a freshly read room, not once
  * at open. A stream can outlive a checkout, and the next guest in that room
@@ -24,7 +24,7 @@ export const maxDuration = 300
 export async function GET(req: Request, ctx: RouteContext<'/api/guest/[token]/live'>) {
   // Before `readRoom`, deliberately. The cookie cannot be checked until the
   // room is known, so an unauthenticated request already costs a query and a
-  // pooled connection — and the pool is what runs out first. See lib/limit.ts
+  // pooled connection - and the pool is what runs out first. See lib/limit.ts
   // for what this does and does not defend against.
   if (!allow(clientKey(req), GUEST_LIMIT.perMinute, GUEST_LIMIT.burst)) return tooMany()
 
@@ -43,7 +43,7 @@ export async function GET(req: Request, ctx: RouteContext<'/api/guest/[token]/li
   const roomId = room.room.id
 
   // One phone, maybe a tablet. Nothing counted these before, and each one holds
-  // a function for up to four minutes against a maxDuration of 300 — so a
+  // a function for up to four minutes against a maxDuration of 300 - so a
   // single guest could pin an instance's concurrency on their own.
   const release = openStream(roomId, MAX_STREAMS_PER_ROOM)
   if (!release) return tooMany(10)
