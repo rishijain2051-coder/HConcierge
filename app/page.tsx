@@ -3,7 +3,6 @@ import StaffSignInLink from './StaffSignInLink'
 import { DIRECTORY_BREADTH, DIRECTORY_COUNT } from '@/lib/demo-data'
 import {
   IconAlarm,
-  IconAlert,
   IconArrowRight,
   IconBell,
   IconChat,
@@ -18,53 +17,33 @@ import {
 import { Logo, Wordmark } from '@/components/Logo'
 
 /**
- * One capability, stated plainly.
+ * One capability. A rule above it rather than a box around it: a page with
+ * twenty bordered cards reads as a brochure, and the border is doing the same
+ * job the grid gap already does.
  *
- * A rule under each rather than a card around it: twenty bordered boxes on one
- * page reads as a brochure, and the page is long enough that the furniture
- * would outweigh the content.
+ * `span` lets the grid be a bento rather than a row of identical thirds. The
+ * spans are chosen so every row fills exactly - an empty cell at the end of a
+ * bento is a planning mistake, not a design.
  */
-function Feature({
+function Cell({
   icon: Icon,
   title,
+  span = '',
   children,
 }: {
   icon: typeof IconBell
   title: string
+  span?: string
   children: React.ReactNode
 }) {
   return (
-    <div className="border-line border-t pt-4">
+    <div className={`reveal border-line border-t pt-4 ${span}`}>
       <Icon size={17} className="text-faint" />
       <h3 className="mt-2.5 text-[15px] font-semibold tracking-[-0.01em]">{title}</h3>
-      <p className="text-muted mt-1.5 text-[14px] leading-relaxed">{children}</p>
+      <p className="text-muted mt-1.5 max-w-[46ch] text-[14px] leading-relaxed">{children}</p>
     </div>
   )
 }
-
-function Section({
-  title,
-  lead,
-  children,
-}: {
-  title: string
-  lead: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="border-line border-t">
-      <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-6 sm:py-24">
-        <h2 className="font-display max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
-          {title}
-        </h2>
-        <p className="text-muted mt-4 max-w-[64ch] text-[15px] leading-relaxed">{lead}</p>
-        <div className="mt-10">{children}</div>
-      </div>
-    </section>
-  )
-}
-
-const GRID = 'grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-3'
 
 export default function Home() {
   return (
@@ -78,180 +57,227 @@ export default function Home() {
       </header>
 
       <main>
+        {/* Hero. Headline, one short line, one thing to do. Everything else
+            that used to live here has a section of its own further down. */}
         <section className="mx-auto max-w-[1240px] px-4 pt-10 pb-12 sm:px-6 sm:pt-16">
           <h1 className="font-display max-w-[16ch] text-[clamp(2.75rem,7.4vw,5.25rem)] leading-[0.94] tracking-[-0.03em] text-balance">
             Reception stops being a <span className="text-[var(--brand)] italic">switchboard</span>.
           </h1>
 
-          <div className="mt-7 grid gap-6 md:grid-cols-[minmax(0,58ch)_auto] md:items-end md:justify-between">
-            <p className="text-muted text-[17px] leading-[1.55]">
-              A guest scans the card on their desk and asks from their own phone. Every request routes to the team
-              that actually does it, carries its own target time, and escalates itself the moment that target is
-              missed.
+          <div className="mt-7 flex flex-wrap items-end justify-between gap-6">
+            <p className="text-muted max-w-[46ch] text-[17px] leading-[1.55]">
+              Guests ask from their own phone. Every request routes to the team that does it, and escalates itself
+              when it runs late.
             </p>
-            <p className="text-faint inline-flex items-center gap-2 text-[13px] md:pb-1">
-              <IconPhoneOff size={15} />
-              Nothing below is a video
-            </p>
+            <a
+              href="#demo"
+              className="bg-ink ease-glide inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition duration-300 hover:opacity-90 active:translate-y-[1px]"
+            >
+              Try the working demo
+              <IconArrowRight size={15} />
+            </a>
           </div>
         </section>
 
-        <section className="pb-20 sm:pb-28">
+        <section id="demo" className="scroll-mt-4 pb-20 sm:pb-28">
           <DemoStage />
         </section>
 
-        <Section
-          title="What the guest gets, without installing anything."
-          lead="A QR card on the desk opens in whatever browser the phone already has. There is no app, no account and no password — the card identifies the room, and a four-digit code from the front desk proves it is this guest, this stay."
-        >
-          <div className={GRID}>
-            <Feature icon={IconBell} title="Ask in one tap">
-              Towels, a charger, the room made up, the tap that drips. Every line is already routed and already
-              carries the time it is allowed to take.
-            </Feature>
-            <Feature icon={IconDining} title="Order from the menu">
-              The full room-service list with a basket, portion sizes and choices — no onion, extra spicy — and a
-              running total before anything is sent.
-            </Feature>
-            <Feature icon={IconAlarm} title="Ask for it at a time">
-              A wake-up call at seven, a car at four. Scheduled work waits for its hour before the clock on it
-              starts, so nothing escalates hours before anyone could have begun.
-            </Feature>
-            <Feature icon={IconCheck} title="Watch it move">
-              Sent, Accepted, then the step that fits the team — Cooking, Tidying, Arranging — then Done. It updates
-              on the guest&rsquo;s screen as the staff member touches it, not on a refresh.
-            </Feature>
-            <Feature icon={IconChat} title="Or just talk to the AI Concierge">
-              The same hotel as a conversation made of buttons: Food, Services, Promotions, Information. It asks
-              which team, then shows that team&rsquo;s whole list. No typing, and nothing it can invent.
-            </Feature>
-            <Feature icon={IconInfo} title="The hotel, answered">
-              Wi-Fi and its password, breakfast hours, pool and gym, house rules, what is worth walking to. Written
-              by the hotel, edited by the hotel.
-            </Feature>
-            <Feature icon={IconReceipt} title="The bill, itemised, any time">
-              Every charge as it is posted, with what it was for. A guest can ask to settle, which puts the room and
-              its balance on the desk&rsquo;s board.
-            </Feature>
-            <Feature icon={IconAlert} title="And a person, when it matters">
-              One message box reaches the desk directly, for the thing nothing on the menu covers. A real person
-              answers it, from the board.
-            </Feature>
-          </div>
-
-          <p className="text-faint mt-9 max-w-[64ch] text-[13.5px] leading-relaxed">
-            No card details are taken anywhere in the product, and none ever will be. Settling a bill is a person
-            walking up with a card machine — HConcierge only tells them to.
-          </p>
-        </Section>
-
-        <Section
-          title="What reception sees instead of a ringing phone."
-          lead="One board per property, live. Requests arrive on it the moment a guest sends them, sorted by how close each is to its target rather than by when it happened to be typed."
-        >
-          <div className={GRID}>
-            <Feature icon={IconMenu} title="The board">
-              Every open request, grouped by team, each with the room, what was asked for, who took it and how long
-              it has left. Housekeeping sees housekeeping; a manager sees all of it.
-            </Feature>
-            <Feature icon={IconAlarm} title="An alarm that will not stop">
-              A new request rings on the board until somebody accepts it — not once, not a chime, a full ring every
-              few seconds. Accepting it is what silences it.
-            </Feature>
-            <Feature icon={IconCheck} title="Accept from anywhere">
-              A push notification with an Accept button on it, so a duty manager clears a request from the lock
-              screen. For a phone with no app open, the same job list arrives as a WhatsApp link.
-            </Feature>
-            <Feature icon={IconChat} title="Reply to the room">
-              A message panel beside the board, with the lines the desk sends most already written — on the way,
-              breakfast hours, late checkout confirmed — editable before they go.
-            </Feature>
-            <Feature icon={IconHome} title="Rooms, codes and cards">
-              Check in, check out, reissue a code, print the QR cards. Every room shows its open requests and what
-              it owes, and checking out invalidates every device that stay used.
-            </Feature>
-            <Feature icon={IconReceipt} title="A receipt on the roll">
-              The room&rsquo;s charges through the browser&rsquo;s print dialog, or as raw ESC/POS to a thermal
-              printer — the same paper either way, down to how the rupee sign is drawn.
-            </Feature>
-          </div>
-        </Section>
-
+        {/* Bento. Deliberately uneven: the lead cell is twice the width of its
+            neighbour. Eight capabilities, eight cells, rows of 2+1 then 1+1+1
+            twice, so every row fills and none of it ends on a hole. */}
         <section className="border-line border-t">
           <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-6 sm:py-24">
-            <h2 className="font-display max-w-[22ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
-              And what happens when nobody picks it up.
+            <h2 className="font-display reveal max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
+              What the guest gets, without installing anything.
             </h2>
-            <p className="text-muted mt-4 max-w-[64ch] text-[15px] leading-relaxed">
-              This is the part a phone call cannot do. Every item carries its own target — a towel is not a biryani
-              — and the clock is the hotel&rsquo;s to set. Nothing here needs anyone to be watching the screen.
+            <p className="text-muted reveal mt-4 max-w-[64ch] text-[15px] leading-relaxed">
+              A QR card on the desk opens in whatever browser the phone already has. No app, no account, no
+              password. The card identifies the room; a four-digit code from the front desk proves it is this guest,
+              this stay.
             </p>
 
-            <ol className="mt-10 grid gap-x-8 gap-y-7 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-12 grid gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+              <Cell icon={IconChat} title="An AI Concierge that cannot make things up" span="lg:col-span-2">
+                The whole hotel as a conversation made of buttons. It asks which team can help, then shows that
+                team&rsquo;s entire list. No typing on the way down, and nothing behind it that could invent a price
+                the kitchen never set or promise a service the property does not run.
+              </Cell>
+              <Cell icon={IconBell} title="Or one tap, from the menu">
+                Towels, a charger, the room made up, the tap that drips.
+              </Cell>
+
+              <Cell icon={IconDining} title="Room service with a basket">
+                The full list, with portion sizes, choices and a running total before anything is sent.
+              </Cell>
+              <Cell icon={IconAlarm} title="Asked for now, or for seven o&rsquo;clock">
+                Scheduled work waits for its hour before its clock starts, so nothing escalates before anyone could
+                have begun.
+              </Cell>
+              <Cell icon={IconCheck} title="Watched, as it moves">
+                Sent, Accepted, then the step that fits the team: Cooking, Tidying, Arranging. It updates as the
+                staff member touches it.
+              </Cell>
+
+              <Cell icon={IconInfo} title="The hotel, answered">
+                Wi-Fi and its password, breakfast hours, the pool, house rules. Written by the hotel, edited by the
+                hotel.
+              </Cell>
+              <Cell icon={IconPhoneOff} title="And a person, without the call">
+                One message box reaches the desk for the thing no menu covers. A real person answers it, from the
+                board.
+              </Cell>
+              <Cell icon={IconReceipt} title="The bill, and never a card">
+                Every charge as it is posted. Asking to settle puts the room and its balance on the board: no card
+                details are taken anywhere in the product, and none ever will be.
+              </Cell>
+            </div>
+          </div>
+        </section>
+
+        {/* Split, with the heading holding its place while the list moves. A
+            different shape from the bento above on purpose. */}
+        <section className="border-line border-t">
+          <div className="mx-auto grid max-w-[1240px] gap-10 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:gap-20">
+            <div className="lg:sticky lg:top-12 lg:self-start">
+              <h2 className="font-display text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
+                What reception sees instead of a ringing phone.
+              </h2>
+              <p className="text-muted mt-4 text-[15px] leading-relaxed">
+                One board per property, live. Requests land on it as they are sent, ordered by how close each is to
+                its target rather than by when it was typed.
+              </p>
+            </div>
+
+            <dl className="divide-line divide-y">
               {[
-                ['On time', 'The request sits on the board with its countdown running. Green, and nobody is troubled.'],
                 [
-                  'Running close',
-                  'At a share of the target the hotel chooses, the card turns amber on every board that can see it.',
+                  IconMenu,
+                  'The board',
+                  'Every open request, grouped by team, each with the room, what was asked for, who took it and how long it has left. Housekeeping sees housekeeping. A manager sees all of it.',
                 ],
                 [
+                  IconAlarm,
+                  'An alarm that will not stop',
+                  'A new request rings until somebody accepts it. Not a chime, not once: a full ring every few seconds. Accepting is what silences it.',
+                ],
+                [
+                  IconCheck,
+                  'Accept from the lock screen',
+                  'A push notification carrying an Accept button, so a duty manager clears a request without opening anything. For a phone with no app open, the same job list arrives as a WhatsApp link.',
+                ],
+                [
+                  IconChat,
+                  'Reply to the room',
+                  'A message panel beside the board, with the lines the desk sends most already written and still editable before they go.',
+                ],
+                [
+                  IconHome,
+                  'Rooms, codes and cards',
+                  'Check in, check out, reissue a code, print the QR cards. Every room shows what it has open and what it owes, and checking out invalidates every device that stay used.',
+                ],
+                [
+                  IconReceipt,
+                  'A receipt on the roll',
+                  'Through the browser print dialog, or as raw ESC/POS to a thermal printer. The same paper either way, down to how the rupee sign is drawn.',
+                ],
+              ].map(([Icon, title, body]) => {
+                const Ico = Icon as typeof IconBell
+                return (
+                  <div key={title as string} className="reveal flex gap-5 py-6 first:pt-0">
+                    <Ico size={17} className="text-faint mt-0.5 shrink-0" />
+                    <div>
+                      <dt className="text-[15px] font-semibold tracking-[-0.01em]">{title as string}</dt>
+                      <dd className="text-muted mt-1.5 max-w-[58ch] text-[14px] leading-relaxed">
+                        {body as string}
+                      </dd>
+                    </div>
+                  </div>
+                )
+              })}
+            </dl>
+          </div>
+        </section>
+
+        {/* A rail, not cards: these four are one sequence and the line between
+            them is the content. */}
+        <section className="border-line border-t">
+          <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-6 sm:py-24">
+            <h2 className="font-display reveal max-w-[22ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
+              And what happens when nobody picks it up.
+            </h2>
+            <p className="text-muted reveal mt-4 max-w-[64ch] text-[15px] leading-relaxed">
+              This is the part a phone call cannot do. Every item carries its own target, because a towel is not a
+              biryani, and the hotel sets the clock. None of it needs anyone to be watching a screen.
+            </p>
+
+            <ol className="relative mt-12 grid gap-y-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-x-8">
+              {/* The rail itself, behind the four markers. */}
+              <span
+                aria-hidden
+                className="bg-line absolute top-[7px] right-0 left-0 hidden h-px lg:block"
+              />
+              {[
+                ['On time', 'The countdown runs on the board and nobody is troubled.', 'bg-ok'],
+                ['Running close', 'At a share of the target the hotel chooses, the card turns amber on every board that can see it.', 'bg-warn'],
+                [
                   'Late',
-                  'The target passes. The card goes red and the request is marked late — on the guest’s screen too, honestly, rather than pretending.',
+                  'The target passes, the card goes red, and the guest is told so on their own screen rather than left guessing.',
+                  'bg-late',
                 ],
                 [
                   'Escalated',
-                  'A rung fires: the team lead, then a manager, then whoever the hotel named — by WhatsApp or SMS, with the room and the wait in the message.',
+                  'A rung fires: the team lead, then a manager, then whoever the hotel named, by WhatsApp or SMS, with the room and the wait in the message.',
+                  'bg-ink',
                 ],
-              ].map(([title, body], i) => (
-                <li key={title} className="border-line border-t pt-4">
-                  <span className="font-display text-faint block text-[22px] leading-none tabular-nums">
-                    {i + 1}
-                  </span>
-                  <span className="mt-2.5 block text-[15px] font-semibold tracking-[-0.01em]">{title}</span>
-                  <span className="text-muted mt-1.5 block text-[14px] leading-relaxed">{body}</span>
+              ].map(([title, body, tone]) => (
+                <li key={title} className="reveal relative lg:pr-6">
+                  <span className={`block h-[15px] w-[15px] rounded-full ${tone} ring-paper ring-4`} />
+                  <h3 className="mt-4 text-[15px] font-semibold tracking-[-0.01em]">{title}</h3>
+                  <p className="text-muted mt-1.5 text-[14px] leading-relaxed">{body}</p>
                 </li>
               ))}
             </ol>
 
-            <p className="text-faint mt-9 max-w-[64ch] text-[13.5px] leading-relaxed">
+            <p className="text-faint reveal mt-10 max-w-[64ch] text-[13.5px] leading-relaxed">
               The ladder is per team and per property, written on a screen rather than in code: how many minutes
-              past, who it reaches, and whether it only fires if nobody has accepted yet.
+              past, who it reaches, and whether it fires only when nobody has accepted yet.
             </p>
           </div>
         </section>
 
-        <section className="border-line border-t">
-          <div className="mx-auto max-w-[1240px] px-4 py-16 sm:px-6 sm:py-24">
-            <h2 className="font-display max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
+        {/* Breadth, as something you flick through. A hundred names set as one
+            paragraph is a wall on a phone and a dot-separated dump anywhere
+            else; five panels you can swipe is the same information at a size
+            a thumb can handle. */}
+        <section className="border-line border-t overflow-hidden">
+          <div className="mx-auto max-w-[1240px] px-4 pt-16 sm:px-6 sm:pt-24">
+            <h2 className="font-display reveal max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
               All {DIRECTORY_COUNT} things a guest can already ask for.
             </h2>
-            <p className="text-muted mt-4 max-w-[64ch] text-[15px] leading-relaxed">
-              This is the directory the demo above is running on, loaded from one file. Each line knows which team
-              owns it and how long it is allowed to take — and the hotel edits all of it, including the teams.
+            <p className="text-muted reveal mt-4 max-w-[64ch] text-[15px] leading-relaxed">
+              The directory the demo above is running on, loaded from one file. Each line knows the team that owns
+              it and how long it is allowed to take, and the hotel edits all of it, including the teams themselves.
             </p>
+          </div>
 
-            {/* Grouped by the team that owns the work. As one run of names it
-                argued only "there are a lot of these", and on a phone it was a
-                wall; the routing is the more interesting claim and it is free
-                to show. */}
-            <div className="mt-10 grid gap-x-8 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
-              {DIRECTORY_BREADTH.map((group) => (
-                <div key={group.team} className="border-line border-t pt-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="text-[15px] font-semibold tracking-[-0.01em]">{group.team}</h3>
-                    <span className="text-faint text-[12px] tabular-nums">{group.items.length}</span>
-                  </div>
-                  <p className="text-muted mt-2 text-[13.5px] leading-[1.85]">
-                    {group.items.map((label, i) => (
-                      <span key={label}>
-                        {label}
-                        {i < group.items.length - 1 && <span className="px-1.5 opacity-40">·</span>}
-                      </span>
-                    ))}
-                  </p>
-                </div>
-              ))}
-            </div>
+          <div className="no-scrollbar mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-16 sm:px-6 sm:pb-24">
+            {DIRECTORY_BREADTH.map((group) => (
+              <div
+                key={group.team}
+                className="bg-surface w-[17rem] shrink-0 snap-start rounded-[20px] p-5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_7%,transparent)] sm:w-[19rem]"
+              >
+                <p className="font-display text-[30px] leading-none tabular-nums">{group.items.length}</p>
+                <h3 className="mt-2 text-[15px] font-semibold tracking-[-0.01em]">{group.team}</h3>
+                <ul className="text-muted mt-4 space-y-1.5 text-[13.5px] leading-snug">
+                  {group.items.map((label) => (
+                    <li key={label}>{label}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            {/* Stops the last panel butting against the viewport edge. */}
+            <span aria-hidden className="w-2 shrink-0 sm:w-4" />
           </div>
         </section>
 
@@ -266,7 +292,7 @@ export default function Home() {
                 desk. The phones stay on the nightstands. They just stop being the way anyone asks for a towel.
               </p>
               <p className="text-muted mt-4 max-w-[52ch] text-[15px] leading-relaxed">
-                One account can run several properties, each with its own directory, teams, targets and staff — and
+                One account can run several properties, each with its own directory, teams, targets and staff, and
                 every change anyone makes is written down and readable afterwards.
               </p>
             </div>
@@ -306,7 +332,7 @@ export default function Home() {
             <p className="font-display max-w-[24ch] text-[clamp(1.5rem,2.6vw,2rem)] leading-[1.1] tracking-[-0.02em]">
               Have a look at the desk side.
             </p>
-            <StaffSignInLink className="bg-ink inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition hover:opacity-90">
+            <StaffSignInLink className="bg-ink ease-glide inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white transition duration-300 hover:opacity-90 active:translate-y-[1px]">
               Staff sign in
               <IconArrowRight size={15} />
             </StaffSignInLink>
@@ -322,7 +348,7 @@ export default function Home() {
           <span className="inline-flex items-center gap-2">
             <Logo size={15} />
             <span>
-              HConcierge — built by{' '}
+              HConcierge, built by{' '}
               <a
                 href="https://draveta.vercel.app"
                 target="_blank"

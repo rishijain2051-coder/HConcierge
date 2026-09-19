@@ -247,6 +247,32 @@ a {
   }
 }
 
+/* Sections arriving as you reach them. Driven by the scroll timeline rather
+   than by a listener or an observer: no JavaScript, no dependency, nothing to
+   clean up, and it costs the page nothing when the browser cannot do it -
+   the content is simply already visible. Motion is one beat of hierarchy
+   here, not decoration, so it runs once on entry and never loops. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    @keyframes hc-reveal {
+      from {
+        opacity: 0;
+        transform: translate3d(0, 16px, 0);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .reveal {
+      animation: hc-reveal 600ms var(--ease-glide) both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 24%;
+    }
+  }
+}
+
 @utility rise {
   animation: hc-rise 620ms var(--ease-glide) both;
 }

@@ -339,7 +339,7 @@ export default function DemoStage() {
   const basketTotal = basket.reduce((s, b) => s + b.item.price * b.qty, 0)
 
   const hint = useMemo(() => {
-    if (!touched) return 'Tap anything on the phone — this is the real menu.'
+    if (!touched) return 'Tap anything on the phone. This is the real menu.'
     if (basketCount > 0) return 'Now send it. Watch where each thing lands.'
     if (tickets.length === 0) return 'Add a towel and a dosa together, then send.'
     if (tickets.some((t) => t.escalated)) return 'Nobody accepted the towels in time, so it escalated itself.'
@@ -389,7 +389,7 @@ export default function DemoStage() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-0.5">
               <div>
                 <p className="text-[14px] font-semibold">Reception board</p>
-                <p className="text-faint text-[12px]">Filtered by team — what each department sees</p>
+                <p className="text-faint text-[12px]">Filtered by team, as each department sees it</p>
               </div>
               <span className="text-faint inline-flex items-center gap-1.5 text-[11px] font-medium tabular-nums">
                 <span className="bg-ok h-1.5 w-1.5 animate-pulse rounded-full" />
