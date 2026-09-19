@@ -1,6 +1,5 @@
 import DemoStage from './DemoStage'
 import StaffSignInLink from './StaffSignInLink'
-import { DIRECTORY_BREADTH, DIRECTORY_COUNT } from '@/lib/demo-data'
 import {
   IconAlarm,
   IconArrowRight,
@@ -243,41 +242,6 @@ export default function Home() {
               The ladder is per team and per property, written on a screen rather than in code: how many minutes
               past, who it reaches, and whether it fires only when nobody has accepted yet.
             </p>
-          </div>
-        </section>
-
-        {/* Breadth, as something you flick through. A hundred names set as one
-            paragraph is a wall on a phone and a dot-separated dump anywhere
-            else; five panels you can swipe is the same information at a size
-            a thumb can handle. */}
-        <section className="border-line border-t overflow-hidden">
-          <div className="mx-auto max-w-[1240px] px-4 pt-16 sm:px-6 sm:pt-24">
-            <h2 className="font-display reveal max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.02] tracking-[-0.02em]">
-              All {DIRECTORY_COUNT} things a guest can already ask for.
-            </h2>
-            <p className="text-muted reveal mt-4 max-w-[64ch] text-[15px] leading-relaxed">
-              The directory the demo above is running on, loaded from one file. Each line knows the team that owns
-              it and how long it is allowed to take, and the hotel edits all of it, including the teams themselves.
-            </p>
-          </div>
-
-          <div className="no-scrollbar mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-16 sm:px-6 sm:pb-24">
-            {DIRECTORY_BREADTH.map((group) => (
-              <div
-                key={group.team}
-                className="bg-surface w-[17rem] shrink-0 snap-start rounded-[20px] p-5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_7%,transparent)] sm:w-[19rem]"
-              >
-                <p className="font-display text-[30px] leading-none tabular-nums">{group.items.length}</p>
-                <h3 className="mt-2 text-[15px] font-semibold tracking-[-0.01em]">{group.team}</h3>
-                <ul className="text-muted mt-4 space-y-1.5 text-[13.5px] leading-snug">
-                  {group.items.map((label) => (
-                    <li key={label}>{label}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-            {/* Stops the last panel butting against the viewport edge. */}
-            <span aria-hidden className="w-2 shrink-0 sm:w-4" />
           </div>
         </section>
 
