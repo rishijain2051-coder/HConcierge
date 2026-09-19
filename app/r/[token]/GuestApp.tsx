@@ -19,7 +19,6 @@ import {
 import {
   IconArrowRight,
   IconBell,
-  IconChat,
   IconChevron,
   IconClose,
   IconDining,
@@ -30,20 +29,19 @@ import {
   IconReceipt,
 } from '@/components/icons'
 import { askToSettle, cancelRequest, submitCart, submitFreeform } from './actions'
-import GuestChat from './GuestChat'
+import Concierge from './Concierge'
+import ItemRow, { isSimple, Stepper } from './ItemRow'
+import { useDialog } from './useDialog'
 
 type Chosen = { group: string; name: string; price_paise: number }
 type CartEntry = { key: string; item: Item; qty: number; modifiers: Chosen[]; note: string }
-type Tab = 'home' | 'dining' | 'services' | 'info' | 'chat'
+type Tab = 'home' | 'dining' | 'services' | 'info'
 type Toast = { text: string; tone: 'ok' | 'bad' }
 
 const cartKey = (item: Item, mods: Chosen[], note: string) =>
   [item.id, ...mods.map((m) => `${m.group}:${m.name}`).sort(), note].join('|')
 
 const entryUnit = (e: CartEntry) => e.item.price_paise + e.modifiers.reduce((s, m) => s + m.price_paise, 0)
-
-/** A plain item can be counted from the row. One with choices has to be opened. */
-const isSimple = (item: Item) => !item.modifier_groups?.length && !item.needs_time
 
 /**
  * The example note, in the language of the team who will read it. One
@@ -155,6 +153,9 @@ export default function GuestApp({
     [],
   )
 
+  const openBill = useCallback(() => setBillOpen(true), [])
+  const markChatSeen = useCallback(() => setChatSeenAt(Date.now()), [])
+
   if (gone) {
     return (
       <div
@@ -249,7 +250,6 @@ export default function GuestApp({
           />
         )}
         {tab === 'info' && <Info pages={info} property={property} />}
-        {tab === 'chat' && <GuestChat token={token} messages={state.messages} onSent={refresh} />}
       </main>
 
       {cartCount > 0 && (
@@ -260,19 +260,15 @@ export default function GuestApp({
         <div className="mx-auto flex max-w-2xl pb-[env(safe-area-inset-bottom)]">
           {(
             [
-              ['home', 'Home', IconHome, 0],
-              ['dining', 'Dining', IconDining, 0],
-              ['services', 'Services', IconBell, 0],
-              ['info', 'Hotel', IconInfo, 0],
-              ['chat', 'Chat', IconChat, unreadFromStaff],
+              ['home', 'Home', IconHome],
+              ['dining', 'Dining', IconDining],
+              ['services', 'Services', IconBell],
+              ['info', 'Hotel', IconInfo],
             ] as const
-          ).map(([id, label, Ico, badge]) => (
+          ).map(([id, label, Ico]) => (
             <button
               key={id}
-              onClick={() => {
-                setTab(id)
-                if (id === 'chat') setChatSeenAt(Date.now())
-              }}
+              onClick={() => setTab(id)}
               aria-current={tab === id ? 'page' : undefined}
               className={`ease-glide relative flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium transition-colors duration-300 ${
                 tab === id ? 'brand-text' : 'text-faint'
@@ -280,13 +276,29 @@ export default function GuestApp({
             >
               <Ico size={19} />
               {label}
-              {badge > 0 && id !== 'home' && (
-                <span className="brand-bg absolute top-1.5 right-[22%] h-1.5 w-1.5 rounded-full" />
-              )}
             </button>
           ))}
         </div>
       </nav>
+
+      {/* The same hotel behind a different door, for the guests who would
+          rather be asked what they want than go looking for it. It carries the
+          desk's unread replies now that the tab bar no longer has a Chat tab,
+          and it lifts clear of the basket bar when there is one. */}
+      <Concierge
+        token={token}
+        directory={directory}
+        info={info}
+        state={state}
+        counts={counts}
+        unread={unreadFromStaff}
+        raised={cartCount > 0}
+        onTap={tapItem}
+        onBump={bump}
+        onOpenBill={openBill}
+        onRefresh={refresh}
+        onChatSeen={markChatSeen}
+      />
 
       {sheetItem && (
         <ItemSheet
@@ -777,122 +789,6 @@ const Catalog = memo(function Catalog({
     </div>
   )
 })
-
-function ItemRow({
-  item,
-  qty,
-  onTap,
-  onBump,
-}: {
-  item: Item
-  qty: number
-  onTap: (i: Item) => void
-  onBump: (i: Item, by: number) => void
-}) {
-  return (
-    <div className={`flex items-start justify-between gap-4 py-4 ${item.available ? '' : 'opacity-40'}`}>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
-          {item.veg !== null && (
-            <span
-              aria-label={item.veg ? 'Vegetarian' : 'Non-vegetarian'}
-              className={`inline-grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[3px] border ${
-                item.veg ? 'border-ok' : 'border-late'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${item.veg ? 'bg-ok' : 'bg-late'}`} />
-            </span>
-          )}
-          <p className="text-[15px] leading-snug font-medium">{item.name}</p>
-        </div>
-        {item.description && <p className="text-muted mt-1 line-clamp-1 text-[13px]">{item.description}</p>}
-        <p className="text-faint mt-1.5 text-xs">
-          {item.price_paise > 0 ? (
-            <span className="text-ink font-semibold tabular-nums">
-              {rupees(item.price_paise)}
-              {item.unit ? ` ${item.unit}` : ''}
-            </span>
-          ) : (
-            'Complimentary'
-          )}
-          <span> · about {item.sla_minutes} min</span>
-        </p>
-      </div>
-
-      <div className="mt-0.5 shrink-0">
-        {!item.available ? (
-          <span className="text-faint px-1 text-[12px] font-medium">Unavailable</span>
-        ) : isSimple(item) ? (
-          <Stepper qty={qty} onAdd={() => onBump(item, 1)} onSub={() => onBump(item, -1)} label={item.name} />
-        ) : (
-          /* Its siblings announce as "Add Idli Sambar"; this announced as
-             "Choose", identically for every item with options. The label is
-             only set while it is a bare verb: once it reads "Add · 2 in
-             basket" the visible text has to stay the accessible name, per
-             WCAG 2.5.3 Label in Name. */
-          <button
-            onClick={() => onTap(item)}
-            aria-label={qty > 0 ? undefined : `${item.modifier_groups?.length ? 'Choose' : 'Add'} ${item.name}`}
-            className="brand-text brand-border ease-glide rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition duration-300 active:scale-[0.96]"
-          >
-            {qty > 0 ? `Add · ${qty} in basket` : item.modifier_groups?.length ? 'Choose' : 'Add'}
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/**
- * Counting up in place.
- *
- * At zero this is a single "＋" the width of a thumb. Tap it and it grows into
- * a counter, which is the whole point: you never have to open the basket to
- * find out what you already asked for.
- */
-function Stepper({
-  qty,
-  onAdd,
-  onSub,
-  label,
-}: {
-  qty: number
-  onAdd: () => void
-  onSub: () => void
-  label: string
-}) {
-  if (qty === 0) {
-    return (
-      <button
-        onClick={onAdd}
-        aria-label={`Add ${label}`}
-        className="brand-border brand-text ease-glide grid h-9 w-9 place-items-center rounded-full border transition duration-300 active:scale-[0.92]"
-      >
-        <IconPlus size={16} />
-      </button>
-    )
-  }
-
-  return (
-    <div className="brand-bg ease-glide flex items-center rounded-full p-0.5 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] transition duration-300">
-      <button
-        onClick={onSub}
-        aria-label={`One fewer ${label}`}
-        className="ease-glide grid h-8 w-8 place-items-center rounded-full transition duration-200 active:scale-90"
-      >
-        <IconMinus size={15} />
-      </button>
-      <span className="min-w-5 text-center text-[14px] font-bold tabular-nums">{qty}</span>
-      <button
-        onClick={onAdd}
-        aria-label={`One more ${label}`}
-        className="ease-glide grid h-8 w-8 place-items-center rounded-full transition duration-200 active:scale-90"
-      >
-        <IconPlus size={15} />
-      </button>
-    </div>
-  )
-}
 
 function QuickTile({
   item,
@@ -1398,44 +1294,9 @@ function Info({ pages, property }: { pages: InfoPage[]; property: Property }) {
 
 /* ----------------------------------------------------------------- sheet */
 
-const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
-
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
-
-  // A dialog that says aria-modal and then lets Tab wander the page behind it
-  // is worse than one that does not claim to be modal at all.
-  useEffect(() => {
-    const panel = ref.current
-    const returnTo = document.activeElement as HTMLElement | null
-    const inside = () => Array.from(panel?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
-
-    ;(inside()[0] ?? panel)?.focus()
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') return onClose()
-      if (e.key !== 'Tab') return
-      const items = inside()
-      if (items.length === 0) return
-      const first = items[0]
-      const last = items[items.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault()
-        last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault()
-        first.focus()
-      }
-    }
-
-    document.addEventListener('keydown', onKey)
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
-      returnTo?.focus()
-    }
-  }, [onClose])
+  useDialog(ref, onClose)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">

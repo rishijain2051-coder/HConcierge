@@ -8,10 +8,17 @@ export default function GuestChat({
   token,
   messages,
   onSent,
+  embedded = false,
 }: {
   token: string
   messages: ChatMessage[]
   onSent: () => void
+  /**
+   * Inside the concierge panel rather than filling a tab. The panel supplies
+   * the header and the scroll container, and the composer sits on the panel's
+   * own floor instead of clearing a tab bar that is not there.
+   */
+  embedded?: boolean
 }) {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
@@ -39,12 +46,16 @@ export default function GuestChat({
   }
 
   return (
-    <div className="flex min-h-[calc(100svh-13rem)] flex-col px-4 pt-5">
+    <div className={embedded ? 'flex flex-col px-4 pt-3' : 'flex min-h-[calc(100svh-13rem)] flex-col px-4 pt-5'}>
       <div className="flex-1">
-        <h1 className="text-[22px] font-semibold tracking-tight">Front desk</h1>
-        <p className="text-muted mt-0.5 mb-5 text-sm">
-          Ask us anything at all. A real person reads this.
-        </p>
+        {!embedded && (
+          <>
+            <h1 className="text-[22px] font-semibold tracking-tight">Front desk</h1>
+            <p className="text-muted mt-0.5 mb-5 text-sm">
+              Ask us anything at all. A real person reads this.
+            </p>
+          </>
+        )}
 
         {messages.length === 0 ? (
           <div className="border-line rounded-[14px] border border-dashed px-4 py-8 text-center">
@@ -107,7 +118,9 @@ export default function GuestChat({
           tap on it hit a nav tab instead. */}
       <form
         onSubmit={send}
-        className="bg-paper sticky bottom-[calc(env(safe-area-inset-bottom)+3.65rem)] flex gap-2 py-3"
+        className={`bg-surface sticky flex gap-2 py-3 ${
+          embedded ? 'bottom-0' : 'bg-paper bottom-[calc(env(safe-area-inset-bottom)+3.65rem)]'
+        }`}
       >
         <input
           value={draft}
