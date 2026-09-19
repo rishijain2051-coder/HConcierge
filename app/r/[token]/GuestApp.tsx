@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { hotelTime, wallClockNow } from '@/lib/clock'
+import { hotelTime, timeSuggestions, wallClockLabel, wallClockNow } from '@/lib/clock'
 import { rupees } from '@/lib/money'
 import { minutesRemaining, notDueYet, since } from '@/lib/sla'
 import { useLive } from '@/lib/use-live'
@@ -35,12 +35,16 @@ import ItemRow, { isSimple, Stepper } from './ItemRow'
 import { useDialog } from './useDialog'
 
 type Chosen = { group: string; name: string; price_paise: number }
-type CartEntry = { key: string; item: Item; qty: number; modifiers: Chosen[]; note: string }
+/** `at` is the hotel's wall clock, and only ever set on a line that asked for one. */
+type CartEntry = { key: string; item: Item; qty: number; modifiers: Chosen[]; note: string; at: string }
 type Tab = 'home' | 'dining' | 'services' | 'info'
 type Toast = { text: string; tone: 'ok' | 'bad' }
 
-const cartKey = (item: Item, mods: Chosen[], note: string) =>
-  [item.id, ...mods.map((m) => `${m.group}:${m.name}`).sort(), note].join('|')
+// The time is part of the identity of a line, not a property of it: a seven
+// o'clock wake-up call and an eight o'clock one are two things, and merging
+// them into "2×" would lose one of the hours.
+const cartKey = (item: Item, mods: Chosen[], note: string, at: string) =>
+  [item.id, ...mods.map((m) => `${m.group}:${m.name}`).sort(), note, at].join('|')
 
 const entryUnit = (e: CartEntry) => e.item.price_paise + e.modifiers.reduce((s, m) => s + m.price_paise, 0)
 
@@ -51,6 +55,9 @@ const cartLines = (cart: CartEntry[]) =>
     qty: e.qty,
     modifiers: e.modifiers.map((m) => ({ group: m.group, name: m.name })),
     note: e.note || null,
+    // Sent as the bare wall clock the picker gave us. Resolving it here would
+    // pin it to the phone's zone; the server reads it in the hotel's.
+    scheduledFor: e.at || null,
   }))
 
 /**
@@ -138,24 +145,28 @@ export default function GuestApp({
   }, [toast])
 
   const bump = useCallback((item: Item, by: number) => {
-    const key = cartKey(item, [], '')
+    // Only reached by a simple item, and a simple item never needs a time.
+    const key = cartKey(item, [], '', '')
     setCart((prev) => {
       const found = prev.find((e) => e.key === key)
-      if (!found) return by > 0 ? [...prev, { key, item, qty: by, modifiers: [], note: '' }] : prev
+      if (!found) return by > 0 ? [...prev, { key, item, qty: by, modifiers: [], note: '', at: '' }] : prev
       const qty = Math.min(20, found.qty + by)
       return qty <= 0 ? prev.filter((e) => e.key !== key) : prev.map((e) => (e.key === key ? { ...e, qty } : e))
     })
   }, [])
 
-  const addConfigured = useCallback((item: Item, modifiers: Chosen[], note: string, qty: number) => {
-    const key = cartKey(item, modifiers, note)
-    setCart((prev) => {
-      const found = prev.find((e) => e.key === key)
-      if (found) return prev.map((e) => (e.key === key ? { ...e, qty: Math.min(20, e.qty + qty) } : e))
-      return [...prev, { key, item, qty, modifiers, note }]
-    })
-    setToast({ text: `${item.name} added`, tone: 'ok' })
-  }, [])
+  const addConfigured = useCallback(
+    (item: Item, modifiers: Chosen[], note: string, qty: number, at: string) => {
+      const key = cartKey(item, modifiers, note, at)
+      setCart((prev) => {
+        const found = prev.find((e) => e.key === key)
+        if (found) return prev.map((e) => (e.key === key ? { ...e, qty: Math.min(20, e.qty + qty) } : e))
+        return [...prev, { key, item, qty, modifiers, note, at }]
+      })
+      setToast({ text: `${item.name} added`, tone: 'ok' })
+    },
+    [],
+  )
 
   // A plain item counts up in place; one with choices has to be configured.
   const tapItem = useCallback((item: Item) => (isSimple(item) ? bump(item, 1) : setSheetItem(item)), [bump])
@@ -171,18 +182,12 @@ export default function GuestApp({
    * Sending the basket without leaving the conversation.
    *
    * The concierge is the no-typing door, so it sends straight through rather
-   * than handing the guest to the basket sheet. The one thing it cannot ask
-   * for is a time, and the server refuses a wake-up call without one - so a
-   * basket holding anything timed opens the sheet, which is where the picker
-   * lives. `null` says "the sheet has it now"; the concierge stays open behind
-   * it either way.
+   * than handing the guest to the basket sheet. It can do that for every
+   * basket now that a time is asked for on the item itself - there is nothing
+   * left that only the basket knows how to collect.
    */
   const sendCart = useCallback(async () => {
     if (cart.length === 0) return null
-    if (cart.some((e) => e.item.needs_time)) {
-      setCartOpen(true)
-      return null
-    }
     const res = await submitCart(token, cartLines(cart))
     if (!res.ok) return res
     setCart([])
@@ -343,9 +348,10 @@ export default function GuestApp({
       {sheetItem && (
         <ItemSheet
           item={sheetItem}
+          timezone={property.timezone}
           onClose={() => setSheetItem(null)}
-          onAdd={(mods, note, qty) => {
-            addConfigured(sheetItem, mods, note, qty)
+          onAdd={(mods, note, qty, at) => {
+            addConfigured(sheetItem, mods, note, qty, at)
             setSheetItem(null)
           }}
         />
@@ -354,7 +360,6 @@ export default function GuestApp({
       {cartOpen && (
         <CartSheet
           token={token}
-          timezone={property.timezone}
           cart={cart}
           total={cartTotal}
           onClose={() => setCartOpen(false)}
@@ -866,16 +871,87 @@ function QuickTile({
   )
 }
 
+/* ------------------------------------------------------------- time pick */
+
+/**
+ * When, asked the same way a dosa asks which chutney.
+ *
+ * A wake-up call used to be added blind and the hour collected in the basket,
+ * at the end, once - which meant the basket had room for exactly one time and
+ * a guest who wanted a call at seven and a car at nine silently got two of
+ * whichever came last. The hour belongs to the thing that needs it, so it is
+ * asked for here, beside the choices, and refused if it is missing.
+ *
+ * The suggestions are the answer most of the time; `datetime-local` underneath
+ * is the rest of the time and is also the floor, so the hotel's own clock -
+ * never the phone's - decides which hours are still offerable.
+ */
+function TimePick({
+  timezone,
+  value,
+  onChange,
+}: {
+  timezone: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  // Read once on open, like the basket's floor was: this only mounts on a tap,
+  // so there is no server HTML for it to disagree with, and a guest who spent
+  // ten minutes reading the menu should not find the list has moved under them.
+  const [suggestions] = useState(() => timeSuggestions(timezone))
+  const [earliest] = useState(() => wallClockNow(timezone))
+  const chosen = suggestions.find((s) => s.value === value)
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-1.5">
+        {suggestions.map((s) => {
+          const on = s.value === value
+          return (
+            <button
+              key={s.value}
+              onClick={() => onChange(on ? '' : s.value)}
+              aria-pressed={on}
+              className={`ease-glide rounded-full px-3.5 py-2 text-[14px] font-medium transition duration-300 active:scale-[0.97] ${
+                on
+                  ? 'brand-soft-bg shadow-[inset_0_0_0_1.5px_var(--brand)]'
+                  : 'bg-surface shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)]'
+              }`}
+            >
+              {s.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <label className="mt-2 block">
+        <span className="text-faint mb-1 block text-[12px]">
+          {chosen ? 'Or pick another time' : 'Or pick a time'}
+        </span>
+        <input
+          type="datetime-local"
+          value={value}
+          min={earliest}
+          onChange={(e) => onChange(e.target.value)}
+          className="bg-surface focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full rounded-[16px] px-3.5 py-2.5 text-[15px] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)] transition duration-300 outline-none"
+        />
+      </label>
+    </>
+  )
+}
+
 /* ------------------------------------------------------------ item sheet */
 
 function ItemSheet({
   item,
+  timezone,
   onClose,
   onAdd,
 }: {
   item: Item
+  timezone: string
   onClose: () => void
-  onAdd: (mods: Chosen[], note: string, qty: number) => void
+  onAdd: (mods: Chosen[], note: string, qty: number, at: string) => void
 }) {
   const groups = item.modifier_groups ?? []
   const [picked, setPicked] = useState<Chosen[]>(() =>
@@ -889,6 +965,7 @@ function ItemSheet({
   )
   const [note, setNote] = useState('')
   const [qty, setQty] = useState(1)
+  const [at, setAt] = useState('')
 
   const unit = item.price_paise + picked.reduce((s, m) => s + m.price_paise, 0)
 
@@ -964,6 +1041,19 @@ function ItemSheet({
         </div>
       ))}
 
+      {item.needs_time && (
+        <div className="mb-5">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="text-[13px] font-semibold">What time?</p>
+            {/* "Hotel time" is not decoration. A traveller's phone is often
+                still on home time, the input itself shows no zone at all, and
+                the guest is the only one who can catch it being wrong. */}
+            <p className="text-faint text-[12px]">Required · hotel time</p>
+          </div>
+          <TimePick timezone={timezone} value={at} onChange={setAt} />
+        </div>
+      )}
+
       <div className="mb-5">
         <p className="mb-2 text-[13px] font-semibold">Anything to add?</p>
         <input
@@ -974,12 +1064,6 @@ function ItemSheet({
           className="bg-surface placeholder:text-faint focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full rounded-[16px] px-3.5 py-2.5 text-[15px] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)] transition duration-300 outline-none"
         />
       </div>
-
-      {item.needs_time && (
-        <p className="text-muted mb-4 text-[13px] leading-relaxed">
-          We will ask what time when you send this.
-        </p>
-      )}
 
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-full p-1 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_10%,transparent)]">
@@ -998,10 +1082,11 @@ function ItemSheet({
           />
         </div>
         <button
-          onClick={() => onAdd(picked, note, qty)}
-          className="brand-bg ease-glide flex-1 rounded-full px-4 py-3 text-[15px] font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] transition duration-300 active:scale-[0.98]"
+          onClick={() => onAdd(picked, note, qty, at)}
+          disabled={item.needs_time && !at}
+          className="brand-bg ease-glide flex-1 rounded-full px-4 py-3 text-[15px] font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] transition duration-300 active:scale-[0.98] disabled:opacity-40"
         >
-          Add{unit > 0 ? ` · ${rupees(unit * qty)}` : ''}
+          {item.needs_time && !at ? 'Pick a time first' : `Add${unit > 0 ? ` · ${rupees(unit * qty)}` : ''}`}
         </button>
       </div>
     </Sheet>
@@ -1035,7 +1120,6 @@ function SheetStep({
 
 function CartSheet({
   token,
-  timezone,
   cart,
   total,
   onClose,
@@ -1044,7 +1128,6 @@ function CartSheet({
   onError,
 }: {
   token: string
-  timezone: string
   cart: CartEntry[]
   total: number
   onClose: () => void
@@ -1053,20 +1136,7 @@ function CartSheet({
   onError: (msg: string) => void
 }) {
   const [note, setNote] = useState('')
-  const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
-  const timed = cart.filter((e) => e.item.needs_time)
-  const needsTime = timed.length > 0
-  // A wake-up call for yesterday is a typo the server already refuses. The
-  // picker should not offer it in the first place - and the floor is the
-  // hotel's clock, not the phone's, or a guest still on home time is offered
-  // hours the hotel has already lived through and refused the ones it has not.
-  //
-  // Read once when the basket opens, which is safe here: this sheet only
-  // mounts on a tap, never during SSR, so there is no server HTML for it to
-  // disagree with. Seeding it from `serverNow` would instead put the floor as
-  // far in the past as the guest spent reading the menu.
-  const [earliest] = useState(() => wallClockNow(timezone))
 
   function setQty(key: string, qty: number) {
     onChange(qty <= 0 ? cart.filter((e) => e.key !== key) : cart.map((e) => (e.key === key ? { ...e, qty } : e)))
@@ -1075,13 +1145,7 @@ function CartSheet({
   async function send() {
     if (busy) return
     setBusy(true)
-    const res = await submitCart(
-      token,
-      cartLines(cart),
-      // Sent as the bare wall clock the picker gave us. Resolving it here
-      // would pin it to the phone's zone; the server reads it in the hotel's.
-      { note: note || null, scheduledFor: when || null },
-    )
+    const res = await submitCart(token, cartLines(cart), { note: note || null })
     setBusy(false)
     if (res.ok) {
       onDone(res.refs.length > 1 ? `Sent. ${res.refs.length} teams are on it` : 'Sent to the team')
@@ -1105,6 +1169,14 @@ function CartSheet({
                     <p className="text-muted mt-0.5 text-[13px]">{e.modifiers.map((m) => m.name).join(', ')}</p>
                   )}
                   {e.note && <p className="text-faint mt-0.5 text-[13px] italic">“{e.note}”</p>}
+                  {/* Asked for on the item, so it reads back on the item.
+                      Changing it is removing this line and adding it again,
+                      which is the same two taps it took to set. */}
+                  {e.at && (
+                    <p className="text-warn mt-0.5 text-[13px] font-semibold">
+                      For {wallClockLabel(e.at)}
+                    </p>
+                  )}
                   <p className="text-faint mt-1 text-xs tabular-nums">
                     {entryUnit(e) > 0 ? rupees(entryUnit(e) * e.qty) : 'Complimentary'}
                   </p>
@@ -1126,29 +1198,6 @@ function CartSheet({
             ))}
           </div>
 
-          {needsTime && (
-            <div className="mt-4">
-              {/* "Hotel time" is not decoration. A traveller's phone is often
-                  still on home time, the input itself shows no zone at all,
-                  and the guest is the only one who can catch it being wrong. */}
-              <label className="mb-1.5 block text-[13px] font-semibold">
-                What time? <span className="text-faint font-normal">· hotel time</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={when}
-                min={earliest}
-                onChange={(e) => setWhen(e.target.value)}
-                className="bg-surface focus:shadow-[inset_0_0_0_1.5px_var(--brand)] ease-glide w-full rounded-[16px] px-3.5 py-2.5 text-[15px] shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_8%,transparent)] transition duration-300 outline-none"
-              />
-              {/* An asterisk is a form convention, not an explanation. Name
-                  what the time is for and the requirement explains itself. */}
-              <p className="text-faint mt-1.5 text-[12px]">
-                Needed for {timed.map((e) => e.item.name.toLowerCase()).join(' and ')}.
-              </p>
-            </div>
-          )}
-
           <div className="mt-4">
             <label className="mb-1.5 block text-[13px] font-semibold">Note for the team</label>
             <input
@@ -1169,10 +1218,10 @@ function CartSheet({
 
           <button
             onClick={send}
-            disabled={busy || (needsTime && !when)}
+            disabled={busy}
             className="brand-bg ease-glide mt-4 w-full rounded-full px-4 py-3.5 text-[15px] font-semibold text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18)] transition duration-300 active:scale-[0.98] disabled:opacity-40"
           >
-            {busy ? 'Sending…' : needsTime && !when ? 'Choose a time first' : 'Send to the team'}
+            {busy ? 'Sending…' : 'Send to the team'}
           </button>
           <p className="text-faint mt-2.5 text-center text-xs">
             Nothing is charged now. It goes on your room bill and settles at checkout.

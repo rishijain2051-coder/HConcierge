@@ -49,7 +49,7 @@ export async function enterRoomCode(token: string, code: string) {
 export async function submitCart(
   token: string,
   cart: CartLine[],
-  opts: { note?: string | null; scheduledFor?: string | null } = {},
+  opts: { note?: string | null } = {},
 ) {
   const ctx = await authedRoom(token)
   if (!ctx) return DENIED

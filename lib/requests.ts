@@ -19,6 +19,12 @@ export type CartLine = {
   qty: number
   modifiers?: { group: string; name: string }[]
   note?: string | null
+  /**
+   * The hotel's wall clock, for a line that asked for one. Per line rather
+   * than per basket: a wake-up call at seven and an airport car at nine are
+   * two times, and one basket used to have room for only one of them.
+   */
+  scheduledFor?: string | null
 }
 
 export type CreateResult = { ok: true; refs: string[] } | { ok: false; error: string }
@@ -70,7 +76,7 @@ function resolveModifiers(item: ItemRow, chosen: { group: string; name: string }
 export async function createRequests(
   ctx: RoomContext,
   cart: CartLine[],
-  opts: { note?: string | null; scheduledFor?: string | null } = {},
+  opts: { note?: string | null } = {},
 ): Promise<CreateResult> {
   const { room, property } = ctx
 
@@ -103,9 +109,14 @@ export async function createRequests(
   // region, so neither of those clocks gets a vote - the property's zone is
   // what turns the string into an instant, in Postgres, which owns the tz
   // database and its DST history.
-  let when: Date | null = null
-  if (opts.scheduledFor) {
-    if (!isWallClock(opts.scheduledFor)) return { ok: false, error: 'That time is not valid.' }
+  //
+  // Every distinct time in the basket resolves in one round trip, however many
+  // lines carry one, because this runs on a phone's connection.
+  const walls = [...new Set(cart.map((l) => l.scheduledFor).filter((v): v is string => !!v))]
+  if (walls.some((w) => !isWallClock(w))) return { ok: false, error: 'That time is not valid.' }
+
+  const when = new Map<string, Date>()
+  if (walls.length > 0) {
     // Both `::text` casts are load-bearing, however redundant they look.
     // With `prepare: false` postgres.js asks the server what type each
     // parameter is and then serialises to it - given a bare `::timestamp` it
@@ -113,9 +124,10 @@ export async function createRequests(
     // timezone before sending, which lands the result 5½ hours out and is the
     // same class of bug this function exists to fix. Sent as text it arrives
     // verbatim, and Postgres performs the only conversion.
-    const [row] = await sql<{ at: Date }[]>`
-      select (${opts.scheduledFor}::text)::timestamp at time zone (${property.timezone}::text) as at`
-    when = row.at
+    const rows = await sql<{ wall: string; at: Date }[]>`
+      select w as wall, (w::timestamp at time zone (${property.timezone}::text)) as at
+        from unnest(${walls}::text[]) as w`
+    for (const row of rows) when.set(row.wall, row.at)
   }
 
   type Prepared = {
@@ -124,6 +136,9 @@ export async function createRequests(
     note: string | null
     modifiers: { group: string; name: string; price_paise: number }[]
     linePaise: number
+    /** The wall clock this line asked for, and the instant it resolved to. */
+    wall: string | null
+    at: Date | null
   }
   const prepared: Prepared[] = []
 
@@ -136,11 +151,13 @@ export async function createRequests(
     if (!Number.isFinite(qty) || qty < 1 || qty > MAX_QTY) {
       return { ok: false, error: `Choose between 1 and ${MAX_QTY} of ${item.name}.` }
     }
+    const wall = line.scheduledFor || null
+    const at = wall ? (when.get(wall) ?? null) : null
     if (item.needs_time) {
-      if (!when) return { ok: false, error: `Please pick a time for ${item.name}.` }
+      if (!at) return { ok: false, error: `Please pick a time for ${item.name}.` }
       // A minute of slack for a slow thumb; beyond that, a wake-up call
       // scheduled for yesterday is a typo nobody will act on.
-      if (when.getTime() < Date.now() - 60_000) {
+      if (at.getTime() < Date.now() - 60_000) {
         return { ok: false, error: `Pick a time in the future for ${item.name}.` }
       }
     }
@@ -155,30 +172,37 @@ export async function createRequests(
       note: (line.note ?? '').slice(0, MAX_NOTE) || null,
       modifiers: mods.resolved!,
       linePaise: unit * qty,
+      // A time on a line that never asked for one is noise, not an instruction.
+      wall: item.needs_time ? wall : null,
+      at: item.needs_time ? at : null,
     })
   }
 
   // One request per department: the kitchen should never see a towel request,
   // and housekeeping should not be waiting on a biryani.
-  const groups = new Map<string, Prepared[]>()
+  //
+  // And per hour within it, because `requests.scheduled_for` is one column: a
+  // seven o'clock wake-up call and a nine o'clock car cannot share a row, and
+  // towels wanted now must not inherit either of their clocks. Things asked
+  // for at the same moment still travel together, which is every basket that
+  // has no times in it at all.
+  const groups = new Map<string, { department: string; when: Date | null; lines: Prepared[] }>()
   for (const p of prepared) {
-    const list = groups.get(p.item.department)
-    if (list) list.push(p)
-    else groups.set(p.item.department, [p])
+    const key = `${p.item.department}|${p.wall ?? ''}`
+    const group = groups.get(key)
+    if (group) group.lines.push(p)
+    else groups.set(key, { department: p.item.department, when: p.at, lines: [p] })
   }
 
   const refs: string[] = []
   const created: string[] = []
 
-  for (const [department, lines] of groups) {
+  for (const { department, when: scheduledFor, lines } of groups.values()) {
     const total = lines.reduce((s, l) => s + l.linePaise, 0)
     // Promise the slowest item's time, not the fastest - the request is only
     // done when the whole tray arrives.
     const slaMinutes = Math.max(...lines.map((l) => l.item.sla_minutes))
     const kind = KIND_BY_CATEGORY[lines[0].item.category_kind] ?? 'other'
-    // The time belongs to the item that asked for one. One wake-up call in the
-    // basket used to schedule the towels and the biryani for seven tomorrow.
-    const scheduledFor = lines.some((l) => l.item.needs_time) ? when : null
 
     const [request] = await sql<{ id: string; ref: string }[]>`
       insert into requests (property_id, room_id, kind, department, note, scheduled_for,

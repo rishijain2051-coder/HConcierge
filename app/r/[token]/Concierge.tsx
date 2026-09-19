@@ -104,7 +104,7 @@ export default function Concierge({
   onTap: (i: Item) => void
   onBump: (i: Item, by: number) => void
   onOpenBill: () => void
-  /** Sends the basket. `null` when the basket sheet has taken the turn instead. */
+  /** Sends the basket. `null` when there was nothing in it to send. */
   onSendCart: () => Promise<{ ok: true; teams: number } | { ok: false; error: string } | null>
   onRefresh: () => void
   onChatSeen: () => void
@@ -266,7 +266,7 @@ export default function Concierge({
     setSending(true)
     const res = await onSendCart()
     setSending(false)
-    if (!res) return // the basket needed a time, and the sheet is asking for it
+    if (!res) return // nothing in the basket, so nothing to say about it
 
     setLines((prev) => [
       ...prev,
