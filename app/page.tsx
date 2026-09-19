@@ -35,11 +35,20 @@ function Cell({
   span?: string
   children: React.ReactNode
 }) {
+  // A cell twice as wide with the same 46ch of prose in it is not a wide cell,
+  // it is a normal one with a hole beside it. So the lead cell puts its title
+  // and its paragraph side by side: the inner halves land exactly on the outer
+  // columns, because the inner gap is the outer gap.
+  const wide = span !== ''
   return (
     <div className={`reveal border-line border-t pt-4 ${span}`}>
       <Icon size={17} className="text-faint" />
-      <h3 className="mt-2.5 text-[15px] font-semibold tracking-[-0.01em]">{title}</h3>
-      <p className="text-muted mt-1.5 max-w-[46ch] text-[14px] leading-relaxed">{children}</p>
+      <div className={wide ? 'lg:grid lg:grid-cols-2 lg:gap-x-8' : ''}>
+        <h3 className="mt-2.5 text-[15px] font-semibold tracking-[-0.01em]">{title}</h3>
+        <p className={`text-muted mt-1.5 max-w-[46ch] text-[14px] leading-relaxed ${wide ? 'lg:mt-2.5' : ''}`}>
+          {children}
+        </p>
+      </div>
     </div>
   )
 }
