@@ -16,9 +16,19 @@ const FOCUSABLE =
  * Shared by the item/cart/bill sheets and the concierge panel — the second
  * overlay on this screen is exactly where a hand-rolled copy of this starts
  * drifting from the first.
+ *
+ * They also stack: an item sheet opens on top of the concierge panel. Only the
+ * topmost may answer Escape, or closing the sheet closed the panel behind it
+ * too; and the page only gets its scroll back when the last one has gone,
+ * rather than when the first one to unmount happens to clear it.
  */
+
+/** Open dialogs, outermost first. */
+const stack: symbol[] = []
 export function useDialog(ref: RefObject<HTMLElement | null>, onClose: () => void): void {
   useEffect(() => {
+    const token = Symbol('dialog')
+    stack.push(token)
     const panel = ref.current
     const returnTo = document.activeElement as HTMLElement | null
     const inside = () => Array.from(panel?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
@@ -26,6 +36,8 @@ export function useDialog(ref: RefObject<HTMLElement | null>, onClose: () => voi
     ;(inside()[0] ?? panel)?.focus()
 
     const onKey = (e: KeyboardEvent) => {
+      // Something is open on top of this one; it owns the keyboard.
+      if (stack[stack.length - 1] !== token) return
       if (e.key === 'Escape') return onClose()
       if (e.key !== 'Tab') return
       const items = inside()
@@ -45,7 +57,9 @@ export function useDialog(ref: RefObject<HTMLElement | null>, onClose: () => voi
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = ''
+      const at = stack.indexOf(token)
+      if (at >= 0) stack.splice(at, 1)
+      if (stack.length === 0) document.body.style.overflow = ''
       returnTo?.focus()
     }
   }, [ref, onClose])

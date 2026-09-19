@@ -157,6 +157,7 @@ export default function GuestApp({
   )
 
   const openBill = useCallback(() => setBillOpen(true), [])
+  const openCart = useCallback(() => setCartOpen(true), [])
   const markChatSeen = useCallback(() => setChatSeenAt(Date.now()), [])
 
   if (gone) {
@@ -297,6 +298,9 @@ export default function GuestApp({
         counts={counts}
         unread={unreadFromStaff}
         raised={cartCount > 0}
+        cartCount={cartCount}
+        cartTotal={cartTotal}
+        onOpenCart={openCart}
         onTap={tapItem}
         onBump={bump}
         onOpenBill={openBill}
@@ -349,7 +353,7 @@ export default function GuestApp({
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none fixed inset-x-0 bottom-32 z-[60] flex justify-center px-4"
+          className="pointer-events-none fixed inset-x-0 bottom-32 z-[70] flex justify-center px-4"
         >
           <div
             className={`rounded-full px-4 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-float)] ${
@@ -1303,7 +1307,10 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
   useDialog(ref, onClose)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
+    /* Above the concierge panel (z-55), not below it: a third of this hotel's
+       items need choices, and every one of them opened this sheet behind an
+       opaque panel and looked like a dead button. */
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
       <div
         className="bg-scrim pointer-fine:backdrop-blur-[2px] absolute inset-0"
         style={{ animation: 'hc-fade-in 300ms var(--ease-glide) both' }}

@@ -24,7 +24,14 @@ type Lib = {
   promotions: typeof import('../lib/promotions')
 }
 
-describe.skipIf(!HAVE_DB)('against the real database', () => {
+/**
+ * 20s, not vitest's 5s. Every assertion in here is a round trip to ap-south-1
+ * — a dozen of them in the quick-replies case — and from a developer's own
+ * connection that is 60ms each before the dev server is also holding pool
+ * connections open for an SSE stream. These were timing out at exactly 5010ms
+ * while passing in isolation, which is a clock running out, not a wrong answer.
+ */
+describe.skipIf(!HAVE_DB)('against the real database', { timeout: 20_000 }, () => {
   let lib: Lib
   let manager: Staff
   let otherProperty: { id: string; name: string } | undefined

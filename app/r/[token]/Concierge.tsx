@@ -16,7 +16,7 @@ import {
   type InfoPage,
   type Item,
 } from '@/lib/types'
-import { IconChat, IconChevron, IconClose } from '@/components/icons'
+import { IconArrowRight, IconChat, IconChevron, IconClose } from '@/components/icons'
 
 import { claimOffer } from './actions'
 import GuestChat from './GuestChat'
@@ -80,9 +80,12 @@ export default function Concierge({
   counts,
   unread,
   raised,
+  cartCount,
+  cartTotal,
   onTap,
   onBump,
   onOpenBill,
+  onOpenCart,
   onRefresh,
   onChatSeen,
 }: {
@@ -96,9 +99,12 @@ export default function Concierge({
   unread: number
   /** The basket bar is showing, so the button has to sit above it. */
   raised: boolean
+  cartCount: number
+  cartTotal: number
   onTap: (i: Item) => void
   onBump: (i: Item, by: number) => void
   onOpenBill: () => void
+  onOpenCart: () => void
   onRefresh: () => void
   onChatSeen: () => void
 }) {
@@ -333,6 +339,29 @@ export default function Concierge({
               ))}
               <div ref={foot} />
             </div>
+
+            {/* The app's basket bar lives behind this panel, which on a phone
+                covers the whole screen — so anything added in here had no way
+                out. Same control, same words, inside the conversation. */}
+            {cartCount > 0 && screen.at !== 'desk' && (
+              <div className="border-line shrink-0 border-t px-3 py-2.5">
+                <button
+                  onClick={() => {
+                    close()
+                    onOpenCart()
+                  }}
+                  className="bg-ink ease-glide flex w-full items-center gap-3 rounded-full py-2.5 pr-4 pl-3 text-white transition duration-300 active:scale-[0.985]"
+                >
+                  <span className="grid h-6 min-w-6 place-items-center rounded-full bg-white/20 px-1.5 text-[12px] font-bold tabular-nums">
+                    {cartCount}
+                  </span>
+                  <span className="flex-1 text-left text-[13.5px] font-semibold tracking-[-0.01em]">
+                    Send to the team{cartTotal > 0 ? ` · ${rupees(cartTotal)}` : ''}
+                  </span>
+                  <IconArrowRight size={15} />
+                </button>
+              </div>
+            )}
 
             {/* And what can be said next. Always at the foot, always taps. */}
             <div className="border-line bg-surface shrink-0 border-t">
