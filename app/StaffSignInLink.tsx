@@ -3,9 +3,25 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { LiquidBlobTransition, isReducedMotionPreferred } from 'motion-organic'
 
 const HREF = '/staff/login'
+
+/* motion-organic is a barrel over 25 transitions, 15 text effects, a Web Audio
+   engine and an SVG morpher. Statically imported it was the largest thing on
+   the marketing page, downloaded and parsed by every visitor before first
+   paint, to decorate one link that most of them never click.
+
+   So it is fetched on the first sign of intent - hover, focus, or the
+   pointerdown that precedes the click - and the handler below uses it only if
+   it has already arrived. A cold click is an ordinary link: no stall waiting
+   on a module, and navigating without the bubble is the faster outcome
+   anyway. */
+let motion: typeof import('motion-organic') | null = null
+let warming: Promise<void> | null = null
+const warm = () =>
+  (warming ??= import('motion-organic').then((m) => {
+    motion = m
+  }))
 
 /** The package's .d.ts stops at the base class and declares neither of these,
  *  though every transition has them. Narrower than reaching for `any`. */
@@ -97,13 +113,18 @@ export default function StaffSignInLink({
     <Link
       href={HREF}
       className={className}
+      onPointerEnter={warm}
+      onPointerDown={warm}
+      onFocus={warm}
       onClick={(e) => {
         // New tab, new window, middle click: the browser owns those, not us.
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return
+        // Not warm yet - let the browser follow the link.
+        if (!motion) return
         // LiquidBlobTransition overrides trigger() and so never reaches the
         // base class's reduced-motion check. It has to happen here or the
         // blob bubbles for people who asked it not to.
-        if (isReducedMotionPreferred()) return
+        if (motion.isReducedMotionPreferred()) return
 
         e.preventDefault()
         const { clientX, clientY } = e
@@ -112,7 +133,7 @@ export default function StaffSignInLink({
         // route swaps, and anything tied to that lifecycle would be torn down
         // mid-cover — cutting to the login screen instead of clearing off it.
         // Both of these live on document.body and clear up after themselves.
-        const blob = new LiquidBlobTransition({ color: '#1c1917' })
+        const blob = new motion.LiquidBlobTransition({ color: '#1c1917' })
         const tuned = blob as unknown as Tunable
         Object.assign(tuned.baseSpring, SPRING)
         const card = showLoadingCard()

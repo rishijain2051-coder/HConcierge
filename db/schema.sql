@@ -179,6 +179,18 @@ create table if not exists messages (
   read_at     timestamptz
 );
 create index if not exists messages_room_idx on messages (room_id, created_at);
+-- loadChatRooms() is the one board query with no bound on it: it reads every
+-- message a property has ever sent to find the newest per room, and it runs on
+-- every live push and every poll. This matches its shape exactly - property,
+-- then room, then newest first - so the distinct-on walks the index instead of
+-- sorting the table. Free today at a few dozen rows; the difference after a
+-- season of chat is the whole board.
+create index if not exists messages_property_idx on messages (property_id, room_id, created_at desc);
+-- The unread count hanging off both loadBoard() and loadChatRooms(), one
+-- correlated subquery per row. Partial, so it indexes only the handful of
+-- messages that are actually unread rather than the whole table.
+create index if not exists messages_unread_idx on messages (room_id)
+  where sender = 'guest' and read_at is null;
 
 create table if not exists quick_replies (
   id          uuid primary key default gen_random_uuid(),
