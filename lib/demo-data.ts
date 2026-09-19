@@ -81,28 +81,66 @@ export const DEMO_SECTIONS: DemoSection[] = [
   },
 ]
 
-/** Everything a guest can ask for, for the breadth section. Straight from the seed. */
-export const DIRECTORY_BREADTH: string[] = [
-  'Bath towels', 'Hand towels', 'Fresh bedsheets', 'Extra pillow', 'Extra blanket', 'Bathrobe',
-  'Toiletries kit', 'Toothbrush & toothpaste', 'Shaving kit', 'Toilet paper', 'Slippers', 'Sanitary kit',
-  'Clean my room now', 'Turndown service', 'Empty the bin', 'Do not disturb', 'Collect laundry bag',
-  'Iron & ironing board', 'Extra hangers', 'Phone charger', 'Universal adapter', 'Hair dryer',
-  'Extra drinking water', 'Air conditioning', 'Hot water / geyser', 'Television or remote',
-  'Wi-Fi not connecting', 'Lights or power socket', 'Door lock or key card', 'Leaking tap',
-  'Masala Dosa', 'Idli Sambar', 'Poha', 'Aloo Paratha', 'English Breakfast', 'Eggs to Order',
-  'Fruit Platter', 'Curd & Granola Bowl', 'Paneer Tikka', 'Hara Bhara Kebab', 'Chilli Paneer',
-  'Murgh Malai Tikka', 'Chicken 65', 'Tandoori Prawns', 'Dal Makhani', 'Paneer Butter Masala',
-  'Kadai Vegetable', 'Butter Chicken', 'Rogan Josh', 'Goan Fish Curry', 'Tandoori Roti', 'Butter Naan',
-  'Laccha Paratha', 'Jeera Rice', 'Veg Biryani', 'Hyderabadi Chicken Biryani', 'Club Sandwich',
-  'Grilled Veg Sandwich', 'Margherita Pizza', 'Penne Alfredo', 'French Fries', 'Chicken Burger',
-  'Gulab Jamun', 'Gajar Halwa', 'Chocolate Brownie', 'Ice Cream', 'Masala Chai', 'Filter Coffee',
-  'Cappuccino', 'Fresh Lime Soda', 'Mango Lassi', 'Cold Coffee', 'Bottled Water', 'Soft Drink',
-  'Kingfisher Premium', 'Bira White', 'House Red Wine', 'Old Monk & Coke', 'Single Malt',
-  'Shirt — wash & press', 'Trousers — wash & press', 'Suit — dry clean', 'Saree — dry clean',
-  'Kurta — wash & press', 'Express laundry', 'Swedish Massage', 'Deep Tissue Massage',
-  'Ayurvedic Abhyanga', 'Head & Shoulder Massage', 'Salon appointment', 'Airport drop — sedan',
-  'Airport drop — SUV', 'Airport pickup', 'Taxi to city', 'Car with driver', 'City tour booking',
-  'Doctor on call', 'Pharmacy run', 'Baby cot', 'Babysitting', 'Florist or cake', 'Wake-up call',
-  'Late checkout', 'Extend my stay', 'Show me my bill', 'Check out', 'Luggage pickup',
-  'Luggage storage', 'Printing or photocopy', 'Currency exchange', 'Book the conference room',
+/**
+ * Everything a guest can ask for, grouped by the team that owns it.
+ *
+ * Flat, this was 118 names in one paragraph — a wall on a phone that argued
+ * only "there are a lot". Grouped it makes the better argument: each line is
+ * routed, and the routing is the product. Straight from the seed either way.
+ */
+export const DIRECTORY_BREADTH: { team: string; items: string[] }[] = [
+  {
+    team: 'Housekeeping',
+    items: [
+      'Bath towels', 'Hand towels', 'Fresh bedsheets', 'Extra pillow', 'Extra blanket', 'Bathrobe',
+      'Toiletries kit', 'Toothbrush & toothpaste', 'Shaving kit', 'Toilet paper', 'Slippers',
+      'Sanitary kit', 'Clean my room now', 'Turndown service', 'Empty the bin', 'Do not disturb',
+      'Collect laundry bag', 'Iron & ironing board', 'Extra hangers', 'Phone charger',
+      'Universal adapter', 'Hair dryer', 'Extra drinking water', 'Shirt — wash & press',
+      'Trousers — wash & press', 'Suit — dry clean', 'Saree — dry clean', 'Kurta — wash & press',
+      'Express laundry',
+    ],
+  },
+  {
+    team: 'Maintenance',
+    items: [
+      'Air conditioning', 'Hot water / geyser', 'Television or remote', 'Wi-Fi not connecting',
+      'Lights or power socket', 'Door lock or key card', 'Leaking tap',
+    ],
+  },
+  {
+    team: 'Food & beverage',
+    items: [
+      'Masala Dosa', 'Idli Sambar', 'Poha', 'Aloo Paratha', 'English Breakfast', 'Eggs to Order',
+      'Fruit Platter', 'Curd & Granola Bowl', 'Paneer Tikka', 'Hara Bhara Kebab', 'Chilli Paneer',
+      'Murgh Malai Tikka', 'Chicken 65', 'Tandoori Prawns', 'Dal Makhani', 'Paneer Butter Masala',
+      'Kadai Vegetable', 'Butter Chicken', 'Rogan Josh', 'Goan Fish Curry', 'Tandoori Roti',
+      'Butter Naan', 'Laccha Paratha', 'Jeera Rice', 'Veg Biryani', 'Hyderabadi Chicken Biryani',
+      'Club Sandwich', 'Grilled Veg Sandwich', 'Margherita Pizza', 'Penne Alfredo', 'French Fries',
+      'Chicken Burger', 'Gulab Jamun', 'Gajar Halwa', 'Chocolate Brownie', 'Ice Cream', 'Masala Chai',
+      'Filter Coffee', 'Cappuccino', 'Fresh Lime Soda', 'Mango Lassi', 'Cold Coffee', 'Bottled Water',
+      'Soft Drink', 'Kingfisher Premium', 'Bira White', 'House Red Wine', 'Old Monk & Coke',
+      'Single Malt',
+    ],
+  },
+  {
+    team: 'Spa & wellness',
+    items: [
+      'Swedish Massage', 'Deep Tissue Massage', 'Ayurvedic Abhyanga', 'Head & Shoulder Massage',
+      'Salon appointment',
+    ],
+  },
+  {
+    team: 'Front desk',
+    items: [
+      'Airport drop — sedan', 'Airport drop — SUV', 'Airport pickup', 'Taxi to city',
+      'Car with driver', 'City tour booking', 'Doctor on call', 'Pharmacy run', 'Baby cot',
+      'Babysitting', 'Florist or cake', 'Wake-up call', 'Late checkout', 'Extend my stay',
+      'Show me my bill', 'Check out', 'Luggage pickup', 'Luggage storage', 'Printing or photocopy',
+      'Currency exchange', 'Book the conference room',
+    ],
+  },
 ]
+
+/** Every routed line, counted once. */
+export const DIRECTORY_COUNT = DIRECTORY_BREADTH.reduce((n, g) => n + g.items.length, 0)

@@ -441,8 +441,8 @@ export default function DemoStage() {
           </div>
 
           <p className="text-faint mt-3 px-1 text-[12px] leading-relaxed">
-            Time runs at a minute per second here so you can watch a request go late. Everything else is the real
-            thing: a working hotel&rsquo;s actual menu and prices, the actual target times, the actual routing, and
+            Time runs at a minute per second here so you can watch a request go late. Everything else is the
+            product doing its own work: a full hotel directory with its prices, the target times, the routing, and
             the escalation firing on its own the moment a target is missed.
           </p>
         </div>
