@@ -22,6 +22,8 @@ export type CartLine = {
 }
 
 export type CreateResult = { ok: true; refs: string[] } | { ok: false; error: string }
+/** As above, plus the one row it made — see claimPromotion in lib/promotions.ts. */
+export type FreeformResult = { ok: true; refs: string[]; id: string } | { ok: false; error: string }
 
 const MAX_QTY = 20
 const MAX_LINES = 40
@@ -221,7 +223,7 @@ export async function createFreeformRequest(
   ctx: RoomContext,
   note: string,
   department = 'front_desk',
-): Promise<CreateResult> {
+): Promise<FreeformResult> {
   const text = note.trim().slice(0, MAX_NOTE)
   if (text.length < 2) return { ok: false, error: 'Tell us a little more.' }
 
@@ -248,7 +250,7 @@ export async function createFreeformRequest(
   })
   after(() => notifyNewRequest(request.id).catch((err) => console.error('[notify] new request failed', err)))
 
-  return { ok: true, refs: [request.ref] }
+  return { ok: true, refs: [request.ref], id: request.id }
 }
 
 /** Guests may withdraw their own request while nobody has started on it. */

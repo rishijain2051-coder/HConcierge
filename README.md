@@ -68,9 +68,24 @@ load.
 This replaced an earlier model where the token rotated at check-in — which silently
 invalidated the printed card and would have meant reprinting one per room per stay.
 
-Five screens: **Home** (quick asks, live status, free-text box, running bill), **Dining**
+Four tabs: **Home** (quick asks, live status, free-text box, running bill), **Dining**
 (the room service menu with a cart and modifiers), **Services** (housekeeping, laundry,
-spa, travel, front desk), **Hotel** (wifi, timings, pool, house rules), **Chat**.
+spa, travel, front desk), **Hotel** (wifi, timings, pool, house rules).
+
+Floating above all four, an **AI Concierge** button opens the same hotel as a conversation
+made of buttons — for the guests who would rather be asked what they want than go looking
+for it. It greets, offers Food & drink / Services / Promotions / Information / Anything
+else, and walks down to an item: Services asks which team, Housekeeping brings the whole
+of housekeeping under the hotel's own headings, and tapping an item adds it to the same
+basket the tabs use. Promotions shows what is running, counts the room's balance against
+any spend threshold, and puts a claim on the board. Anything else covers the bill, what
+has already been asked for, and the front desk — the one screen with a text box, because
+a person reads that one.
+
+In this product **AI** is **Automatically Intelligent**: the whole tree is read from
+`directory` and `info`, so a hotel that adds a category or renames a team gets it in the
+concierge without anybody touching the code. No model is called anywhere in HConcierge.
+The expansion is for this file and `PRODUCT.md`; the app says only "AI Concierge".
 
 ### The routing
 

@@ -1,3 +1,5 @@
+import { rupees } from './money'
+
 export type AppliesTo = 'unaccepted' | 'unfinished' | 'any'
 
 export const APPLIES_TO_LABEL: Record<AppliesTo, string> = {
@@ -269,4 +271,57 @@ export const GUEST_STATUS_LABEL: Record<RequestStatus, string> = {
   in_progress: 'Being done now',
   done: 'Completed',
   cancelled: 'Cancelled',
+}
+
+/* ------------------------------------------------------------- promotions */
+
+export type PromotionKind = 'coupon' | 'pass' | 'discount'
+
+export type Promotion = {
+  id: string
+  title: string
+  description: string
+  kind: PromotionKind
+  min_spend_paise: number
+  percent_off: number | null
+  department: string | null
+  fine_print: string | null
+  sort: number
+  active: boolean
+}
+
+/** A promotion as one guest sees it right now. */
+export type GuestPromotion = Promotion & {
+  claimed: boolean
+  /** Paise still to spend before it unlocks. 0 when it is available. */
+  short_by: number
+}
+
+export const KIND_LABEL: Record<PromotionKind, string> = {
+  coupon: 'Complimentary',
+  pass: 'Pass',
+  discount: 'Discount',
+}
+
+/**
+ * Whether a guest can take this up, and what to say if not.
+ *
+ * Pure, and living here rather than in lib/promotions.ts so the guest's screen
+ * can call the same function the server does — that module reaches the
+ * database and cannot be imported into a client component. This is the only
+ * place the rule exists. A threshold that reads as met on the phone and unmet
+ * on the server is the one bug in this feature that reaches a guest as a
+ * broken promise.
+ */
+export function offerState(
+  promo: Pick<Promotion, 'min_spend_paise'>,
+  balancePaise: number,
+  claimed: boolean,
+): { available: boolean; shortBy: number; note: string } {
+  const shortBy = Math.max(0, promo.min_spend_paise - Math.max(0, balancePaise))
+  if (claimed) return { available: false, shortBy, note: 'Claimed — the desk has it' }
+  if (shortBy > 0) {
+    return { available: false, shortBy, note: `${rupees(shortBy)} more on the room to unlock this` }
+  }
+  return { available: true, shortBy: 0, note: 'Yours to claim' }
 }

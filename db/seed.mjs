@@ -377,6 +377,43 @@ const QUICK_REPLIES = [
   { label: 'Anything else', body: 'Happy to help. Anything else you need, just message here.' },
 ]
 
+/**
+ * What the hotel is running this season. The desk honours these at checkout —
+ * nothing here discounts a folio by itself, see lib/promotions.ts.
+ */
+const PROMOTIONS = [
+  {
+    title: 'Welcome drink, on us',
+    description:
+      'A complimentary drink at the lobby bar — a cocktail, a mocktail or a filter coffee, whichever suits the hour.',
+    kind: 'coupon',
+    minSpend: 0,
+    percentOff: null,
+    department: 'fnb',
+    finePrint: 'One per stay, served at the bar.',
+  },
+  {
+    title: 'Pool & gym day passes',
+    description:
+      'Two day passes for the rooftop pool and the gym, yours once the room bill passes two thousand rupees.',
+    kind: 'pass',
+    minSpend: R(2000),
+    percentOff: null,
+    department: 'front_desk',
+    finePrint: 'Collect the wristbands at the front desk.',
+  },
+  {
+    title: '15% off every spa treatment',
+    description:
+      'Fifteen per cent off the whole spa menu for the length of your stay — massages, facials, the lot.',
+    kind: 'discount',
+    minSpend: 0,
+    percentOff: 15,
+    department: 'spa_wellness',
+    finePrint: 'Applied when you settle. Not with other offers.',
+  },
+]
+
 const PROPERTIES = [
   {
     slug: 'rn-grand-pune',
@@ -478,6 +515,14 @@ async function main() {
     for (const [i, q] of QUICK_REPLIES.entries()) {
       await sql`insert into quick_replies (property_id, label, body, sort)
                 values (${prop.id}, ${q.label}, ${q.body}, ${i})`
+    }
+
+    for (const [i, promo] of PROMOTIONS.entries()) {
+      await sql`
+        insert into promotions (property_id, title, description, kind, min_spend_paise,
+                                percent_off, department, fine_print, sort)
+        values (${prop.id}, ${promo.title}, ${promo.description}, ${promo.kind}, ${promo.minSpend},
+                ${promo.percentOff}, ${promo.department}, ${promo.finePrint}, ${i})`
     }
 
     console.log(`✓ ${p.name}`)

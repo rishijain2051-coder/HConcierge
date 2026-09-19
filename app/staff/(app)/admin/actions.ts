@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireManager, type Department, type Role } from '@/lib/auth'
 import * as admin from '@/lib/admin'
 import * as escalation from '@/lib/escalation'
+import * as promotions from '@/lib/promotions'
 import * as orgs from '@/lib/organisations'
 import * as teams from '@/lib/departments'
 import { enterOrganisation as setOrganisation, requirePlatform } from '@/lib/auth'
@@ -184,6 +185,22 @@ export async function saveQuickReply(propertyId: string, input: { id?: string | 
 export async function deleteQuickReply(id: string) {
   const actor = await requireManager()
   const res = await admin.deleteQuickReply(actor, id)
+  if (res.ok) touched()
+  return res
+}
+
+/* --------------------------------------------------------------- promotions */
+
+export async function savePromotion(propertyId: string, input: promotions.PromotionInput) {
+  const actor = await requireManager()
+  const res = await promotions.savePromotion(actor, propertyId, input)
+  if (res.ok) touched()
+  return res
+}
+
+export async function deletePromotion(id: string) {
+  const actor = await requireManager()
+  const res = await promotions.deletePromotion(actor, id)
   if (res.ok) touched()
   return res
 }

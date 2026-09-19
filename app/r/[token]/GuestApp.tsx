@@ -9,6 +9,7 @@ import {
   guestStep,
   guestSteps,
   type Category,
+  type GuestPromotion,
   type GuestRequest,
   type GuestState,
   type InfoPage,
@@ -68,6 +69,7 @@ export default function GuestApp({
   property,
   directory,
   info,
+  promotions,
   initialState,
   serverNow,
 }: {
@@ -76,6 +78,7 @@ export default function GuestApp({
   property: Property
   directory: Category[]
   info: InfoPage[]
+  promotions: GuestPromotion[]
   initialState: GuestState
   // The server's clock. Threaded down to useClock and greeting so the first
   // client render matches the server-rendered HTML instead of re-reading the
@@ -289,6 +292,7 @@ export default function GuestApp({
         token={token}
         directory={directory}
         info={info}
+        promotions={promotions}
         state={state}
         counts={counts}
         unread={unreadFromStaff}

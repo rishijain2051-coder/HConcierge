@@ -9,6 +9,7 @@ import { allow, clientKeyFrom, CODE_LIMIT } from '@/lib/limit'
 import { hasGuestAccess, submitRoomCode } from '@/lib/guest-session'
 import { rupees } from '@/lib/money'
 import { cancelOwnRequest, createFreeformRequest, createRequests, type CartLine } from '@/lib/requests'
+import { claimPromotion } from '@/lib/promotions'
 
 /**
  * Every action re-resolves the room from the QR token rather than trusting a
@@ -90,6 +91,17 @@ export async function askToSettle(token: string) {
 
   await sql`update rooms set settle_requested_at = now() where id = ${ctx.room.id}`
   return { ok: true as const }
+}
+
+/**
+ * Taking up an offer. Nothing is issued and nothing is discounted here — it
+ * records the claim against the stay and puts the guest on the desk's board
+ * with the offer named. See lib/promotions.ts for why it stops there.
+ */
+export async function claimOffer(token: string, promotionId: string) {
+  const ctx = await authedRoom(token)
+  if (!ctx) return DENIED
+  return claimPromotion(ctx, promotionId)
 }
 
 export async function cancelRequest(token: string, requestId: string) {

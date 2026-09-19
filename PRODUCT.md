@@ -84,6 +84,15 @@ product cannot truthfully claim by adding a menu to a QR code.
 - **Scheduled escalation runs on Supabase pg_cron**, because the deployment target
   permits one cron run per day.
 - **Twilio is optional.** Escalation degrades to in-app only when it is unset.
+- **Nothing in the product calls a language model.** The AI Concierge is a
+  decision tree read from the hotel's own directory — no model, no inference,
+  no provider, no key, no bill. It cannot quote a price the kitchen did not
+  set, promise a service the property does not run, or need anybody to review
+  what it said to a guest at 3am.
+- **Promotions describe, they do not discount.** An offer is shown to the guest
+  and, when taken up, lands on the board as a request naming it. Since the app
+  never settles a bill, it must never reduce one either: the desk honours the
+  offer at checkout exactly as it would a paper voucher.
 - **Undecided:** whether the guest app ever needs a language other than English;
   whether a formal accessibility standard will be required by a buyer.
 
@@ -91,6 +100,18 @@ product cannot truthfully claim by adding a menu to a QR code.
 
 The product is named **HConcierge**. **RN Hospitality** — specifically RN Grand,
 Pune — is the named prospect the current build is dressed for.
+
+The guest-facing assistant is the **AI Concierge**, and in this product **AI**
+stands for **Automatically Intelligent**: a concierge assembled automatically
+from the hotel's own directory, which answers only with what that hotel
+actually offers. It is not artificial intelligence and there is no model behind
+it. `app/r/[token]/Concierge.tsx` opens by pointing back here and by describing
+the mechanism, so nobody maintaining it is misled — and so the expansion itself
+lives in exactly one place.
+
+**The expansion belongs in this document and nowhere else.** It must not appear
+anywhere in the live app: a guest sees "AI Concierge" and only that. A screen
+that stops to explain its own name has raised the question it was answering.
 
 ## Evidence on Hand
 

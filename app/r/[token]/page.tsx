@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { loadDirectory, loadGuestState, loadInfoPages, loadRoom } from '@/lib/guest'
 import { hasGuestAccess } from '@/lib/guest-session'
+import { livePromotions } from '@/lib/promotions'
 import CodeGate from './CodeGate'
 import GuestApp from './GuestApp'
 
@@ -53,10 +54,11 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
   // eslint-disable-next-line react-hooks/purity
   const serverNow = Date.now()
 
-  const [directory, info, state] = await Promise.all([
+  const [directory, info, state, promotions] = await Promise.all([
     loadDirectory(ctx.property.id),
     loadInfoPages(ctx.property.id),
     loadGuestState(ctx.room.id),
+    livePromotions(ctx.room),
   ])
 
   return (
@@ -66,6 +68,7 @@ export default async function GuestPage({ params }: PageProps<'/r/[token]'>) {
       property={ctx.property}
       directory={directory}
       info={info}
+      promotions={promotions}
       initialState={state}
       serverNow={serverNow}
     />

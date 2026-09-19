@@ -7,7 +7,10 @@ import {
   departmentLabel,
   guestStep,
   guestSteps,
+  offerState,
+  KIND_LABEL,
   type Category,
+  type GuestPromotion,
   type GuestRequest,
   type GuestState,
   type InfoPage,
@@ -15,6 +18,7 @@ import {
 } from '@/lib/types'
 import { IconChat, IconChevron, IconClose } from '@/components/icons'
 
+import { claimOffer } from './actions'
 import GuestChat from './GuestChat'
 import ItemRow from './ItemRow'
 import { useDialog } from './useDialog'
@@ -26,14 +30,15 @@ import { useDialog } from './useDialog'
  * so this is the same hotel behind a different door: ask what they want, offer
  * what the hotel actually has, and let them tap their way down to an item.
  *
- * The name is the hotel's to choose and it is what a guest sees. Inside this
- * file, be clear about what it is: there is no model behind it, and there is
- * no text box on the way down. Every turn is a choice the hotel's own
- * directory put there, which is the point. A menu that cannot be asked a
- * question it has no answer to never invents one, never quotes a price the
- * kitchen did not set, and never promises a service this property does not
- * run. It is also why it needs no key, no budget and no review of what it said
- * to a guest at 3am.
+ * "AI Concierge" is the name a guest sees; PRODUCT.md, under Brand
+ * Commitments, records what the two letters stand for here and why that
+ * expansion stays out of the app. What matters in this file is the mechanism:
+ * there is no model behind it, nothing here calls one, and there is no text
+ * box on the way down. Every turn is a choice the hotel's own directory put
+ * there, which is the point. A menu that cannot be asked a question it has no
+ * answer to never invents one, never quotes a price the kitchen did not set,
+ * and never promises a service this property does not run. It is also why it
+ * needs no key, no budget and no review of what it said to a guest at 3am.
  *
  * Everything it offers is read from `directory` and `info`, so a hotel that
  * adds a category or renames a team gets it here without anybody touching this
@@ -48,6 +53,7 @@ type Screen =
   | { at: 'menu'; id: string }
   | { at: 'services' }
   | { at: 'team'; dept: string }
+  | { at: 'offers' }
   | { at: 'info' }
   | { at: 'page'; id: string }
   | { at: 'else' }
@@ -69,6 +75,7 @@ export default function Concierge({
   token,
   directory,
   info,
+  promotions,
   state,
   counts,
   unread,
@@ -82,6 +89,7 @@ export default function Concierge({
   token: string
   directory: Category[]
   info: InfoPage[]
+  promotions: GuestPromotion[]
   state: GuestState
   counts: Map<string, number>
   /** Replies from the desk the guest has not looked at yet. */
@@ -144,6 +152,30 @@ export default function Concierge({
 
   const liveRequests = state.requests.filter((r) => r.status !== 'done' && r.status !== 'cancelled')
 
+  /**
+   * Claimed since this page loaded. The prop carries what was true when the
+   * server rendered, so both are consulted: the server wins on a reload, and
+   * this covers the rest of the session.
+   *
+   * ponytail: optimistic, and only for this device. A second phone in the same
+   * room sees the claim on its next load rather than the moment it happens.
+   * Push it through GuestState if that ever matters - it would cost a query on
+   * every live push, which today it is not worth.
+   */
+  const [justClaimed, setJustClaimed] = useState<ReadonlySet<string>>(new Set())
+  const [claiming, setClaiming] = useState<string | null>(null)
+
+  // Eligibility is recomputed against the live balance rather than read off
+  // the prop, so an offer unlocks the moment the meal that pays for it lands.
+  const offers = useMemo(
+    () =>
+      promotions.map((p) => {
+        const claimed = p.claimed || justClaimed.has(p.id)
+        return { promo: p, claimed, ...offerState(p, state.folio_total_paise, claimed) }
+      }),
+    [promotions, justClaimed, state.folio_total_paise],
+  )
+
   /** What the concierge says when it arrives at a screen. */
   const speak = useCallback(
     (s: Screen): string => {
@@ -158,6 +190,10 @@ export default function Concierge({
           return 'Which team should I ask?'
         case 'team':
           return `Here is everything ${teams.find((t) => t.dept === s.dept)?.label ?? 'this team'} can do.`
+        case 'offers':
+          return offers.length === 0
+            ? 'There is nothing running just now.'
+            : 'Here is what we have on at the moment.'
         case 'info':
           return 'What would you like to know?'
         case 'page':
@@ -176,7 +212,7 @@ export default function Concierge({
           return 'The front desk reads this one. Say anything you like.'
       }
     },
-    [dining, teams, info, state.folio_total_paise, liveRequests.length],
+    [dining, teams, info, offers.length, state.folio_total_paise, liveRequests.length],
   )
 
   /** One turn: what the guest tapped, then the answer. */
@@ -210,6 +246,38 @@ export default function Concierge({
     setScreen({ at: 'root' })
     setLines((prev) => [...prev, { id: nextId.current++, from: 'bot', text: HELLO }])
   }, [])
+
+  /**
+   * Taking one up. The server re-checks the threshold and owns the one-per-stay
+   * rule, so this is free to be optimistic about the answer and wrong about
+   * nothing that matters.
+   */
+  const claim = useCallback(
+    async (promo: GuestPromotion) => {
+      if (claiming) return
+      setClaiming(promo.id)
+      const res = await claimOffer(token, promo.id)
+      setClaiming(null)
+
+      const reply = !res.ok
+        ? res.error
+        : 'already' in res && res.already
+          ? 'You have already taken that one up — the desk has it.'
+          : `Done — I have let the desk know.${promo.fine_print ? ` ${promo.fine_print}` : ''}`
+
+      setLines((prev) => [
+        ...prev,
+        { id: nextId.current++, from: 'guest', text: promo.title },
+        { id: nextId.current++, from: 'bot', text: reply },
+      ])
+      if (res.ok) {
+        setJustClaimed((prev) => new Set(prev).add(promo.id))
+        // The claim raised a request, so the tracker on Home has one more row.
+        onRefresh()
+      }
+    },
+    [claiming, token, onRefresh],
+  )
 
   // The newest turn, and the options that go with it, are what matters.
   useEffect(() => {
@@ -279,6 +347,9 @@ export default function Concierge({
                     dining={dining}
                     teams={teams}
                     info={info}
+                    offers={offers}
+                    claiming={claiming}
+                    onClaim={claim}
                     requests={liveRequests}
                     counts={counts}
                     hasChat={state.messages.length > 0}
@@ -399,6 +470,9 @@ function Options({
   dining,
   teams,
   info,
+  offers,
+  claiming,
+  onClaim,
   requests,
   counts,
   hasChat,
@@ -411,6 +485,9 @@ function Options({
   dining: Category[]
   teams: { dept: string; label: string; groups: { cat: Category; items: Item[] }[] }[]
   info: InfoPage[]
+  offers: { promo: GuestPromotion; claimed: boolean; available: boolean; shortBy: number; note: string }[]
+  claiming: string | null
+  onClaim: (p: GuestPromotion) => void
   requests: GuestRequest[]
   counts: Map<string, number>
   hasChat: boolean
@@ -434,6 +511,7 @@ function Options({
         <div className={wrap}>
           {dining.length > 0 && <Chip icon="🍽️" label="Food & drink" onClick={() => onGo({ at: 'food' }, 'Food & drink')} />}
           {teams.length > 0 && <Chip icon="🛎️" label="Services" onClick={() => onGo({ at: 'services' }, 'Services')} />}
+          {offers.length > 0 && <Chip icon="🎁" label="Promotions" onClick={() => onGo({ at: 'offers' }, 'Promotions')} />}
           {info.length > 0 && <Chip icon="ℹ️" label="Information" onClick={() => onGo({ at: 'info' }, 'Information')} />}
           <Chip icon="💬" label="Anything else" onClick={() => onGo({ at: 'else' }, 'Anything else')} />
         </div>
@@ -477,6 +555,42 @@ function Options({
         </div>
       )
     }
+
+    case 'offers':
+      return (
+        <div className="space-y-2.5">
+          {offers.map(({ promo, available, note }) => (
+            <div
+              key={promo.id}
+              className="bg-paper rounded-2xl p-3.5 shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--color-ink)_9%,transparent)]"
+            >
+              {/* The headline is what they get, not what it is called: "15% off"
+                  reads before the title does, and "Complimentary" is the whole
+                  offer on a free one. */}
+              <p className="text-faint text-[11px] font-semibold tracking-wide uppercase">
+                {promo.kind === 'discount' && promo.percent_off
+                  ? `${promo.percent_off}% off`
+                  : KIND_LABEL[promo.kind]}
+              </p>
+              <p className="text-[14.5px] leading-snug font-semibold">{promo.title}</p>
+              <p className="text-muted mt-1 text-[13px] leading-relaxed">{promo.description}</p>
+              {promo.fine_print && <p className="text-faint mt-1 text-[11.5px]">{promo.fine_print}</p>}
+              <div className="mt-2.5 flex items-center justify-between gap-3">
+                <span className={`text-[12px] font-medium ${available ? 'brand-text' : 'text-faint'}`}>{note}</span>
+                {available && (
+                  <button
+                    onClick={() => onClaim(promo)}
+                    disabled={claiming !== null}
+                    className="brand-bg ease-glide shrink-0 rounded-full px-3.5 py-1.5 text-[13px] font-semibold text-white transition duration-200 active:scale-[0.97] disabled:opacity-40"
+                  >
+                    {claiming === promo.id ? '…' : 'Claim'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )
 
     case 'info':
     case 'page':

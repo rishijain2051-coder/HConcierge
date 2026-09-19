@@ -203,6 +203,47 @@ create table if not exists quick_replies (
 -- -------------------------------------------------------------------- folio
 -- Every charge goes through lib/folio.ts and lands here. When a PMS is wired
 -- up later that adapter reads this table; nothing else in the app posts money.
+-- ------------------------------------------------------------- promotions
+-- What the hotel is offering this stay, and who has taken it up.
+--
+-- Deliberately not a discount engine. HConcierge posts charges and never
+-- settles them, so nothing here reduces a folio by itself: a promotion is a
+-- line the concierge can show and a claim the desk honours at checkout, which
+-- is exactly what a paper voucher already is. Keeping it that way is what
+-- stops the app quoting a guest a total the hotel never agreed to.
+--
+-- min_spend_paise is read against the room's unsettled balance, so the
+-- concierge can say how far off a guest is rather than making them guess.
+create table if not exists promotions (
+  id              uuid primary key default gen_random_uuid(),
+  property_id     uuid not null references properties(id) on delete cascade,
+  title           text not null,
+  description     text not null,
+  kind            text not null default 'coupon' check (kind in ('coupon','pass','discount')),
+  min_spend_paise int  not null default 0,
+  percent_off     int  check (percent_off between 1 and 100),
+  -- Narrows it to one team's work, e.g. the spa. Null is the whole hotel.
+  department      text,
+  fine_print      text,
+  sort            int  not null default 0,
+  active          boolean not null default true
+);
+create index if not exists promotions_property_idx on promotions (property_id, sort);
+
+-- One claim per promotion per stay, bound to the stay's check-in timestamp
+-- the same way the guest's access grant in lib/guest-session.ts is. The next
+-- guest in 402 gets the welcome drink the last one had, and nothing has to be
+-- cleared down at checkout for that to be true.
+create table if not exists promotion_claims (
+  id           uuid primary key default gen_random_uuid(),
+  promotion_id uuid not null references promotions(id) on delete cascade,
+  room_id      uuid not null references rooms(id) on delete cascade,
+  stay         timestamptz not null,
+  request_id   uuid references requests(id) on delete set null,
+  claimed_at   timestamptz not null default now(),
+  unique (promotion_id, room_id, stay)
+);
+
 create table if not exists folio_entries (
   id           uuid primary key default gen_random_uuid(),
   property_id  uuid not null references properties(id) on delete cascade,
